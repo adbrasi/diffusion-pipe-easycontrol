@@ -156,7 +156,11 @@ class AnimaControlSelfAttn(nn.Module):
         cond_flat: torch.Tensor,
         noise_rope: torch.Tensor,
         cond_rope: torch.Tensor,
+        lora_weights: Optional[list] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if lora_weights is None:
+            lora_weights = [1.0] * self.n_loras
+
         B, L_noise, D = noise_flat.shape
         L_cond = cond_flat.shape[1]
 
@@ -169,9 +173,11 @@ class AnimaControlSelfAttn(nn.Module):
 
         # Pass actual L_cond as cond_size so masking works with dynamic resolutions
         for i in range(self.n_loras):
-            q = q + self.q_loras[i](joint, cond_size=L_cond)
-            k = k + self.k_loras[i](joint, cond_size=L_cond)
-            v = v + self.v_loras[i](joint, cond_size=L_cond)
+            w = lora_weights[i]
+            if w != 0.0:
+                q = q + w * self.q_loras[i](joint, cond_size=L_cond)
+                k = k + w * self.k_loras[i](joint, cond_size=L_cond)
+                v = v + w * self.v_loras[i](joint, cond_size=L_cond)
 
         n_heads = base_self_attn.n_heads
         head_dim = base_self_attn.head_dim
@@ -214,7 +220,9 @@ class AnimaControlSelfAttn(nn.Module):
         out = base_self_attn.output_dropout(out)
 
         for i in range(self.n_loras):
-            out = out + self.proj_loras[i](x, cond_size=L_cond)
+            w = lora_weights[i]
+            if w != 0.0:
+                out = out + w * self.proj_loras[i](x, cond_size=L_cond)
 
         del x
 
