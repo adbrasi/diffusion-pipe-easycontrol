@@ -64,15 +64,15 @@ def parse_args():
     p.add_argument("--dit", required=True, help="Anima DiT safetensors")
     p.add_argument("--vae", required=True, help="Qwen-Image VAE safetensors")
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
-    p.add_argument("--lora", required=True, help="EasyControl LoRA safetensors")
-    p.add_argument("--control_image", required=True, help="Control image (canny, depth, etc.)")
+    p.add_argument("--lora", default=None, help="EasyControl LoRA safetensors (optional — omit for normal Anima generation)")
+    p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
     p.add_argument("--prompt", required=True)
     p.add_argument("--negative_prompt", default="")
     p.add_argument("--width", type=int, default=512, help="Width (divisible by 16)")
     p.add_argument("--height", type=int, default=512, help="Height (divisible by 16)")
-    p.add_argument("--steps", type=int, default=30, help="Sampling steps")
-    p.add_argument("--cfg", type=float, default=5.0, help="CFG scale (1.0 = no CFG)")
-    p.add_argument("--flow_shift", type=float, default=5.0, help="Flow shift (Anima default 5.0)")
+    p.add_argument("--steps", type=int, default=50, help="Sampling steps (Anima official: 50)")
+    p.add_argument("--cfg", type=float, default=3.5, help="CFG scale (Anima official: 3.5)")
+    p.add_argument("--flow_shift", type=float, default=5.0, help="Flow shift (Anima official: 5.0, community: 2.5-3.0)")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--save_path", default="./outputs", help="Output directory")
     p.add_argument("--vae_chunk_size", type=int, default=None)
@@ -225,6 +225,44 @@ def encode_control(vae, image_path, height, width, device, dtype):
 
 
 # ============================================================================
+# Normal Anima sampling (no control — identical to sd-scripts generate_body)
+# ============================================================================
+
+@torch.no_grad()
+def sample_normal(dit, pos_context, neg_context, height, width, steps, cfg, flow_shift, seed, device, dtype):
+    """Standard Anima Euler sampling without any control conditioning."""
+    latent_h = height // 8
+    latent_w = width // 8
+
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    from diffusers.utils.torch_utils import randn_tensor
+    latents = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
+
+    padding_mask = torch.zeros(1, 1, latent_h, latent_w, dtype=torch.bfloat16, device=device)
+
+    timesteps, sigmas = get_timesteps_sigmas(steps, flow_shift, device)
+    timesteps /= 1000
+    timesteps = timesteps.to(device, dtype=torch.bfloat16)
+
+    do_cfg = cfg > 1.0 and neg_context is not None
+
+    for step_i in tqdm(range(steps), desc="Sampling"):
+        t_expand = timesteps[step_i].expand(latents.shape[0])
+
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            noise_pred = dit(latents, t_expand, pos_context, padding_mask=padding_mask)
+
+        if do_cfg:
+            with torch.autocast('cuda', dtype=torch.bfloat16):
+                uncond_pred = dit(latents, t_expand, neg_context, padding_mask=padding_mask)
+            noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
+
+        latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
+
+    return latents
+
+
+# ============================================================================
 # EasyControl sampling
 # ============================================================================
 
@@ -364,7 +402,12 @@ def main():
     dit = load_dit(args.dit, device, dtype)
     vae = load_vae(args.vae, device, dtype, args.vae_chunk_size)
     text_encoder, tokenizer, t5_tokenizer = load_text_encoder(args.llm, device, dtype)
-    control_processors = load_control_lora(dit, args.lora, device, dtype)
+
+    control_processors = None
+    if args.lora:
+        control_processors = load_control_lora(dit, args.lora, device, dtype)
+    else:
+        print("No LoRA specified — running normal Anima generation (no control)")
 
     # Encode prompts
     print("Encoding prompts...")
@@ -404,18 +447,29 @@ def main():
     text_encoder.to("cpu")
     torch.cuda.empty_cache()
 
-    # Encode control
-    print(f"Encoding control: {args.control_image}")
-    control_latents = encode_control(vae, args.control_image, args.height, args.width, device, dtype)
-    print(f"  Control latents: {control_latents.shape}")
+    # Encode control (if LoRA + control image provided)
+    control_latents = None
+    if args.control_image and args.lora:
+        print(f"Encoding control: {args.control_image}")
+        control_latents = encode_control(vae, args.control_image, args.height, args.width, device, dtype)
+        print(f"  Control latents: {control_latents.shape}")
 
     # Sample
     print(f"Generating {args.width}x{args.height}, {args.steps} steps, CFG={args.cfg}, shift={args.flow_shift}, seed={args.seed}")
-    latents = sample_easycontrol(
-        dit, control_processors, pos_context, neg_context,
-        control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
-        device, dtype,
-    )
+    if control_processors is not None and control_latents is not None:
+        # EasyControl generation with spatial conditioning
+        latents = sample_easycontrol(
+            dit, control_processors, pos_context, neg_context,
+            control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+            device, dtype,
+        )
+    else:
+        # Normal Anima generation (no control) — uses the standard forward pass
+        latents = sample_normal(
+            dit, pos_context, neg_context,
+            args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+            device, dtype,
+        )
 
     # Decode — WanVAE_.decode(z, scale) handles denormalization internally
     print("Decoding...")
