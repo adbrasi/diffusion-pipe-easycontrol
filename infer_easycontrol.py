@@ -64,8 +64,10 @@ def parse_args():
     p.add_argument("--dit", required=True, help="Anima DiT safetensors")
     p.add_argument("--vae", required=True, help="Qwen-Image VAE safetensors")
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
-    p.add_argument("--lora", default=None, help="EasyControl LoRA safetensors (optional — omit for normal Anima generation)")
+    p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz"],
+                   help="Control mode: easycontrol (custom LoRA), levzzz (temporal concat + PEFT LoRA), auto (detect)")
     p.add_argument("--prompt", required=True)
     p.add_argument("--negative_prompt", default="")
     p.add_argument("--width", type=int, default=512, help="Width (divisible by 16)")
@@ -264,6 +266,95 @@ def sample_normal(dit, pos_context, neg_context, height, width, steps, cfg, flow
 
 
 # ============================================================================
+# levzzz sampling (temporal concatenation — standard PEFT LoRA)
+# ============================================================================
+
+@torch.no_grad()
+def sample_levzzz(
+    dit, pos_context, neg_context,
+    control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
+):
+    """levzzz-style sampling: concatenate control as temporal frame T=1.
+
+    Dead simple: cat([noise_T0, control_T1], dim=2), forward, take output[:,:,:1].
+    The model's 3D RoPE naturally encodes the temporal position difference.
+    """
+    latent_h = height // 8
+    latent_w = width // 8
+
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    from diffusers.utils.torch_utils import randn_tensor
+    latents = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
+
+    padding_mask = torch.zeros(1, 1, latent_h, latent_w, dtype=torch.bfloat16, device=device)
+
+    timesteps, sigmas = get_timesteps_sigmas(steps, flow_shift, device)
+    timesteps /= 1000
+    timesteps = timesteps.to(device, dtype=torch.bfloat16)
+
+    do_cfg = cfg > 1.0 and neg_context is not None
+    ctrl = control_latents.to(torch.bfloat16)
+
+    for step_i in tqdm(range(steps), desc="Sampling (levzzz)"):
+        t_expand = timesteps[step_i].expand(latents.shape[0])
+
+        # Temporal concat: [noise_frame, control_frame]
+        x_input = torch.cat([latents, ctrl], dim=2)  # (1, 16, 2, H/8, W/8)
+
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            output = dit(x_input, t_expand, pos_context, padding_mask=padding_mask)
+
+        # Take only the noise frame prediction
+        noise_pred = output[:, :, :1, :, :]
+
+        if do_cfg:
+            x_input_neg = torch.cat([latents, ctrl], dim=2)
+            with torch.autocast('cuda', dtype=torch.bfloat16):
+                output_neg = dit(x_input_neg, t_expand, neg_context, padding_mask=padding_mask)
+            uncond_pred = output_neg[:, :, :1, :, :]
+            noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
+
+        latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
+
+    return latents
+
+
+def load_peft_lora(dit, lora_path, device, dtype):
+    """Load a standard PEFT LoRA (levzzz-style) into the DiT."""
+    print(f"Loading PEFT LoRA: {lora_path}")
+    from peft import PeftModel, LoraConfig
+    sd = load_safetensors(lora_path, device='cpu')
+
+    # Detect rank from weights
+    rank = 32
+    for k, v in sd.items():
+        if 'lora_A' in k or 'lora_down' in k or '.down.' in k:
+            rank = v.shape[0]
+            break
+
+    # Check if it's a PEFT-format LoRA or a diffusion-pipe format
+    is_peft = any('lora_A' in k for k in sd.keys())
+
+    if is_peft:
+        # Standard PEFT LoRA — use PeftModel
+        lora_config = LoraConfig(r=rank, lora_alpha=rank, target_modules=["q_proj", "k_proj", "v_proj", "output_proj"])
+        dit = PeftModel.from_pretrained(dit, lora_path, config=lora_config)
+        dit.merge_and_unload()
+    else:
+        # diffusion-pipe saves LoRA in its own format — apply directly
+        for name, param in dit.named_parameters():
+            lora_key_a = name.replace('.weight', '.lora_down.weight')
+            lora_key_b = name.replace('.weight', '.lora_up.weight')
+            if lora_key_a in sd and lora_key_b in sd:
+                lora_a = sd[lora_key_a].to(device, dtype)
+                lora_b = sd[lora_key_b].to(device, dtype)
+                param.data += (lora_b @ lora_a).to(param.dtype)
+
+    print(f"  PEFT LoRA loaded and merged (rank={rank})")
+    return dit
+
+
+# ============================================================================
 # EasyControl sampling
 # ============================================================================
 
@@ -417,10 +508,25 @@ def main():
     vae = load_vae(args.vae, device, dtype, args.vae_chunk_size)
     text_encoder, tokenizer, t5_tokenizer = load_text_encoder(args.llm, device, dtype)
 
+    # Detect mode
+    mode = args.mode
     control_processors = None
+
     if args.lora:
-        control_processors = load_control_lora(dit, args.lora, device, dtype)
+        if mode == "auto":
+            # Auto-detect: check if LoRA has EasyControl-specific keys
+            sd_check = load_safetensors(args.lora, device='cpu')
+            has_ec_keys = any('q_loras' in k or 'k_loras' in k for k in sd_check.keys())
+            mode = "easycontrol" if has_ec_keys else "levzzz"
+            del sd_check
+            print(f"Auto-detected mode: {mode}")
+
+        if mode == "easycontrol":
+            control_processors = load_control_lora(dit, args.lora, device, dtype)
+        elif mode == "levzzz":
+            dit = load_peft_lora(dit, args.lora, device, dtype)
     else:
+        mode = "normal"
         print("No LoRA specified — running normal Anima generation (no control)")
 
     # Encode prompts
@@ -470,17 +576,23 @@ def main():
 
     # Sample
     print(f"Generating {args.width}x{args.height}, {args.steps} steps, CFG={args.cfg}, shift={args.flow_shift}, seed={args.seed}")
-    if control_processors is not None and control_latents is not None:
-        # EasyControl generation with spatial conditioning
-        print(f"  Control strength: {args.control_strength}")
+    if mode == "easycontrol" and control_processors is not None and control_latents is not None:
+        print(f"  Mode: EasyControl, strength: {args.control_strength}")
         latents = sample_easycontrol(
             dit, control_processors, pos_context, neg_context,
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,
             control_strength=args.control_strength,
         )
+    elif mode == "levzzz" and control_latents is not None:
+        print(f"  Mode: levzzz (temporal concat)")
+        latents = sample_levzzz(
+            dit, pos_context, neg_context,
+            control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+            device, dtype,
+        )
     else:
-        # Normal Anima generation (no control) — uses the standard forward pass
+        print(f"  Mode: normal (no control)")
         latents = sample_normal(
             dit, pos_context, neg_context,
             args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
