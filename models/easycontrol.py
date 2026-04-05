@@ -66,13 +66,15 @@ class AnimaLoRALinearLayer(nn.Module):
         nn.init.normal_(self.down.weight, std=1.0 / rank)
         nn.init.zeros_(self.up.weight)
 
-    def forward(self, hidden_states: torch.Tensor) -> torch.Tensor:
+    def forward(self, hidden_states: torch.Tensor, cond_size: Optional[int] = None) -> torch.Tensor:
         B, seq_len, _ = hidden_states.shape
-        noise_len = seq_len - self.cond_size * self.n_loras
+        # Dynamic cond_size: use runtime value if provided, else fall back to init value
+        cs = cond_size if cond_size is not None else self.cond_size
+        noise_len = seq_len - cs * self.n_loras
 
         mask = torch.zeros(B, seq_len, 1, device=hidden_states.device, dtype=hidden_states.dtype)
-        cond_start = noise_len + self.number * self.cond_size
-        cond_end = cond_start + self.cond_size
+        cond_start = noise_len + self.number * cs
+        cond_end = cond_start + cs
         mask[:, cond_start:cond_end, :] = 1.0
 
         hidden_states = hidden_states * mask
@@ -99,7 +101,7 @@ def build_causal_attn_mask(
     Returns (1, 1, L_total, L_total).
     """
     total_len = noise_len + cond_size * n_conds
-    mask = torch.full((total_len, total_len), float("-inf"), device=device, dtype=dtype)
+    mask = torch.full((total_len, total_len), -1e20, device=device, dtype=dtype)
     mask[:noise_len, :] = 0.0
     for i in range(n_conds):
         row_start = noise_len + i * cond_size
@@ -165,10 +167,11 @@ class AnimaControlSelfAttn(nn.Module):
         k = base_self_attn.k_proj(joint)
         v = base_self_attn.v_proj(joint)
 
+        # Pass actual L_cond as cond_size so masking works with dynamic resolutions
         for i in range(self.n_loras):
-            q = q + self.q_loras[i](joint)
-            k = k + self.k_loras[i](joint)
-            v = v + self.v_loras[i](joint)
+            q = q + self.q_loras[i](joint, cond_size=L_cond)
+            k = k + self.k_loras[i](joint, cond_size=L_cond)
+            v = v + self.v_loras[i](joint, cond_size=L_cond)
 
         n_heads = base_self_attn.n_heads
         head_dim = base_self_attn.head_dim
@@ -196,7 +199,7 @@ class AnimaControlSelfAttn(nn.Module):
 
         causal_mask = build_causal_attn_mask(
             noise_len=L_noise,
-            cond_size=self.cond_size,
+            cond_size=L_cond,  # dynamic: actual condition token count
             n_conds=self.n_loras,
             device=q.device,
             dtype=q.dtype,
@@ -211,7 +214,7 @@ class AnimaControlSelfAttn(nn.Module):
         out = base_self_attn.output_dropout(out)
 
         for i in range(self.n_loras):
-            out = out + self.proj_loras[i](x)
+            out = out + self.proj_loras[i](x, cond_size=L_cond)
 
         del x
 
@@ -632,6 +635,22 @@ class EasyControlPipeline(CosmosPredict2Pipeline):
                   f'n_loras={self.control_n_loras}, cond_size={self.control_cond_size}, '
                   f'cond_tokens={cond_token_count}, blocks={num_blocks}')
             print(f'EasyControl: trainable LoRA parameters: {trainable_params:,}')
+
+    def load_adapter_weights(self, path):
+        """Load control LoRA weights from a previous checkpoint."""
+        sd = safetensors.torch.load_file(str(path), device='cpu')
+        # Strip 'control_processors.' prefix if present
+        clean_sd = {}
+        for k, v in sd.items():
+            clean_k = k.replace('control_processors.', '') if k.startswith('control_processors.') else k
+            clean_sd[clean_k] = v
+        info = self.control_processors.load_state_dict(clean_sd, strict=False)
+        if is_main_process():
+            if info.missing_keys:
+                print(f'EasyControl load_adapter_weights: {len(info.missing_keys)} missing keys')
+            if info.unexpected_keys:
+                print(f'EasyControl load_adapter_weights: {len(info.unexpected_keys)} unexpected keys')
+            print(f'Loaded {len(sd)} control LoRA tensors from {path}')
 
     def get_call_vae_fn(self, vae):
         """Encode both target and control images through the VAE (levzzz pattern)."""

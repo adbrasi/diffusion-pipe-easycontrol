@@ -509,6 +509,11 @@ if __name__ == '__main__':
         is_adapter = True
         if init_from_existing := adapter_config.get('init_from_existing', None):
             model.load_adapter_weights(init_from_existing)
+    elif config['model'].get('type', '') in ('easycontrol', 'anima_control'):
+        # EasyControl uses custom LoRA (not PEFT), treat as adapter for save/load purposes
+        is_adapter = True
+        if init_from_existing := config.get('control', {}).get('init_from_existing', None):
+            model.load_adapter_weights(init_from_existing)
     else:
         is_adapter = False
 
@@ -549,7 +554,8 @@ if __name__ == '__main__':
     # Block swapping
     if blocks_to_swap := config.get('blocks_to_swap', 0):
         assert config['pipeline_stages'] == 1, 'Block swapping only works with pipeline_stages=1'
-        assert 'adapter' in config, 'Block swapping only works when training LoRA'
+        assert 'adapter' in config or config['model'].get('type', '') in ('easycontrol', 'anima_control'), \
+            'Block swapping only works when training LoRA or EasyControl'
         # Don't automatically move to GPU, we'll do that ourselves.
         def to(self, *args, **kwargs):
             pass
