@@ -379,41 +379,73 @@ def sample_levzzz(
 
 
 def load_peft_lora(dit, lora_path, device, dtype):
-    """Load a standard PEFT LoRA (levzzz-style) into the DiT."""
+    """Load a PEFT LoRA into the DiT and merge weights.
+
+    Handles both:
+    - PEFT format (adapter_config.json + adapter_model.safetensors)
+    - diffusion-pipe format (keys with 'diffusion_model.' prefix + lora_A/lora_B)
+    """
     print(f"Loading PEFT LoRA: {lora_path}")
-    from peft import PeftModel, LoraConfig
+    from peft import PeftModel
+
+    # Resolve path
     if os.path.isdir(lora_path):
+        lora_dir = lora_path
         lora_file = os.path.join(lora_path, 'adapter_model.safetensors')
     else:
+        lora_dir = os.path.dirname(lora_path)
         lora_file = lora_path
+
     sd = load_safetensors(lora_file, device='cpu')
 
-    # Detect rank from weights
-    rank = 32
-    for k, v in sd.items():
-        if 'lora_A' in k or 'lora_down' in k or '.down.' in k:
-            rank = v.shape[0]
-            break
+    # Check if adapter_config.json exists (PEFT format)
+    has_peft_config = os.path.exists(os.path.join(lora_dir, 'adapter_config.json'))
 
-    # Check if it's a PEFT-format LoRA or a diffusion-pipe format
-    is_peft = any('lora_A' in k for k in sd.keys())
+    # Check key format
+    has_lora_A = any('lora_A' in k for k in sd.keys())
+    has_diffusion_prefix = any(k.startswith('diffusion_model.') for k in sd.keys())
 
-    if is_peft:
-        # Standard PEFT LoRA — use PeftModel
-        lora_config = LoraConfig(r=rank, lora_alpha=rank, target_modules=["q_proj", "k_proj", "v_proj", "output_proj"])
-        dit = PeftModel.from_pretrained(dit, lora_path, config=lora_config)
-        dit.merge_and_unload()
-    else:
-        # diffusion-pipe saves LoRA in its own format — apply directly
+    if has_peft_config and has_lora_A:
+        # Full PEFT format with config — load directly (config in adapter_config.json)
+        if has_diffusion_prefix:
+            # diffusion-pipe saves with 'diffusion_model.' prefix — strip it for PEFT
+            clean_sd = {k.replace('diffusion_model.', ''): v for k, v in sd.items()}
+            # Save temporarily without prefix for PEFT to load
+            import tempfile
+            with tempfile.TemporaryDirectory() as tmp:
+                import shutil, json
+                shutil.copy(os.path.join(lora_dir, 'adapter_config.json'), os.path.join(tmp, 'adapter_config.json'))
+                from safetensors.torch import save_file
+                save_file(clean_sd, os.path.join(tmp, 'adapter_model.safetensors'))
+                dit = PeftModel.from_pretrained(dit, tmp)
+        else:
+            dit = PeftModel.from_pretrained(dit, lora_dir)
+        dit = dit.merge_and_unload()
+        n_params = sum(1 for k in sd.keys() if 'lora_A' in k or 'lora_B' in k)
+        print(f"  PEFT LoRA loaded and merged ({n_params} weight matrices)")
+    elif has_lora_A or any('lora_down' in k for k in sd.keys()):
+        # Raw LoRA weights without config — manual merge
+        # Strip diffusion_model. prefix if present
+        if has_diffusion_prefix:
+            sd = {k.replace('diffusion_model.', ''): v for k, v in sd.items()}
+        merged = 0
         for name, param in dit.named_parameters():
-            lora_key_a = name.replace('.weight', '.lora_down.weight')
-            lora_key_b = name.replace('.weight', '.lora_up.weight')
-            if lora_key_a in sd and lora_key_b in sd:
-                lora_a = sd[lora_key_a].to(device, dtype)
-                lora_b = sd[lora_key_b].to(device, dtype)
-                param.data += (lora_b @ lora_a).to(param.dtype)
+            # Try PEFT naming (lora_A.weight / lora_B.weight)
+            base_name = name.replace('.weight', '')
+            for suffix_a, suffix_b in [('.lora_A.weight', '.lora_B.weight'),
+                                        ('.lora_down.weight', '.lora_up.weight')]:
+                key_a = base_name + suffix_a
+                key_b = base_name + suffix_b
+                if key_a in sd and key_b in sd:
+                    lora_a = sd[key_a].to(device, dtype)
+                    lora_b = sd[key_b].to(device, dtype)
+                    param.data += (lora_b @ lora_a).to(param.dtype)
+                    merged += 1
+                    break
+        print(f"  LoRA manually merged ({merged} weight matrices)")
+    else:
+        print(f"  WARNING: Unrecognized LoRA format. Keys: {list(sd.keys())[:5]}")
 
-    print(f"  PEFT LoRA loaded and merged (rank={rank})")
     return dit
 
 
