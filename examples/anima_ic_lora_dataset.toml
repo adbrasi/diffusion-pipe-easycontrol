@@ -1,0 +1,12 @@
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 9
+
+[[directory]]
+path = '/workspace/dataset/target_images/'
+caption_ext = '.txt'
+# control_path contains the reference/condition images (canny, depth, pose, etc.)
+# Files must have the same name (stem) as the target images.
+control_path = '/workspace/dataset/condition_images/'
