@@ -24,9 +24,8 @@ dtype = 'bfloat16'
 type = 'lora'
 rank = 32
 alpha = 32
-target_modules = ['q_proj', 'k_proj', 'v_proj', 'output_proj']
-# Target only self-attention. For stronger results, add cross-attention and MLP:
-# target_modules = ['q_proj', 'k_proj', 'v_proj', 'output_proj', 'layer1', 'layer2']
+# Self-attention + cross-attention + MLP (matching LTX-2 IC-LoRA config)
+target_modules = ['q_proj', 'k_proj', 'v_proj', 'output_proj', 'layer1', 'layer2']
 
 [optimizer]
 type = 'adamw_optimi'

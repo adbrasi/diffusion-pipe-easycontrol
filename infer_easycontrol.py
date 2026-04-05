@@ -66,8 +66,8 @@ def parse_args():
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
     p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
-    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz"],
-                   help="Control mode: easycontrol (custom LoRA), levzzz (temporal concat + PEFT LoRA), auto (detect)")
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora"],
+                   help="Control mode: easycontrol, levzzz (symmetric noise), ic_lora (asymmetric + per-token timestep), auto (detect)")
     p.add_argument("--prompt", required=True)
     p.add_argument("--negative_prompt", default="")
     p.add_argument("--width", type=int, default=512, help="Width (divisible by 16)")
@@ -258,6 +258,65 @@ def sample_normal(dit, pos_context, neg_context, height, width, steps, cfg, flow
         if do_cfg:
             with torch.autocast('cuda', dtype=torch.bfloat16):
                 uncond_pred = dit(latents, t_expand, neg_context, padding_mask=padding_mask)
+            noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
+
+        latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
+
+    return latents
+
+
+# ============================================================================
+# IC-LoRA sampling (temporal concat with per-token timestep)
+# ============================================================================
+
+@torch.no_grad()
+def sample_ic_lora(
+    dit, pos_context, neg_context,
+    control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
+):
+    """IC-LoRA sampling: temporal concat with per-token timestep.
+
+    Like levzzz but with per-token timestep:
+    - Target frame (T=0): timestep = sigma (being denoised)
+    - Reference frame (T=1): timestep = 0 (clean, context)
+
+    The model sees (B, 2) timesteps, applying different AdaLN modulation
+    per temporal position — matching how it was trained.
+    """
+    latent_h = height // 8
+    latent_w = width // 8
+
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    from diffusers.utils.torch_utils import randn_tensor
+    latents = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
+
+    padding_mask = torch.zeros(1, 1, latent_h, latent_w, dtype=torch.bfloat16, device=device)
+
+    timesteps, sigmas = get_timesteps_sigmas(steps, flow_shift, device)
+    timesteps /= 1000
+    timesteps = timesteps.to(device, dtype=torch.bfloat16)
+
+    do_cfg = cfg > 1.0 and neg_context is not None
+    ctrl = control_latents.to(torch.bfloat16)
+
+    for step_i in tqdm(range(steps), desc="Sampling (IC-LoRA)"):
+        # Per-token timestep: [sigma_target, 0_reference]
+        t_target = timesteps[step_i].unsqueeze(0)  # (1,)
+        t_ref = torch.zeros(1, device=device, dtype=torch.bfloat16)
+        t_per_token = torch.stack([t_target, t_ref], dim=1)  # (1, 2)
+
+        # Temporal concat: [noise_frame, clean_reference_frame]
+        x_input = torch.cat([latents, ctrl], dim=2)  # (1, 16, 2, H/8, W/8)
+
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            output = dit(x_input, t_per_token, pos_context, padding_mask=padding_mask)
+
+        noise_pred = output[:, :, :1, :, :]
+
+        if do_cfg:
+            with torch.autocast('cuda', dtype=torch.bfloat16):
+                output_neg = dit(x_input, t_per_token, neg_context, padding_mask=padding_mask)
+            uncond_pred = output_neg[:, :, :1, :, :]
             noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
 
         latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
@@ -527,7 +586,7 @@ def main():
 
         if mode == "easycontrol":
             control_processors = load_control_lora(dit, args.lora, device, dtype)
-        elif mode == "levzzz":
+        elif mode == "levzzz" or mode == "ic_lora":
             dit = load_peft_lora(dit, args.lora, device, dtype)
     else:
         mode = "normal"
@@ -587,6 +646,13 @@ def main():
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,
             control_strength=args.control_strength,
+        )
+    elif mode == "ic_lora" and control_latents is not None:
+        print(f"  Mode: IC-LoRA (per-token timestep)")
+        latents = sample_ic_lora(
+            dit, pos_context, neg_context,
+            control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+            device, dtype,
         )
     elif mode == "levzzz" and control_latents is not None:
         print(f"  Mode: levzzz (temporal concat)")

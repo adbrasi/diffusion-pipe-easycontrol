@@ -1,18 +1,10 @@
 """
 IC-LoRA (In-Context LoRA) pipeline for Anima.
 
-Extends the standard CosmosPredict2Pipeline with asymmetric noise:
-- Target frame (T=0): noisy (standard flow matching)
-- Reference frame (T=1): CLEAN (timestep=0, no noise added)
-
-The model learns to use the clean reference frame as context for generation.
-Loss is computed ONLY on the target frame (reference frame is excluded).
-
-This is much simpler than EasyControl (~50 lines vs ~780 lines):
-- No causal attention mask
-- No binary-masked LoRA
-- No separate residual stream for condition
-- Standard PEFT LoRA (rank 32) on all attention layers
+Extends the standard CosmosPredict2Pipeline with:
+1. Asymmetric noise: reference frame stays CLEAN (t=0), target frame gets noise (t=sigma)
+2. Per-token timestep: t_B_T has shape (B, 2) — t[:,0]=sigma, t[:,1]=0
+3. Loss masking: loss computed ONLY on target frame (reference excluded)
 
 Based on:
 - IC-LoRA paper (Alibaba): https://github.com/ali-vilab/In-Context-LoRA
@@ -23,29 +15,50 @@ Based on:
 import torch
 import torch.nn.functional as F
 
-from models.cosmos_predict2 import CosmosPredict2Pipeline
+from models.cosmos_predict2 import CosmosPredict2Pipeline, get_lin_function, time_shift
 
 
 class ICLoraPipeline(CosmosPredict2Pipeline):
     """IC-LoRA training pipeline for Anima.
 
     Key difference from levzzz (standard temporal concat):
-    - levzzz: both frames get noise → model denoises both
-    - IC-LoRA: only target gets noise, reference stays clean → model uses reference as context
+    - levzzz: both frames get noise, single timestep → model denoises both
+    - IC-LoRA: only target gets noise, reference stays clean, per-token timestep
+      → model learns to USE reference as context
 
     Key difference from EasyControl:
     - EasyControl: custom LoRA with binary masking, causal attention, separate condition stream
-    - IC-LoRA: standard PEFT LoRA, full bidirectional attention, per-token noise differentiation
+    - IC-LoRA: standard PEFT LoRA, full bidirectional attention, per-token timestep differentiation
     """
 
-    def prepare_inputs(self, latents, *prompt_embeds_or_batch_encoding, mask=torch.tensor([])):
-        inputs = self.get_vae_fn_results()
+    def prepare_inputs(self, inputs, timestep_quantile=None):
         latents = inputs['latents'].float()
-        bs = latents.shape[0]
+        mask = inputs['mask']
+
+        if self.cache_text_embeddings:
+            prompt_embeds_or_batch_encoding = (
+                inputs['prompt_embeds'], inputs['attn_mask'],
+                inputs['t5_input_ids'], inputs['t5_attn_mask'],
+            )
+        else:
+            from models.cosmos_predict2 import _tokenize
+            captions = inputs['caption']
+            batch_encoding = _tokenize(self.tokenizer, captions)
+            t5_batch_encoding = _tokenize(self.t5_tokenizer, captions)
+            prompt_embeds_or_batch_encoding = (
+                batch_encoding.input_ids, batch_encoding.attention_mask,
+                t5_batch_encoding.input_ids, t5_batch_encoding.attention_mask,
+            )
+
+        bs, channels, num_frames, h, w = latents.shape
+
+        if mask is not None:
+            mask = mask.unsqueeze(1)
+            mask = F.interpolate(mask, size=(h, w), mode='nearest-exact')
+            mask = mask.unsqueeze(2)
 
         # Standard flow matching noise schedule
-        timestep_sample_method = self.config.get('timestep_sample_method', 'logit_normal')
-        timestep_quantile = self.config.get('timestep_quantile', None)
+        timestep_sample_method = self.model_config.get('timestep_sample_method', 'logit_normal')
 
         if timestep_sample_method == 'logit_normal':
             dist = torch.distributions.normal.Normal(0, 1)
@@ -67,25 +80,28 @@ class ICLoraPipeline(CosmosPredict2Pipeline):
         if shift := self.model_config.get('shift', None):
             t = (t * shift) / (1 + (shift - 1) * t)
         elif self.model_config.get('flux_shift', False):
-            from models.cosmos_predict2 import get_lin_function, time_shift
-            h, w = latents.shape[3], latents.shape[4]
             mu = get_lin_function(y1=0.5, y2=1.15)((h // 2) * (w // 2))
             t = time_shift(mu, 1.0, t)
 
-        # Standard noise for TARGET frame
+        # Noise the TARGET frame
         noise = torch.randn_like(latents)
         t_expanded = t.view(-1, 1, 1, 1, 1)
         noisy_latents = (1 - t_expanded) * latents + t_expanded * noise
         target = noise - latents
-        t = t.view(-1, 1)
 
         if 'control_latents' in inputs:
             control_latents = inputs['control_latents'].float()
 
-            # IC-LoRA: reference frame stays CLEAN (no noise)
-            # This is the key difference from levzzz (which adds noise to both)
+            # IC-LoRA: reference frame stays CLEAN (no noise added)
             # Temporal concat: [noisy_target_T0, clean_reference_T1]
             noisy_latents = torch.cat([noisy_latents, control_latents], dim=2)
+
+            # Per-token timestep: target gets sigma, reference gets 0
+            # Shape (B, 2) — the model's t_embedder handles per-temporal-position
+            t = torch.stack([t, torch.zeros_like(t)], dim=1)  # (B, 2)
+        else:
+            # No control — standard single-frame training (fallback)
+            t = t.view(-1, 1)  # (B, 1)
 
         return (noisy_latents, t, *prompt_embeds_or_batch_encoding), (target, mask)
 
@@ -97,7 +113,7 @@ class ICLoraPipeline(CosmosPredict2Pipeline):
                 target = target.to(output.device, torch.float32)
 
                 # IC-LoRA: output has T=2 (target + reference prediction)
-                # Loss ONLY on the target frame (T=0), exclude reference frame
+                # Loss ONLY on the target frame (T=0), exclude reference
                 if output.shape[2] != target.shape[2]:
                     output = output[:, :, :target.shape[2], :, :]
 
@@ -107,8 +123,7 @@ class ICLoraPipeline(CosmosPredict2Pipeline):
                 else:
                     loss = F.mse_loss(output, target, reduction='none')
 
-                # Apply optional masking
-                if mask.numel() > 0:
+                if mask is not None and mask.numel() > 0:
                     mask = mask.to(output.device, torch.float32)
                     loss *= mask
                 loss = loss.mean()
@@ -135,7 +150,7 @@ class ICLoraPipeline(CosmosPredict2Pipeline):
                             ds_loss = F.mse_loss(
                                 output_ds, target_ds, reduction='none'
                             )
-                        if mask.numel() > 0:
+                        if mask is not None and mask.numel() > 0:
                             ds_loss *= mask
                         loss = loss + weight * ds_loss.mean()
 
