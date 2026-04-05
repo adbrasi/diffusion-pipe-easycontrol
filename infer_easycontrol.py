@@ -335,14 +335,16 @@ def sample_easycontrol(
         x_out = dit.final_layer(x_5d, t_emb, adaln_lora_B_T_3D=adaln_lora)
         return dit.unpatchify(x_out)
 
-    # Sampling loop
+    # Sampling loop — autocast ensures consistent bf16 dtypes throughout
+    # (without this, t_embedder/nn.Embedding return float32 which crashes against bf16 weights)
     for step_i in tqdm(range(steps), desc="Sampling"):
-        pos_out = run_forward(latents, pos_context)
-        if do_cfg:
-            neg_out = run_forward(latents, neg_context)
-            noise_pred = neg_out + cfg * (pos_out - neg_out)
-        else:
-            noise_pred = pos_out
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            pos_out = run_forward(latents, pos_context).float()
+            if do_cfg:
+                neg_out = run_forward(latents, neg_context).float()
+                noise_pred = neg_out + cfg * (pos_out - neg_out)
+            else:
+                noise_pred = pos_out
 
         latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
 
@@ -374,23 +376,25 @@ def main():
             text_encoder, tokenizer, t5_tokenizer, args.negative_prompt or "", device, dtype
         )
 
-    # Run LLM adapter
+    # Run LLM adapter (autocast needed: nn.Embedding returns float32, weights are bf16)
     print("Running LLM adapter...")
     if dit.use_llm_adapter and hasattr(dit, 'llm_adapter'):
-        pos_context = dit.llm_adapter(
-            source_hidden_states=pos_emb.to(dtype),
-            target_input_ids=pos_t5,
-            target_attention_mask=pos_t5_mask,
-            source_attention_mask=pos_mask,
-        )
+        with torch.autocast('cuda', dtype=dtype):
+            pos_context = dit.llm_adapter(
+                source_hidden_states=pos_emb.to(dtype),
+                target_input_ids=pos_t5,
+                target_attention_mask=pos_t5_mask,
+                source_attention_mask=pos_mask,
+            )
         pos_context[~pos_t5_mask.bool()] = 0
         if args.cfg > 1.0:
-            neg_context = dit.llm_adapter(
-                source_hidden_states=neg_emb.to(dtype),
-                target_input_ids=neg_t5,
-                target_attention_mask=neg_t5_mask,
-                source_attention_mask=neg_mask,
-            )
+            with torch.autocast('cuda', dtype=dtype):
+                neg_context = dit.llm_adapter(
+                    source_hidden_states=neg_emb.to(dtype),
+                    target_input_ids=neg_t5,
+                    target_attention_mask=neg_t5_mask,
+                    source_attention_mask=neg_mask,
+                )
             neg_context[~neg_t5_mask.bool()] = 0
     else:
         pos_context = pos_emb
@@ -413,17 +417,11 @@ def main():
         device, dtype,
     )
 
-    # Decode
+    # Decode — WanVAE_.decode(z, scale) handles denormalization internally
     print("Decoding...")
     with torch.no_grad():
-        # VAE decode_to_pixels handles denormalization internally
-        # But WanVAE in diffusion-pipe uses raw model.decode with manual denorm
-        latents_4d = latents.squeeze(2)  # (1, 16, H/8, W/8)
-        mean = vae.mean.view(1, -1, 1, 1)
-        std_inv = (1.0 / vae.std).view(1, -1, 1, 1)
-        latents_denorm = latents_4d / std_inv + mean
-        latents_denorm = latents_denorm.unsqueeze(2)  # (1, 16, 1, H/8, W/8)
-        pixels = vae.model.decode(latents_denorm.to(dtype))
+        # latents shape: (1, 16, 1, H/8, W/8) — already 5D
+        pixels = vae.model.decode(latents.to(dtype), vae.scale)
 
     if pixels.ndim == 5:
         pixels = pixels.squeeze(2)
