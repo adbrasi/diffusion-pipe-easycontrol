@@ -73,6 +73,7 @@ def parse_args():
     p.add_argument("--steps", type=int, default=50, help="Sampling steps (Anima official: 50)")
     p.add_argument("--cfg", type=float, default=3.5, help="CFG scale (Anima official: 3.5)")
     p.add_argument("--flow_shift", type=float, default=5.0, help="Flow shift (Anima official: 5.0, community: 2.5-3.0)")
+    p.add_argument("--control_strength", type=float, default=1.0, help="Control strength (0.0 = no control, 1.0 = full)")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--save_path", default="./outputs", help="Output directory")
     p.add_argument("--vae_chunk_size", type=int, default=None)
@@ -270,6 +271,7 @@ def sample_normal(dit, pos_context, neg_context, height, width, steps, cfg, flow
 def sample_easycontrol(
     dit, control_processors, pos_context, neg_context,
     control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
+    control_strength=1.0,
 ):
     """EasyControl sampling — entire function runs under autocast to avoid dtype mismatches.
 
@@ -356,6 +358,7 @@ def sample_easycontrol(
 
             noise_out, cond_out = control_processors[bi](
                 block.self_attn, noise_flat, cond_flat, noise_rope, cond_rope,
+                lora_weights=[control_strength],
             )
 
             noise_out = rearrange(noise_out, "b (t h w) d -> b t h w d", t=T, h=H, w=W)
@@ -469,10 +472,12 @@ def main():
     print(f"Generating {args.width}x{args.height}, {args.steps} steps, CFG={args.cfg}, shift={args.flow_shift}, seed={args.seed}")
     if control_processors is not None and control_latents is not None:
         # EasyControl generation with spatial conditioning
+        print(f"  Control strength: {args.control_strength}")
         latents = sample_easycontrol(
             dit, control_processors, pos_context, neg_context,
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,
+            control_strength=args.control_strength,
         )
     else:
         # Normal Anima generation (no control) — uses the standard forward pass
