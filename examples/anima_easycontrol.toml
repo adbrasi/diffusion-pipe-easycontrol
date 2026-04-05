@@ -1,0 +1,58 @@
+# EasyControl training config for Anima.
+# Trains spatial-condition LoRA adapters (canny, depth, etc.) on a frozen Anima DiT.
+
+output_dir = '/data/easycontrol_runs/anima_canny'
+dataset = 'examples/anima_easycontrol_dataset.toml'
+
+# Training settings
+epochs = 15
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_epochs = 1
+checkpoint_every_n_minutes = 120
+activation_checkpointing = true
+pipeline_stages = 1
+partition_method = 'parameters'
+
+# Eval
+eval_every_n_epochs = 1
+eval_before_first_step = true
+eval_micro_batch_size_per_gpu = 1
+eval_gradient_accumulation_steps = 1
+
+# Misc
+save_dtype = 'bfloat16'
+caching_batch_size = 1
+steps_per_print = 1
+
+# Block swapping to reduce VRAM (optional, comment out if you have enough VRAM)
+#blocks_to_swap = 10
+
+[model]
+type = 'easycontrol'
+transformer_path = '/path/to/anima-preview.safetensors'
+vae_path = '/path/to/wan_vae.safetensors'
+llm_path = '/path/to/qwen3_06b.safetensors'
+# llm_adapter_path = '/path/to/llm_adapter.safetensors'  # if separate from transformer
+dtype = 'bfloat16'
+# transformer_dtype = 'float8'  # optional, for lower VRAM
+timestep_sample_method = 'logit_normal'
+
+# EasyControl-specific settings
+[control]
+rank = 128
+alpha = 128.0
+n_loras = 1
+cond_size = 512  # condition image resolution (pixels)
+# lr = 1e-4     # optional: separate LR for control LoRA (defaults to optimizer lr)
+
+# No [adapter] section — EasyControl uses custom LoRA, not PEFT.
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

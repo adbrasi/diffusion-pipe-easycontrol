@@ -339,6 +339,9 @@ if __name__ == '__main__':
     elif model_type == 'cosmos_predict2' or model_type == 'anima':
         from models import cosmos_predict2
         model = cosmos_predict2.CosmosPredict2Pipeline(config)
+    elif model_type == 'easycontrol' or model_type == 'anima_control':
+        from models import easycontrol
+        model = easycontrol.EasyControlPipeline(config)
     elif model_type == 'omnigen2':
         from models import omnigen2
         model = omnigen2.OmniGen2Pipeline(config)

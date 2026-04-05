@@ -1,0 +1,14 @@
+# Dataset config for EasyControl training.
+# Each directory must have matching target images and condition images (same filename stem).
+
+resolutions = [768]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 9
+
+[[directory]]
+path = '/path/to/target_images/'
+caption_ext = '.txt'
+# Condition images directory (canny, depth, etc.) — files must have the same stem as targets.
+control_path = '/path/to/condition_images/'
