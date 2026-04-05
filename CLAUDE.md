@@ -1,235 +1,181 @@
-# EasyControl Anima — Instruções para Claude Code
+# Anima Control Training — Instruções para Claude Code
 
 ## Situação
 
-Você é uma nova instância do Claude Code rodando numa máquina GPU alugada no Vast.ai. Outra instância do Claude Code (na máquina local do usuário) fez toda a pesquisa e implementação. Seu trabalho agora é **configurar o ambiente e rodar o treinamento**.
+Você é uma instância do Claude Code rodando numa máquina GPU alugada (Vast.ai/RunPod). Outra instância do Claude Code (na máquina local do usuário) fez toda a pesquisa e implementação. Seu trabalho é **configurar o ambiente e rodar treinamentos**.
+
+### Histórico do projeto
+- Pesquisa profunda com 11+ agentes sobre controle espacial para Anima
+- **EasyControl**: implementado, treinado com sucesso (~3000 steps), inferência funcionando. Produz resultados bons. Nodes ComfyUI criados e publicados.
+- **levzzz temporal concat**: implementado, funciona mas resultados inconsistentes
+- **IC-LoRA**: implementação NOVA (branch `ic-lora`), ainda NÃO treinado. É o próximo treinamento a fazer.
 
 ### Sua máquina
-- **GPU**: 1x RTX 5090 (32GB VRAM)
-- **CPU**: Intel i7-12700K, 20 cores
-- **RAM**: 64GB
-- **Disco**: ~200GB SSD
-- **CUDA**: 13.0
-- **OS**: Provavelmente Ubuntu/Debian no Vast.ai
-
-### O que foi feito (na máquina local)
-- Pesquisa profunda com 11+ agentes especializados sobre controle espacial para Anima
-- Implementação do EasyControl como plugin do diffusion-pipe
-- 6 reviews independentes por agentes Opus (adversarial, matemático, pipeline, etc.)
-- Todos os bugs críticos corrigidos
-- Fork publicado no GitHub
-
-### O que você precisa fazer
-1. Clonar o fork do diffusion-pipe
-2. Instalar dependências
-3. Baixar modelos do Anima (DiT, VAE, text encoder)
-4. Preparar ou baixar um dataset (canny edges + imagens + captions)
-5. Configurar o TOML de treinamento
-6. Rodar o treinamento
-7. Monitorar e reportar resultados
+- **GPU**: 1x RTX 5090 (32GB VRAM) ou similar
+- **OS**: Ubuntu/Debian
 
 ---
 
-## Passo 1: Clone o repositório
+## O repositório
 
 ```bash
 git clone https://github.com/adbrasi/diffusion-pipe-easycontrol.git
 cd diffusion-pipe-easycontrol
 ```
 
-Este é um fork do diffusion-pipe (https://github.com/tdrussell/diffusion-pipe) com nosso plugin EasyControl adicionado. Os arquivos que adicionamos/modificamos:
+Fork do diffusion-pipe (https://github.com/tdrussell/diffusion-pipe) com 3 tipos de treinamento:
 
-- `models/easycontrol.py` — **O arquivo principal** (~780 linhas). Contém toda a lógica EasyControl.
-- `train.py` — 3 linhas adicionadas para dispatch + correções para save/block swap.
-- `examples/anima_easycontrol.toml` — Config de treinamento (template).
-- `examples/anima_easycontrol_dataset.toml` — Config de dataset (template).
+### Branch `main` — EasyControl + levzzz
+- `models/easycontrol.py` — EasyControl (LoRA customizado com máscara binária, ~780 linhas)
+- `models/cosmos_predict2.py` — Base Anima + levzzz temporal concat
+- `infer_easycontrol.py` — Inferência para todos os modos
+- `examples/anima_easycontrol.toml` — Config EasyControl
+- `examples/anima_canny_lora.toml` — Config levzzz
 
-Todo o resto é o diffusion-pipe upstream intacto.
+### Branch `ic-lora` — IC-LoRA (NOVO)
+- `models/ic_lora.py` — IC-LoRA pipeline (~140 linhas, herda de cosmos_predict2)
+- `examples/anima_ic_lora.toml` — Config IC-LoRA
+- `examples/anima_ic_lora_dataset.toml` — Config dataset
 
 ---
 
-## Passo 2: Instalar dependências
+## IC-LoRA — O que é
 
+IC-LoRA (In-Context LoRA) é uma abordagem mais simples que EasyControl:
+- **Reference frame (T=1)**: imagem de referência, SEM noise (timestep=0)
+- **Target frame (T=0)**: imagem alvo, COM noise (timestep=sigma)
+- **Concat temporal**: `cat([noisy_target, clean_reference], dim=T)`
+- **Per-token timestep**: `t = [sigma, 0]` shape (B, 2) — o modelo sabe qual frame é ref e qual é target
+- **Loss**: APENAS no target (referência excluída)
+- **LoRA**: PEFT padrão rank 32, sem máscara binária, atenção bidirecional completa
+
+Baseado em: IC-LoRA (Alibaba), LTX-2 IC-LoRA trainer, Sync-LoRA.
+
+---
+
+## Para treinar IC-LoRA
+
+### 1. Checkout da branch
+```bash
+git fetch origin
+git checkout ic-lora
+```
+
+### 2. Instalar dependências
 ```bash
 pip install -r requirements.txt
-# Pode precisar também:
 pip install deepspeed einops safetensors transformers accelerate peft datasets tqdm pillow opencv-python
 ```
 
-O diffusion-pipe usa **DeepSpeed** (não Accelerate) para treinamento. Certifique-se que o DeepSpeed compila corretamente para sua CUDA.
-
----
-
-## Passo 3: Baixar modelos Anima
-
-Os modelos estão em https://huggingface.co/circlestone-labs/Anima
-
-Arquivos necessários:
+### 3. Baixar modelos Anima
 ```bash
-# Crie um diretório para os modelos
 mkdir -p models_anima
-
-# Baixe os 3 arquivos (use huggingface-cli ou wget)
 huggingface-cli download circlestone-labs/Anima split_files/diffusion_models/anima-preview2.safetensors --local-dir models_anima
 huggingface-cli download circlestone-labs/Anima split_files/vae/qwen_image_vae.safetensors --local-dir models_anima
 huggingface-cli download circlestone-labs/Anima split_files/text_encoders/qwen_3_06b_base.safetensors --local-dir models_anima
 ```
 
-Os paths finais devem ser algo como:
-- DiT: `models_anima/split_files/diffusion_models/anima-preview2.safetensors`
-- VAE: `models_anima/split_files/vae/qwen_image_vae.safetensors`
-- LLM: `models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors`
-
----
-
-## Passo 4: Preparar dataset
-
-### Opção A: Usar dataset do HuggingFace
-O usuário mencionou que encontrou um dataset no HuggingFace. Procure datasets com pares de imagens + canny edges (ou depth maps). Exemplos de busca: "canny edge dataset", "controlnet dataset".
-
-### Opção B: Criar dataset próprio
-Estrutura necessária:
+### 4. Preparar dataset
+Estrutura:
 ```
 dataset/
-  target_images/
-    img001.png          # imagem original
-    img001.txt          # caption (texto descritivo)
-    img002.png
-    img002.txt
-  condition_images/     # canny edges (mesmos nomes das imagens)
+  target_images/     # imagens alvo
     img001.png
-    img002.png
+    img001.txt       # caption
+  condition_images/   # referências (canny, depth, etc.) — mesmo nome que target
+    img001.png
 ```
 
-Para gerar canny edges a partir de imagens:
+Para gerar canny edges:
 ```python
 import cv2, os, glob
 for img_path in glob.glob('target_images/*.png'):
     img = cv2.imread(img_path)
     edges = cv2.Canny(img, 100, 200)
     edges_rgb = cv2.cvtColor(edges, cv2.COLOR_GRAY2RGB)
-    basename = os.path.basename(img_path)
-    cv2.imwrite(f'condition_images/{basename}', edges_rgb)
+    cv2.imwrite(f'condition_images/{os.path.basename(img_path)}', edges_rgb)
 ```
 
-**IMPORTANTE**: Os arquivos de condição devem ter o **mesmo nome** (stem) que os target.
-
----
-
-## Passo 5: Configurar treinamento
-
-Edite `examples/anima_easycontrol.toml`:
-
-```toml
-output_dir = '/root/easycontrol_output'
-dataset = 'examples/anima_easycontrol_dataset.toml'
-
-epochs = 15
-micro_batch_size_per_gpu = 1       # RTX 5090 tem 32GB, começar com 1
-gradient_accumulation_steps = 4     # batch efetivo = 4
-gradient_clipping = 1.0
-warmup_steps = 100
-save_every_n_epochs = 1
-activation_checkpointing = true
-pipeline_stages = 1
-
-[model]
-type = 'easycontrol'
-transformer_path = '/root/models_anima/split_files/diffusion_models/anima-preview2.safetensors'
-vae_path = '/root/models_anima/split_files/vae/qwen_image_vae.safetensors'
-llm_path = '/root/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
-dtype = 'bfloat16'
-
-[control]
-rank = 128
-alpha = 128.0
-cond_size = 512
-
-[optimizer]
-type = 'adamw_optimi'
-lr = 1e-4
-betas = [0.9, 0.99]
-weight_decay = 0.01
-eps = 1e-8
-```
-
-Edite `examples/anima_easycontrol_dataset.toml`:
-
-```toml
-resolutions = [512]               # Começar com 512 para RTX 5090 (32GB)
-enable_ar_bucket = true
-min_ar = 0.5
-max_ar = 2.0
-num_ar_buckets = 9
-
-[[directory]]
-path = '/root/dataset/target_images/'
-caption_ext = '.txt'
-control_path = '/root/dataset/condition_images/'
-```
-
-### Considerações de VRAM (RTX 5090 = 32GB)
-
-O modelo Anima 2B em bf16 ocupa ~4GB. O EasyControl LoRA adiciona ~120MB (rank 128). Com activation checkpointing, o treinamento deve caber em 32GB com:
-- `micro_batch_size_per_gpu = 1`
-- `activation_checkpointing = true`
-- `resolutions = [512]` (começar pequeno)
-
-Se der OOM, tente:
-- Reduzir `resolutions` para `[384]`
-- Adicionar `blocks_to_swap = 10` no TOML (swap blocos para CPU)
-- Reduzir `rank` para 64 ou 32
-
----
-
-## Passo 6: Rodar treinamento
-
+### 5. Editar configs
 ```bash
-python train.py --config examples/anima_easycontrol.toml
+# Editar paths em:
+nano examples/anima_ic_lora.toml          # paths dos modelos
+nano examples/anima_ic_lora_dataset.toml   # paths do dataset
 ```
 
-O primeiro run faz cache de VAE latents e text encoder outputs (pode demorar). Runs subsequentes são mais rápidos.
+### 6. Rodar treinamento
+```bash
+python train.py --config examples/anima_ic_lora.toml
+```
 
-### O que esperar
-- Loss deve começar alto e diminuir gradualmente
-- levzzz (referência) treinou com ~500 imagens, 15 epochs, rank 32, e conseguiu resultados funcionais
-- Checkpoints salvos a cada epoch em `output_dir/`
+### 7. Inferência (após treinamento)
+```bash
+python infer_easycontrol.py \
+  --dit models_anima/split_files/diffusion_models/anima-preview2.safetensors \
+  --vae models_anima/split_files/vae/qwen_image_vae.safetensors \
+  --llm models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors \
+  --lora ic_lora_output/adapter_model.safetensors \
+  --control_image canny.png \
+  --mode ic_lora \
+  --prompt "1girl, standing"
+```
 
 ---
 
-## Passo 7: Resumir treinamento
+## Diferenças entre os 3 tipos de treinamento
 
-Se precisar parar e continuar:
-
-```toml
-[control]
-rank = 128
-alpha = 128.0
-init_from_existing = '/root/easycontrol_output/<run_dir>/adapter_model.safetensors'
-```
+| | EasyControl | levzzz | IC-LoRA |
+|---|---|---|---|
+| Config type | `easycontrol` | `anima` | `ic_lora` |
+| Branch | `main` | `main` | `ic-lora` |
+| LoRA | Customizado (máscara binária) | PEFT padrão | PEFT padrão |
+| Noise | Ambos frames ruidosos | Ambos frames ruidosos | **Assimétrico** (ref limpo) |
+| Timestep | Único + t_emb separado para cond | Único para ambos | **Per-token** (target=sigma, ref=0) |
+| Attention | Causal mask | Bidirecional | Bidirecional |
+| Loss | Target inteiro | Target + guard de shape | **Só target** (ref excluída) |
+| Complexidade | ~780 linhas | 28 linhas | ~140 linhas |
+| Status | ✅ Treinado, funciona | ✅ Funciona | ⏳ Não treinado ainda |
 
 ---
 
-## Arquitetura Técnica (Referência)
-
-O EasyControl injeta tokens de condição no self-attention do DiT via LoRA:
-
-1. Condição → VAE encode → PatchEmbed (compartilhado) → condition tokens
-2. LoRA com binary mask em Q, K, V, output_proj — só afeta tokens de condição
-3. Causal attention mask: noise vê tudo, condição vê só a si mesma
-4. Condição usa timestep=0 (imagem limpa, sem ruído) para AdaLN
-5. Condição mantém residual stream próprio: self-attn + MLP, pula cross-attn
-6. RoPE interpolado: posições da condição mapeadas para coordenadas do noise
-
-### Detalhes do modelo Anima
+## Detalhes do modelo Anima
 - 28 blocos transformer, 2048 dims, 16 heads, head_dim=128
 - VAE: Qwen-Image, 16 canais, 8x downscale
 - Text encoder: Qwen3-0.6B + LLM Adapter (6 layers)
 - Flow matching: target = noise - latents (rectified flow)
-- **bf16 obrigatório** (fp16 causa NaN)
+- 3D RoPE (temporal + spatial) — suporta T>1 nativamente
+- **bf16 obrigatório para treinamento** (fp16 pode causar NaN)
 
-### Referências
-- Fork original: https://github.com/tdrussell/diffusion-pipe
-- EasyControl oficial (FLUX): https://github.com/Xiaojiu-z/EasyControl
-- levzzz (Anima canny que funciona): https://civitai.com/models/2443202
-- Modelo Anima: https://huggingface.co/circlestone-labs/Anima
+---
+
+## Problemas conhecidos e soluções
+
+### `batch_encode_plus` não encontrado
+O Qwen3Tokenizer não tem `batch_encode_plus`. Já corrigido para `tokenizer(...)`.
+
+### DeepSpeed launcher
+```bash
+NCCL_P2P_DISABLE=1 deepspeed --num_gpus=1 train.py --deepspeed --config examples/anima_ic_lora.toml
+```
+Se `deepspeed` não funcionar, tente `python train.py --config ...` direto.
+
+### Git submodules
+```bash
+git submodule update --init --recursive
+```
+
+### OOM
+- Reduzir `resolutions` para `[384]`
+- Adicionar `blocks_to_swap = 10` no TOML
+- Reduzir rank para 16
+
+---
+
+## Referências
+- Fork: https://github.com/adbrasi/diffusion-pipe-easycontrol
+- Custom nodes ComfyUI: https://github.com/adbrasi/comfy_control_nimanima
+- EasyControl oficial: https://github.com/Xiaojiu-z/EasyControl
+- IC-LoRA oficial: https://github.com/ali-vilab/In-Context-LoRA
+- LTX-2 IC-LoRA trainer: https://github.com/Lightricks/LTX-2
+- diffusion-pipe upstream: https://github.com/tdrussell/diffusion-pipe
+- Anima: https://huggingface.co/circlestone-labs/Anima
