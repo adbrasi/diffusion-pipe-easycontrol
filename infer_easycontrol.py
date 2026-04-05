@@ -271,10 +271,16 @@ def sample_easycontrol(
     dit, control_processors, pos_context, neg_context,
     control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
 ):
+    """EasyControl sampling — entire function runs under autocast to avoid dtype mismatches.
+
+    Many model components (x_embedder, t_embedder, final_layer) have float32 weights
+    while inputs are bf16. During training DeepSpeed handles this; during inference
+    we need autocast globally.
+    """
     latent_h = height // 8
     latent_w = width // 8
 
-    # Noise
+    # Noise (generated in float32, cast to bf16)
     gen = torch.Generator(device="cpu").manual_seed(seed)
     from diffusers.utils.torch_utils import randn_tensor
     latents = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
@@ -287,6 +293,14 @@ def sample_easycontrol(
     timesteps /= 1000  # scale to [0,1]
     timesteps = timesteps.to(device, dtype=torch.bfloat16)
 
+    do_cfg = cfg > 1.0 and neg_context is not None
+
+    # GLOBAL AUTOCAST: many model components (x_embedder, t_embedder, adaln, final_layer)
+    # have float32 weights. During training DeepSpeed handles dtype mixing automatically.
+    # For inference we need autocast around ALL model calls.
+    _autocast = torch.autocast('cuda', dtype=torch.bfloat16)
+    _autocast.__enter__()
+
     # Embed control through shared PatchEmbed
     pad_cond = torch.zeros(1, 1, 1, control_latents.shape[3], control_latents.shape[4],
                            device=device, dtype=torch.bfloat16)
@@ -298,8 +312,6 @@ def sample_easycontrol(
     cond_t_emb, cond_adaln_lora = compute_condition_t_embedding(
         dit.t_embedder, dit.t_embedding_norm, 1, device, torch.bfloat16
     )
-
-    do_cfg = cfg > 1.0 and neg_context is not None
 
     def run_forward(x, context_emb):
         """One EasyControl forward pass through all 28 blocks."""
@@ -373,19 +385,18 @@ def sample_easycontrol(
         x_out = dit.final_layer(x_5d, t_emb, adaln_lora_B_T_3D=adaln_lora)
         return dit.unpatchify(x_out)
 
-    # Sampling loop — autocast ensures consistent bf16 dtypes throughout
-    # (without this, t_embedder/nn.Embedding return float32 which crashes against bf16 weights)
+    # Sampling loop (already inside global autocast context)
     for step_i in tqdm(range(steps), desc="Sampling"):
-        with torch.autocast('cuda', dtype=torch.bfloat16):
-            pos_out = run_forward(latents, pos_context).float()
-            if do_cfg:
-                neg_out = run_forward(latents, neg_context).float()
-                noise_pred = neg_out + cfg * (pos_out - neg_out)
-            else:
-                noise_pred = pos_out
+        pos_out = run_forward(latents, pos_context).float()
+        if do_cfg:
+            neg_out = run_forward(latents, neg_context).float()
+            noise_pred = neg_out + cfg * (pos_out - neg_out)
+        else:
+            noise_pred = pos_out
 
         latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
 
+    _autocast.__exit__(None, None, None)
     return latents
 
 
