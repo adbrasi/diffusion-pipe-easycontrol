@@ -323,7 +323,11 @@ def load_peft_lora(dit, lora_path, device, dtype):
     """Load a standard PEFT LoRA (levzzz-style) into the DiT."""
     print(f"Loading PEFT LoRA: {lora_path}")
     from peft import PeftModel, LoraConfig
-    sd = load_safetensors(lora_path, device='cpu')
+    if os.path.isdir(lora_path):
+        lora_file = os.path.join(lora_path, 'adapter_model.safetensors')
+    else:
+        lora_file = lora_path
+    sd = load_safetensors(lora_file, device='cpu')
 
     # Detect rank from weights
     rank = 32
