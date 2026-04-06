@@ -68,6 +68,8 @@ def parse_args():
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
     p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora"],
                    help="Control mode: easycontrol, levzzz (symmetric noise), ic_lora (asymmetric + per-token timestep), auto (detect)")
+    p.add_argument("--skip_adaln", action="store_true", default=False,
+                   help="Skip LoRA on adaln_modulation layers (smoother strength control, matches LTX-2)")
     p.add_argument("--prompt", required=True)
     p.add_argument("--negative_prompt", default="")
     p.add_argument("--width", type=int, default=512, help="Width (divisible by 16)")
@@ -378,7 +380,7 @@ def sample_levzzz(
     return latents
 
 
-def load_peft_lora(dit, lora_path, device, dtype):
+def load_peft_lora(dit, lora_path, device, dtype, skip_adaln=False):
     """Load a PEFT LoRA into the DiT and merge weights.
 
     Handles both:
@@ -443,6 +445,8 @@ def load_peft_lora(dit, lora_path, device, dtype):
         for name, param in dit.named_parameters():
             base_name = name.replace('.weight', '')
             if base_name in lora_pairs:
+                if skip_adaln and 'adaln_modulation' in base_name:
+                    continue
                 lora_a, lora_b = lora_pairs[base_name]
                 lora_a = lora_a.to(device, dtype)
                 lora_b = lora_b.to(device, dtype)
@@ -632,7 +636,7 @@ def main():
         if mode == "easycontrol":
             control_processors = load_control_lora(dit, args.lora, device, dtype)
         elif mode == "levzzz" or mode == "ic_lora":
-            dit = load_peft_lora(dit, args.lora, device, dtype)
+            dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln)
     else:
         mode = "normal"
         print("No LoRA specified — running normal Anima generation (no control)")
