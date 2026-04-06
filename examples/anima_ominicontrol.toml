@@ -1,0 +1,51 @@
+output_dir = '/workspace/ominicontrol_output'
+dataset = 'examples/anima_ominicontrol_dataset.toml'
+
+epochs = 15
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_epochs = 1
+save_every_n_steps = 250
+activation_checkpointing = true
+pipeline_stages = 1
+partition_method = 'parameters'
+
+[model]
+type = 'ominicontrol'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-preview2.safetensors'
+vae_path = '/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+
+# OminiControl-specific settings
+[ominicontrol]
+# 'spatial' = condition shares noise positions (for canny, depth, pose, lineart)
+#   → pixel-to-pixel correspondence via shared RoPE positions
+# 'subject' = condition has separate temporal position (for identity, style)
+#   → semantic correspondence, no spatial lock-in
+position_mode = 'spatial'
+
+# Probability of dropping condition during training (enables classifier-free guidance)
+condition_dropout = 0.1
+
+# Timestep for condition tokens (0 = clean, no noise)
+condition_timestep = 0.0
+
+# Standard PEFT LoRA
+# OminiControl paper: rank 4 for spatial, rank 16 for subject
+# For Anima (2048 dims, smaller than Flux 3072): rank 8 spatial, rank 32 subject
+# NOTE: train.py forces alpha=rank automatically. Do NOT set alpha here.
+# NOTE: target_modules is NOT used — base.py applies LoRA to ALL nn.Linear layers
+# inside Block/TransformerBlock classes (self_attn, cross_attn, mlp, adaln_modulation).
+[adapter]
+type = 'lora'
+rank = 8
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

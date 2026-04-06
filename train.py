@@ -345,6 +345,9 @@ if __name__ == '__main__':
     elif model_type == 'ic_lora' or model_type == 'anima_ic_lora':
         from models import ic_lora
         model = ic_lora.ICLoraPipeline(config)
+    elif model_type == 'ominicontrol' or model_type == 'anima_ominicontrol':
+        from models import ominicontrol
+        model = ominicontrol.OminiControlPipeline(config)
     elif model_type == 'omnigen2':
         from models import omnigen2
         model = omnigen2.OmniGen2Pipeline(config)

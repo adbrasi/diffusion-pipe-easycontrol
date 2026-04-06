@@ -66,8 +66,8 @@ def parse_args():
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
     p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
-    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora"],
-                   help="Control mode: easycontrol, levzzz (symmetric noise), ic_lora (asymmetric + per-token timestep), auto (detect)")
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ominicontrol", "ominicontrol_subject"],
+                   help="Control mode: easycontrol, levzzz, ic_lora, ominicontrol (spatial), ominicontrol_subject, auto (detect)")
     p.add_argument("--skip_adaln", action="store_true", default=False,
                    help="Skip LoRA on adaln_modulation layers (smoother strength control, matches LTX-2)")
     p.add_argument("--prompt", required=True)
@@ -324,6 +324,99 @@ def sample_ic_lora(
         latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
 
     return latents
+
+
+# ============================================================================
+# OminiControl sampling (temporal concat + position manipulation)
+# ============================================================================
+
+@torch.no_grad()
+def sample_ominicontrol(
+    dit, pos_context, neg_context,
+    control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
+    position_mode='spatial',
+):
+    """OminiControl sampling: temporal concat + per-token timestep + RoPE manipulation.
+
+    Like IC-LoRA but with position-aware RoPE:
+    - Spatial mode: condition shares noise positions (pixel correspondence)
+    - Subject mode: condition keeps T=1 position (semantic correspondence)
+    """
+    latent_h = height // 8
+    latent_w = width // 8
+
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    from diffusers.utils.torch_utils import randn_tensor
+    latents = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
+
+    padding_mask = torch.zeros(1, 1, latent_h, latent_w, dtype=torch.bfloat16, device=device)
+
+    timesteps, sigmas = get_timesteps_sigmas(steps, flow_shift, device)
+    timesteps /= 1000
+    timesteps = timesteps.to(device, dtype=torch.bfloat16)
+
+    do_cfg = cfg > 1.0 and neg_context is not None
+    ctrl = control_latents.to(torch.bfloat16)
+
+    # For spatial mode, we need to hook into the model to override RoPE positions.
+    # We use a forward hook on prepare_embedded_sequence result.
+    rope_hook_handle = None
+    if position_mode == 'spatial':
+        rope_hook_handle = _install_spatial_rope_hook(dit)
+
+    try:
+        for step_i in tqdm(range(steps), desc=f"Sampling (OminiControl-{position_mode})"):
+            # Per-token timestep: [sigma_target, 0_condition]
+            t_target = timesteps[step_i].unsqueeze(0)
+            t_ref = torch.zeros(1, device=device, dtype=torch.bfloat16)
+            t_per_token = torch.stack([t_target, t_ref], dim=1)  # (1, 2)
+
+            # Temporal concat: [noise_frame, clean_condition_frame]
+            x_input = torch.cat([latents, ctrl], dim=2)
+
+            with torch.autocast('cuda', dtype=torch.bfloat16):
+                output = dit(x_input, t_per_token, pos_context, padding_mask=padding_mask)
+
+            noise_pred = output[:, :, :1, :, :]
+
+            if do_cfg:
+                with torch.autocast('cuda', dtype=torch.bfloat16):
+                    output_neg = dit(x_input, t_per_token, neg_context, padding_mask=padding_mask)
+                uncond_pred = output_neg[:, :, :1, :, :]
+                noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
+
+            latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
+    finally:
+        if rope_hook_handle is not None:
+            rope_hook_handle.remove()
+
+    return latents
+
+
+def _install_spatial_rope_hook(dit):
+    """Install a hook that duplicates noise RoPE positions for condition tokens.
+
+    In spatial mode, condition should share the SAME RoPE positions as noise,
+    creating pixel-to-pixel spatial correspondence.
+    """
+    original_prepare = dit.prepare_embedded_sequence
+
+    def hooked_prepare(x_B_C_T_H_W, fps=None, padding_mask=None):
+        x_B_T_H_W_D, rope_emb, extra_pos_emb = original_prepare(x_B_C_T_H_W, fps=fps, padding_mask=padding_mask)
+        T = x_B_C_T_H_W.shape[2]
+        if T > 1 and rope_emb is not None:
+            total_seq = rope_emb.shape[0]
+            noise_seq_len = total_seq // T
+            noise_rope = rope_emb[:noise_seq_len]
+            rope_emb = noise_rope.repeat(T, 1, 1, 1)
+        return x_B_T_H_W_D, rope_emb, extra_pos_emb
+
+    dit.prepare_embedded_sequence = hooked_prepare
+    # Return a handle-like object for cleanup
+    class HookHandle:
+        def remove(self):
+            dit.prepare_embedded_sequence = original_prepare
+    return HookHandle()
 
 
 # ============================================================================
@@ -635,7 +728,7 @@ def main():
 
         if mode == "easycontrol":
             control_processors = load_control_lora(dit, args.lora, device, dtype)
-        elif mode == "levzzz" or mode == "ic_lora":
+        elif mode in ("levzzz", "ic_lora", "ominicontrol", "ominicontrol_subject"):
             dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln)
     else:
         mode = "normal"
@@ -702,6 +795,15 @@ def main():
             dit, pos_context, neg_context,
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,
+        )
+    elif mode in ("ominicontrol", "ominicontrol_subject") and control_latents is not None:
+        pos_mode = "subject" if mode == "ominicontrol_subject" else "spatial"
+        print(f"  Mode: OminiControl ({pos_mode})")
+        latents = sample_ominicontrol(
+            dit, pos_context, neg_context,
+            control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+            device, dtype,
+            position_mode=pos_mode,
         )
     elif mode == "levzzz" and control_latents is not None:
         print(f"  Mode: levzzz (temporal concat)")
