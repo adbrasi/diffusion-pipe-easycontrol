@@ -1,0 +1,48 @@
+output_dir = '/workspace/ominicontrol2_output'
+dataset = 'examples/anima_ominicontrol_dataset.toml'
+
+epochs = 15
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_epochs = 1
+save_every_n_steps = 250
+activation_checkpointing = true
+pipeline_stages = 1
+partition_method = 'parameters'
+
+[model]
+type = 'ominicontrol2'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-preview2.safetensors'
+vae_path = '/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+
+# OminiControl2 settings
+[ominicontrol]
+position_mode = 'spatial'
+condition_dropout = 0.1
+condition_timestep = 0.0
+
+# V2 improvements:
+# independent_condition: condition tokens cannot attend to noise tokens.
+# This makes condition K/V deterministic → enables KV cache at inference (3-6x speedup).
+independent_condition = true
+
+# position_scale: scale factor for condition RoPE coordinates.
+# Use 2.0 with condition at half resolution for 4x fewer tokens.
+# Use 1.0 for full resolution (same as v1).
+position_scale = 1.0
+
+# Standard PEFT LoRA — same as v1
+[adapter]
+type = 'lora'
+rank = 8
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

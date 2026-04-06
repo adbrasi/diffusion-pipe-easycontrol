@@ -351,6 +351,9 @@ if __name__ == '__main__':
     elif model_type == 'ominicontrol' or model_type == 'anima_ominicontrol':
         from models import ominicontrol
         model = ominicontrol.OminiControlPipeline(config)
+    elif model_type == 'ominicontrol2':
+        from models import ominicontrol2
+        model = ominicontrol2.OminiControl2Pipeline(config)
     elif model_type == 'omnigen2':
         from models import omnigen2
         model = omnigen2.OmniGen2Pipeline(config)
