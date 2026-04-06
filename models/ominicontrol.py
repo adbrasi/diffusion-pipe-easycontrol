@@ -122,7 +122,8 @@ class OminiControlPipeline(CosmosPredict2Pipeline):
             control_latents = inputs['control_latents'].float()
 
             # Condition dropout for classifier-free guidance training
-            if self.training and self.condition_dropout > 0:
+            # prepare_inputs is only called during training, so always apply
+            if self.condition_dropout > 0:
                 drop_mask = torch.rand(bs, device=latents.device) < self.condition_dropout
                 if drop_mask.any():
                     control_latents = control_latents.clone()
@@ -180,28 +181,21 @@ class OminiControlPipeline(CosmosPredict2Pipeline):
 
                 if weight := self.multiscale_loss_weight:
                     assert output.ndim == 5 and target.ndim == 5
+                    # Squeeze temporal dim (T=1 after slicing) for 2D interpolation
+                    output_2d = output.squeeze(2)  # (B, C, H, W)
+                    target_2d = target.squeeze(2)
                     for factor in [2, 4]:
-                        output_ds = F.interpolate(
-                            output.flatten(0, 1),
-                            scale_factor=1 / factor,
-                            mode='bilinear',
-                        ).unflatten(0, output.shape[:2])
-                        target_ds = F.interpolate(
-                            target.flatten(0, 1),
-                            scale_factor=1 / factor,
-                            mode='bilinear',
-                        ).unflatten(0, target.shape[:2])
+                        output_2d = F.avg_pool2d(output_2d, 2)
+                        target_2d = F.avg_pool2d(target_2d, 2)
                         if 'pseudo_huber_c' in self.config:
                             c = self.config['pseudo_huber_c']
                             ds_loss = torch.sqrt(
-                                (output_ds - target_ds) ** 2 + c ** 2
+                                (output_2d - target_2d) ** 2 + c ** 2
                             ) - c
                         else:
                             ds_loss = F.mse_loss(
-                                output_ds, target_ds, reduction='none'
+                                output_2d, target_2d, reduction='none'
                             )
-                        if mask is not None and mask.numel() > 0:
-                            ds_loss *= mask
                         loss = loss + weight * ds_loss.mean()
 
             return loss
