@@ -122,11 +122,19 @@ class OminiControl2InitialLayer(OminiControlInitialLayer):
                 # Subject: condition keeps T=1 position (natural separation)
                 cond_rope = rope_emb_L_1_1_D[noise_seq_len:]
 
-            # Apply position_scale to condition RoPE coordinates
+            # Apply position_scale to condition RoPE coordinates.
+            # NOTE: position_scale != 1.0 requires recomputing RoPE from scaled coords.
+            # Scaling precomputed RoPE tensors is mathematically incorrect
+            # (RoPE is e^{i*pos*freq}, scaling pos ≠ scaling the result).
+            # For now, position_scale=1.0 is recommended. Full support requires
+            # intercepting prepare_embedded_sequence to scale coords before RoPE.
             if self.position_scale != 1.0:
-                # Scale the spatial frequency components
-                # RoPE shape: (L, D_head, 2, 2) — the spatial freqs are scaled
-                cond_rope = cond_rope * self.position_scale
+                import warnings
+                warnings.warn(
+                    f"position_scale={self.position_scale} is experimental. "
+                    "For production, use position_scale=1.0 and resize condition image instead.",
+                    stacklevel=2,
+                )
 
             rope_emb_L_1_1_D = torch.cat(
                 [rope_emb_L_1_1_D[:noise_seq_len], cond_rope], dim=0
@@ -151,9 +159,10 @@ class OminiControl2InitialLayer(OminiControlInitialLayer):
 class OminiControl2TransformerLayer(TransformerLayer):
     """TransformerLayer with independent_condition attention mask.
 
-    When independent_condition=True, builds an attention mask that prevents
-    condition tokens from attending to noise tokens. This makes condition
-    features deterministic across denoising steps.
+    When independent_condition=True, monkey-patches the block's self_attn
+    to inject an asymmetric attention mask that prevents condition tokens
+    from attending to noise tokens. This makes condition features
+    deterministic across denoising steps → enables KV cache at inference.
 
     Mask structure (for T=2, noise=T0, cond=T1):
         noise→noise: ALLOW  |  noise→cond: ALLOW
@@ -170,36 +179,45 @@ class OminiControl2TransformerLayer(TransformerLayer):
 
         self.offloader.wait_for_block(self.block_idx)
 
-        # Check if we have T>1 (condition present) and independent_condition
         T = x_B_T_H_W_D.shape[1]
+        original_compute_attn = None
+
         if T > 1 and self.independent_condition:
-            # Build asymmetric attention mask for self-attention
-            # This is passed via transformer_options to the block
             B, T_dim, H, W, D = x_B_T_H_W_D.shape
-            noise_len = H * W  # tokens per frame
+            noise_len = H * W
             total_len = T_dim * H * W
 
-            # Create mask: condition tokens CANNOT attend to noise tokens
-            # Shape: (1, 1, total_len, total_len) for SDPA broadcast
+            neg_inf = -65504.0 if t_embedding_B_T_D.dtype == torch.float16 else -1e9
             attn_mask = torch.zeros(1, 1, total_len, total_len,
                                     device=x_B_T_H_W_D.device, dtype=t_embedding_B_T_D.dtype)
-            # Block condition→noise (bottom-left quadrant)
-            neg_inf = -65504.0 if t_embedding_B_T_D.dtype == torch.float16 else -1e9
             attn_mask[:, :, noise_len:, :noise_len] = neg_inf
 
-            # Store mask in a way the block's self-attention can use it
-            # We pass it through the block call via a temporary attribute
-            self.block._ominicontrol2_attn_mask = attn_mask
+            # Monkey-patch self_attn.compute_attention to inject the mask
+            sa = self.block.self_attn
+            original_compute_attn = sa.compute_attention
 
-        x_B_T_H_W_D = self.block(
-            x_B_T_H_W_D, t_embedding_B_T_D, crossattn_emb,
-            rope_emb_L_1_1_D=rope_emb_L_1_1_D,
-            adaln_lora_B_T_3D=adaln_lora_B_T_3D,
-        )
+            def masked_compute_attention(q, k, v):
+                # q, k, v are (B, S, H, D) from compute_qkv
+                # Rearrange to SDPA format: (B, H, S, D)
+                from einops import rearrange as _rearrange
+                q_sdpa = _rearrange(q, "b s h d -> b h s d")
+                k_sdpa = _rearrange(k, "b s h d -> b h s d")
+                v_sdpa = _rearrange(v, "b s h d -> b h s d")
+                mask = attn_mask.to(device=q_sdpa.device, dtype=q_sdpa.dtype)
+                out = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa, attn_mask=mask)
+                return _rearrange(out, "b h s d -> b s (h d)")
 
-        # Clean up temporary attribute
-        if hasattr(self.block, '_ominicontrol2_attn_mask'):
-            del self.block._ominicontrol2_attn_mask
+            sa.compute_attention = masked_compute_attention
+
+        try:
+            x_B_T_H_W_D = self.block(
+                x_B_T_H_W_D, t_embedding_B_T_D, crossattn_emb,
+                rope_emb_L_1_1_D=rope_emb_L_1_1_D,
+                adaln_lora_B_T_3D=adaln_lora_B_T_3D,
+            )
+        finally:
+            if original_compute_attn is not None:
+                self.block.self_attn.compute_attention = original_compute_attn
 
         self.offloader.submit_move_blocks_forward(self.block_idx)
 
