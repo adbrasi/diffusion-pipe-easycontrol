@@ -20,12 +20,12 @@ llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.sa
 dtype = 'bfloat16'
 
 # IC-LoRA uses standard PEFT LoRA — no custom LoRA needed
+# NOTE: train.py forces alpha=rank automatically. Do NOT set alpha here (it raises an error).
+# NOTE: target_modules is NOT used — base.py applies LoRA to ALL nn.Linear layers
+# inside Block/TransformerBlock classes (self_attn, cross_attn, mlp, adaln_modulation).
 [adapter]
 type = 'lora'
 rank = 32
-alpha = 32
-# Self-attention + cross-attention + MLP (matching LTX-2 IC-LoRA config)
-target_modules = ['q_proj', 'k_proj', 'v_proj', 'output_proj', 'layer1', 'layer2']
 
 [optimizer]
 type = 'adamw_optimi'
