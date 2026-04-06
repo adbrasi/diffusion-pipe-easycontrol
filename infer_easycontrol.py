@@ -66,8 +66,8 @@ def parse_args():
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
     p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
-    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ominicontrol", "ominicontrol_subject"],
-                   help="Control mode: easycontrol, levzzz, ic_lora, ominicontrol (spatial), ominicontrol_subject, auto (detect)")
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject"],
+                   help="Control mode: easycontrol, levzzz, ic_lora, ic_lora_full (ref_first), ominicontrol (spatial), ominicontrol_subject, auto (detect)")
     p.add_argument("--skip_adaln", action="store_true", default=False,
                    help="Skip LoRA on adaln_modulation layers (smoother strength control, matches LTX-2)")
     p.add_argument("--prompt", required=True)
@@ -319,6 +319,63 @@ def sample_ic_lora(
             with torch.autocast('cuda', dtype=torch.bfloat16):
                 output_neg = dit(x_input, t_per_token, neg_context, padding_mask=padding_mask)
             uncond_pred = output_neg[:, :, :1, :, :]
+            noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
+
+        latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
+
+    return latents
+
+
+# ============================================================================
+# IC-LoRA Full sampling (ref_first, corrected from LTX-2)
+# ============================================================================
+
+@torch.no_grad()
+def sample_ic_lora_full(
+    dit, pos_context, neg_context,
+    control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
+):
+    """IC-LoRA Full sampling: reference FIRST, then target (LTX-2 style).
+
+    Concat order: [clean_ref T=0, noisy_target T=1]
+    Timestep:     [0_ref,         sigma_target   ]
+    Output slice: last frame (T=1) = target prediction
+    """
+    latent_h = height // 8
+    latent_w = width // 8
+
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    from diffusers.utils.torch_utils import randn_tensor
+    latents = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
+
+    padding_mask = torch.zeros(1, 1, latent_h, latent_w, dtype=torch.bfloat16, device=device)
+
+    timesteps, sigmas = get_timesteps_sigmas(steps, flow_shift, device)
+    timesteps /= 1000
+    timesteps = timesteps.to(device, dtype=torch.bfloat16)
+
+    do_cfg = cfg > 1.0 and neg_context is not None
+    ctrl = control_latents.to(torch.bfloat16)
+
+    for step_i in tqdm(range(steps), desc="Sampling (IC-LoRA Full)"):
+        t_target = timesteps[step_i].unsqueeze(0)  # (1,)
+        t_ref = torch.zeros(1, device=device, dtype=torch.bfloat16)
+        # ref_first: [0_ref, sigma_target]
+        t_per_token = torch.stack([t_ref, t_target], dim=1)  # (1, 2)
+
+        # ref_first: [clean_reference, noisy_target]
+        x_input = torch.cat([ctrl, latents], dim=2)  # (1, 16, 2, H/8, W/8)
+
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            output = dit(x_input, t_per_token, pos_context, padding_mask=padding_mask)
+
+        # Target is the LAST frame (T=1)
+        noise_pred = output[:, :, -1:, :, :]
+
+        if do_cfg:
+            with torch.autocast('cuda', dtype=torch.bfloat16):
+                output_neg = dit(x_input, t_per_token, neg_context, padding_mask=padding_mask)
+            uncond_pred = output_neg[:, :, -1:, :, :]
             noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
 
         latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
@@ -728,7 +785,7 @@ def main():
 
         if mode == "easycontrol":
             control_processors = load_control_lora(dit, args.lora, device, dtype)
-        elif mode in ("levzzz", "ic_lora", "ominicontrol", "ominicontrol_subject"):
+        elif mode in ("levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject"):
             dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln)
     else:
         mode = "normal"
@@ -792,6 +849,13 @@ def main():
     elif mode == "ic_lora" and control_latents is not None:
         print(f"  Mode: IC-LoRA (per-token timestep)")
         latents = sample_ic_lora(
+            dit, pos_context, neg_context,
+            control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+            device, dtype,
+        )
+    elif mode == "ic_lora_full" and control_latents is not None:
+        print(f"  Mode: IC-LoRA Full (ref_first, LTX-2 style)")
+        latents = sample_ic_lora_full(
             dit, pos_context, neg_context,
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,

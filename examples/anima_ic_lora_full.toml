@@ -1,0 +1,51 @@
+output_dir = '/workspace/ic_lora_full_output'
+dataset = 'examples/anima_ic_lora_dataset.toml'
+
+epochs = 15
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_epochs = 1
+save_every_n_steps = 250
+activation_checkpointing = true
+pipeline_stages = 1
+partition_method = 'parameters'
+
+[model]
+type = 'ic_lora_full'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-preview2.safetensors'
+vae_path = '/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+
+# IC-LoRA Full settings
+[ic_lora_full]
+# Condition dropout — enables classifier-free guidance at inference
+# 0.1 = 10% of training steps use no condition (model learns unconditional generation)
+condition_dropout = 0.1
+
+# Concat order:
+# true (default) = [clean_ref T=0, noisy_target T=1] — matches LTX-2
+#   Reference gets lower temporal RoPE positions → model treats it as "prior context"
+# false = [noisy_target T=0, clean_ref T=1] — original ic_lora.py style
+ref_first = true
+
+# Timestep for condition tokens (0.0 = clean, no noise)
+condition_timestep = 0.0
+
+# Standard PEFT LoRA
+# LTX-2 uses rank 32 with attention + FFN layers.
+# base.py applies LoRA to ALL nn.Linear inside Block/TransformerBlock
+# (self_attn, cross_attn, mlp, adaln_modulation) — which is correct for IC-LoRA.
+# NOTE: train.py forces alpha=rank automatically.
+[adapter]
+type = 'lora'
+rank = 32
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8
