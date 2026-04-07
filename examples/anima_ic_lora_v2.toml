@@ -25,6 +25,20 @@ ref_first = true               # LTX-2 convention: [ref T=0, target T=1]
 condition_dropout = 0.1         # enables CFG at inference
 condition_timestep = 0.0        # ref stays clean (standard)
 
+# Shifted logit-normal timestep sampler (LTX-2 style).
+# Only active when timestep_sample_method = 'logit_normal' (the default).
+# The shift (logit-normal mean) is linearly interpolated based on token count:
+#   num_tokens ≤ min_tokens → shift = min_shift (near-uniform timestep distribution)
+#   num_tokens ≥ max_tokens → shift = max_shift (biased toward higher noise levels)
+# For Anima: num_tokens = num_frames * (H_latent/2) * (W_latent/2)
+# At 512x512 latent (64x64), 1 frame: num_tokens = 1 * 32 * 32 = 1024 → min_shift
+# At 512x512 latent (64x64), 4 frames: num_tokens = 4 * 32 * 32 = 4096 → max_shift
+shifted_logit_normal = true    # false = standard logit-normal (mean=0, no shift)
+min_tokens = 1024              # token count that maps to min_shift
+max_tokens = 4096              # token count that maps to max_shift
+min_shift = 0.95               # shift for short sequences
+max_shift = 2.05               # shift for long sequences
+
 # LoRA applied ONLY to self_attn + mlp (excludes adaln_modulation and cross_attn)
 # Higher rank recommended since we have fewer targets but more focused capacity
 # NOTE: train.py forces alpha=rank automatically. Do NOT set alpha here.
