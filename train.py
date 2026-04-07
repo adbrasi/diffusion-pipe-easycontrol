@@ -345,6 +345,9 @@ if __name__ == '__main__':
     elif model_type == 'ic_lora' or model_type == 'anima_ic_lora':
         from models import ic_lora
         model = ic_lora.ICLoraPipeline(config)
+    elif model_type == 'ic_lora_v2':
+        from models import ic_lora_v2
+        model = ic_lora_v2.ICLoraV2Pipeline(config)
     elif model_type == 'ic_lora_full':
         from models import ic_lora_full
         model = ic_lora_full.ICLoraFullPipeline(config)
