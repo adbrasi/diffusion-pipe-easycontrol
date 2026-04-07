@@ -1,34 +1,37 @@
 """
 IC-LoRA V2 pipeline for Anima.
 
-Improved version of IC-LoRA with targeted LoRA application:
-- Excludes adaln_modulation from LoRA targets (Anima already has internal adaln_lora)
-- Excludes cross_attn from LoRA targets (cross-attention handles text, not visual consistency)
-- LoRA applied ONLY to self_attn + mlp (~69% of block parameters, focused on visual features)
+Best of both worlds: inherits the corrected training pipeline from ic_lora_full
+(proper loss normalization, condition dropout for CFG, ref_first LTX-2 order,
+fixed multiscale loss) with focused LoRA targets (self_attn + mlp only).
 
-Based on analysis of:
-- LTX-2 IC-LoRA trainer (does NOT train adaln)
-- Opus reviewer findings: adaln LoRA causes "double-LoRA" amplification with Anima's internal adaln_lora
+Key improvements over ic_lora (V1):
+- Excludes adaln_modulation from LoRA (Anima has internal adaln_lora — double-LoRA causes amplification)
+- Excludes cross_attn from LoRA (text conditioning, not visual consistency)
+- Condition dropout (enables classifier-free guidance at inference)
+- Corrected loss normalization (no gradient dilution from T=2)
+- Fixed multiscale loss for T>1 outputs
+- ref_first=True by default (LTX-2 convention: [ref T=0, target T=1])
+
+References:
+- LTX-2 IC-LoRA trainer: https://github.com/Lightricks/ltx-video-trainer
+- Opus reviewer analysis of adaln_modulation double-LoRA issue
 - Empirical evidence: skip_adaln=True at inference improves quality dramatically
-
-Everything else (temporal concat, per-token timestep, loss masking) is identical to V1.
 """
 
-import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 import peft
 
-from models.ic_lora import ICLoraPipeline
+from models.ic_lora_full import ICLoraFullPipeline
 from utils import is_main_process
 
 
-class ICLoraV2Pipeline(ICLoraPipeline):
-    """IC-LoRA V2: focused LoRA targets for higher quality.
+class ICLoraV2Pipeline(ICLoraFullPipeline):
+    """IC-LoRA V2: focused LoRA targets + corrected training pipeline.
 
-    Inherits all training logic from V1 (prepare_inputs, get_loss_fn).
-    Only difference: configure_adapter excludes adaln_modulation and cross_attn.
+    Inherits from ic_lora_full (prepare_inputs, get_loss_fn, condition dropout, ref_first).
+    Only override: configure_adapter excludes adaln_modulation and cross_attn from LoRA.
     """
 
     def configure_adapter(self, adapter_config):

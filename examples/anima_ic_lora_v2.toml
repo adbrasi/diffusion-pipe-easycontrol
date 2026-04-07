@@ -19,7 +19,13 @@ vae_path = '/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors'
 llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
 dtype = 'bfloat16'
 
-# IC-LoRA V2: LoRA applied ONLY to self_attn + mlp (excludes adaln_modulation and cross_attn)
+# IC-LoRA V2 inherits from ic_lora_full — these settings control training behavior
+[ic_lora_full]
+ref_first = true               # LTX-2 convention: [ref T=0, target T=1]
+condition_dropout = 0.1         # enables CFG at inference
+condition_timestep = 0.0        # ref stays clean (standard)
+
+# LoRA applied ONLY to self_attn + mlp (excludes adaln_modulation and cross_attn)
 # Higher rank recommended since we have fewer targets but more focused capacity
 # NOTE: train.py forces alpha=rank automatically. Do NOT set alpha here.
 [adapter]
