@@ -267,14 +267,15 @@ class OminiControl2TransformerLayer(TransformerLayer):
 
             def masked_compute_attention(q, k, v):
                 # q, k, v are (B, S, H, D) from compute_qkv
-                # Rearrange to SDPA format: (B, H, S, D)
                 from einops import rearrange as _rearrange
                 q_sdpa = _rearrange(q, "b s h d -> b h s d")
                 k_sdpa = _rearrange(k, "b s h d -> b h s d")
                 v_sdpa = _rearrange(v, "b s h d -> b h s d")
                 mask = attn_mask.to(device=q_sdpa.device, dtype=q_sdpa.dtype)
                 out = F.scaled_dot_product_attention(q_sdpa, k_sdpa, v_sdpa, attn_mask=mask)
-                return _rearrange(out, "b h s d -> b s (h d)")
+                result = _rearrange(out, "b h s d -> b s (h d)")
+                # MUST apply output_proj + dropout (original compute_attention does this)
+                return sa.output_dropout(sa.output_proj(result))
 
             sa.compute_attention = masked_compute_attention
 
