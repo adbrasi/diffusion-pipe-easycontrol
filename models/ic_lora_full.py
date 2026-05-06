@@ -171,7 +171,11 @@ class ICLoraFullPipeline(CosmosPredict2Pipeline):
                         output = output[:, :, :target_T, :, :]
 
                 # Loss computation — normalized by TARGET size only (not diluted by T=2)
-                if 'pseudo_huber_c' in self.config:
+                if 'huber_delta' in self.config:
+                    loss = F.huber_loss(output, target, reduction='none', delta=self.config['huber_delta'])
+                elif 'smooth_l1_beta' in self.config:
+                    loss = F.smooth_l1_loss(output, target, reduction='none', beta=self.config['smooth_l1_beta'])
+                elif 'pseudo_huber_c' in self.config:
                     c = self.config['pseudo_huber_c']
                     loss = torch.sqrt((output - target) ** 2 + c ** 2) - c
                 else:
@@ -196,7 +200,15 @@ class ICLoraFullPipeline(CosmosPredict2Pipeline):
                     for factor in [2, 4]:
                         output_2d = F.avg_pool2d(output_2d, 2)
                         target_2d = F.avg_pool2d(target_2d, 2)
-                        if 'pseudo_huber_c' in self.config:
+                        if 'huber_delta' in self.config:
+                            ds_loss = F.huber_loss(
+                                output_2d, target_2d, reduction='none', delta=self.config['huber_delta']
+                            )
+                        elif 'smooth_l1_beta' in self.config:
+                            ds_loss = F.smooth_l1_loss(
+                                output_2d, target_2d, reduction='none', beta=self.config['smooth_l1_beta']
+                            )
+                        elif 'pseudo_huber_c' in self.config:
                             c = self.config['pseudo_huber_c']
                             ds_loss = torch.sqrt(
                                 (output_2d - target_2d) ** 2 + c ** 2

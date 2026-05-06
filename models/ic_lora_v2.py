@@ -193,17 +193,19 @@ class ICLoraV2Pipeline(ICLoraFullPipeline):
         - cross_attn: handles text conditioning, not visual consistency.
           Training it wastes LoRA capacity on text alignment that the base model already does well.
         """
-        excluded_submodules = {'adaln_modulation', 'cross_attn'}
-
         target_linear_modules = set()
         for name, module in self.transformer.named_modules():
             if module.__class__.__name__ not in self.adapter_target_modules:
                 continue
+            if name.startswith('llm_adapter'):
+                continue
             for full_submodule_name, submodule in module.named_modules(prefix=name):
                 if isinstance(submodule, nn.Linear):
-                    # Check if this linear belongs to an excluded submodule
                     parts = full_submodule_name.split('.')
-                    if any(part in excluded_submodules for part in parts):
+                    if any(
+                        part.startswith('adaln_modulation') or part == 'cross_attn'
+                        for part in parts
+                    ):
                         continue
                     target_linear_modules.add(full_submodule_name)
         target_linear_modules = list(target_linear_modules)
