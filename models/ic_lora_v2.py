@@ -28,7 +28,7 @@ import peft
 
 from models.ic_lora_full import ICLoraFullPipeline
 from models.cosmos_predict2 import get_lin_function, time_shift, _tokenize
-from utils import is_main_process
+from utils.common import is_main_process
 
 
 def _shifted_logit_normal_shift(num_tokens, min_tokens=1024, max_tokens=4096, min_shift=0.95, max_shift=2.05):
