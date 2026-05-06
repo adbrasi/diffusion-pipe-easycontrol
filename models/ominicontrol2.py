@@ -98,7 +98,7 @@ class OminiControl2InitialLayer(OminiControlInitialLayer):
             with torch.no_grad():
                 input_ids, attn_mask, t5_input_ids, t5_attn_mask = prompt_embeds_or_batch_encoding
                 crossattn_emb = _compute_text_embeddings(
-                    self.text_encoder[0], input_ids, attn_mask, is_generic_llm=self.is_generic_llm,
+                    self.text_encoder, input_ids, attn_mask, is_generic_llm=self.is_generic_llm,
                 )
 
         padding_mask = torch.zeros(

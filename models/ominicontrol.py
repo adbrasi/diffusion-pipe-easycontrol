@@ -9,7 +9,7 @@ Adapts OminiControl (https://github.com/Yuanshi9815/OminiControl) to Anima:
 - Per-token timestep: target=sigma, condition=0
 - Asymmetric noise: condition stays clean
 - Loss only on target frame
-- Standard PEFT LoRA (same as IC-LoRA, but position-aware)
+- PEFT LoRA on Anima control-safe targets (self-attention + MLP)
 
 Key difference from IC-LoRA:
   IC-LoRA always uses T=1 temporal separation (condition at different temporal position).
@@ -22,6 +22,7 @@ Based on: OminiControl v1 (arXiv:2411.15098) and OminiControl v2 (arXiv:2503.082
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import peft
 
 from models.cosmos_predict2 import (
     CosmosPredict2Pipeline,
@@ -35,7 +36,7 @@ from models.cosmos_predict2 import (
     _compute_text_embeddings,
 )
 from models.base import make_contiguous
-from utils.common import AUTOCAST_DTYPE
+from utils.common import AUTOCAST_DTYPE, is_main_process
 
 
 class OminiControlPipeline(CosmosPredict2Pipeline):
@@ -141,6 +142,53 @@ class OminiControlPipeline(CosmosPredict2Pipeline):
 
         return (noisy_latents, t, *prompt_embeds_or_batch_encoding), (target, mask)
 
+    def configure_adapter(self, adapter_config):
+        """Apply Anima control LoRA to self-attention and MLP only.
+
+        Anima already has an internal adaln_lora path. Training PEFT LoRA on top
+        of adaln_modulation made inference depend on skip_adaln workarounds, so
+        training and ComfyUI now use the same target set.
+        """
+        target_linear_modules = set()
+        for name, module in self.transformer.named_modules():
+            if module.__class__.__name__ not in self.adapter_target_modules:
+                continue
+            if name.startswith('llm_adapter'):
+                continue
+            for full_submodule_name, submodule in module.named_modules(prefix=name):
+                if isinstance(submodule, nn.Linear):
+                    parts = full_submodule_name.split('.')
+                    if any(
+                        part.startswith('adaln_modulation') or part == 'cross_attn'
+                        for part in parts
+                    ):
+                        continue
+                    target_linear_modules.add(full_submodule_name)
+        target_linear_modules = list(target_linear_modules)
+
+        if is_main_process():
+            print(f'[OminiControl] LoRA targets: {len(target_linear_modules)} linear modules (excluding adaln_modulation, cross_attn)')
+
+        adapter_type = adapter_config['type']
+        if adapter_type == 'lora':
+            peft_config = peft.LoraConfig(
+                r=adapter_config['rank'],
+                lora_alpha=adapter_config['alpha'],
+                lora_dropout=adapter_config['dropout'],
+                bias='none',
+                target_modules=target_linear_modules
+            )
+        else:
+            raise NotImplementedError(f'Adapter type {adapter_type} is not implemented')
+        self.peft_config = peft_config
+        self.lora_model = peft.get_peft_model(self.transformer, peft_config)
+        if is_main_process():
+            self.lora_model.print_trainable_parameters()
+        for name, p in self.transformer.named_parameters():
+            p.original_name = name
+            if p.requires_grad:
+                p.data = p.data.to(adapter_config['dtype'])
+
     def to_layers(self):
         transformer = self.transformer
         text_encoder = None if self.cache_text_embeddings else self.text_encoder
@@ -168,7 +216,11 @@ class OminiControlPipeline(CosmosPredict2Pipeline):
                 if output.shape[2] != target.shape[2]:
                     output = output[:, :, :target.shape[2], :, :]
 
-                if 'pseudo_huber_c' in self.config:
+                if 'huber_delta' in self.config:
+                    loss = F.huber_loss(output, target, reduction='none', delta=self.config['huber_delta'])
+                elif 'smooth_l1_beta' in self.config:
+                    loss = F.smooth_l1_loss(output, target, reduction='none', beta=self.config['smooth_l1_beta'])
+                elif 'pseudo_huber_c' in self.config:
                     c = self.config['pseudo_huber_c']
                     loss = torch.sqrt((output - target) ** 2 + c ** 2) - c
                 else:
@@ -187,7 +239,15 @@ class OminiControlPipeline(CosmosPredict2Pipeline):
                     for factor in [2, 4]:
                         output_2d = F.avg_pool2d(output_2d, 2)
                         target_2d = F.avg_pool2d(target_2d, 2)
-                        if 'pseudo_huber_c' in self.config:
+                        if 'huber_delta' in self.config:
+                            ds_loss = F.huber_loss(
+                                output_2d, target_2d, reduction='none', delta=self.config['huber_delta']
+                            )
+                        elif 'smooth_l1_beta' in self.config:
+                            ds_loss = F.smooth_l1_loss(
+                                output_2d, target_2d, reduction='none', beta=self.config['smooth_l1_beta']
+                            )
+                        elif 'pseudo_huber_c' in self.config:
                             c = self.config['pseudo_huber_c']
                             ds_loss = torch.sqrt(
                                 (output_2d - target_2d) ** 2 + c ** 2
@@ -227,7 +287,7 @@ class OminiControlInitialLayer(InitialLayer):
             with torch.no_grad():
                 input_ids, attn_mask, t5_input_ids, t5_attn_mask = prompt_embeds_or_batch_encoding
                 crossattn_emb = _compute_text_embeddings(
-                    self.text_encoder[0], input_ids, attn_mask, is_generic_llm=self.is_generic_llm,
+                    self.text_encoder, input_ids, attn_mask, is_generic_llm=self.is_generic_llm,
                 )
 
         padding_mask = torch.zeros(

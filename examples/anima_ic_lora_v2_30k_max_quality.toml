@@ -1,0 +1,60 @@
+output_dir = '/workspace/ic_lora_v2_30k_max_quality_output'
+dataset = 'examples/anima_ic_lora_30k_max_quality_dataset.toml'
+
+# 30k pairs x 3 resolution buckets is a very large run. Start with 4 epochs
+# (~12 exposures per source pair across all buckets) and extend from checkpoints
+# only if validation still improves.
+epochs = 4
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+gradient_clipping = 1.0
+warmup_steps = 500
+# LTX IC-LoRA uses linear decay; tdrussell's diffusion-pipe Anima examples
+# often leave this unset (= constant). For a long 30k IC-LoRA run, linear is
+# the safest default because it prevents a high LR from staying active after
+# the relation is already learned.
+lr_scheduler = 'linear'
+save_every_n_epochs = 1
+save_every_n_steps = 5000
+checkpoint_every_n_minutes = 120
+activation_checkpointing = true
+pipeline_stages = 1
+partition_method = 'parameters'
+save_dtype = 'bfloat16'
+caching_batch_size = 1
+steps_per_print = 10
+
+# Uncomment if 1536 OOMs on a 32GB card. Block swap is slower but usually
+# preferable to lowering the high-res bucket for a final-quality run.
+# blocks_to_swap = 8
+
+[model]
+type = 'ic_lora_v2'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-preview3-base.safetensors'
+vae_path = '/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+sigmoid_scale = 1.3
+llm_adapter_lr = 0
+
+[ic_lora_full]
+ref_first = true
+condition_dropout = 0.1
+condition_timestep = 0.0
+shifted_logit_normal = true
+min_tokens = 1024
+max_tokens = 9216
+min_shift = 0.95
+max_shift = 2.05
+
+[adapter]
+type = 'lora'
+rank = 96
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 2e-5
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

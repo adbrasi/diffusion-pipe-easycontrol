@@ -18,6 +18,8 @@ transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-p
 vae_path = '/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors'
 llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
 dtype = 'bfloat16'
+sigmoid_scale = 1.3
+llm_adapter_lr = 0
 
 # IC-LoRA uses standard PEFT LoRA — no custom LoRA needed
 # NOTE: train.py forces alpha=rank automatically. Do NOT set alpha here (it raises an error).
@@ -29,7 +31,7 @@ rank = 32
 
 [optimizer]
 type = 'adamw_optimi'
-lr = 1e-4
+lr = 2e-5
 betas = [0.9, 0.99]
 weight_decay = 0.01
 eps = 1e-8
