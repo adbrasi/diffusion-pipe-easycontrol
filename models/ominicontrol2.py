@@ -219,8 +219,11 @@ class OminiControl2InitialLayer(OminiControlInitialLayer):
             repeat(half_emb_w, "w d -> t h w d", t=T_c, h=H_c),
         ] * 2, dim=-1)
 
-        # Reshape to match rope_emb format: (T_c*H_c*W_c, 1, 1, head_dim)
-        cond_rope = rearrange(em, "t h w d -> (t h w) 1 1 d").float()
+        # Reshape to match rope_emb format: (T_c*H_c*W_c, 1, 1, head_dim).
+        # Match the noise RoPE dtype (bf16 under autocast) so the later
+        # torch.cat([noise_rope, cond_rope]) does not raise a dtype mismatch.
+        # Internal math above stays float32 for precision; only the output is cast.
+        cond_rope = rearrange(em, "t h w d -> (t h w) 1 1 d").to(noise_rope_ref.dtype)
 
         return cond_rope
 
