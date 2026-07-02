@@ -4,6 +4,7 @@ import time
 import math
 from pathlib import Path
 import os
+import subprocess
 
 import torch
 import deepspeed.comm.comm as dist
@@ -24,6 +25,31 @@ for x in imageio.config.video_extensions:
     VIDEO_EXTENSIONS.add(x.extension)
     VIDEO_EXTENSIONS.add(x.extension.upper())
 AUTOCAST_DTYPE = None
+
+
+_git_commit = None
+def get_git_commit():
+    """Short hash of the repo HEAD (with '-dirty' suffix if the tree has
+    uncommitted changes), for checkpoint provenance. Cached after first call."""
+    global _git_commit
+    if _git_commit is None:
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        try:
+            commit = subprocess.run(
+                ['git', 'rev-parse', '--short', 'HEAD'],
+                cwd=repo_root, capture_output=True, text=True, timeout=10,
+            ).stdout.strip()
+            if commit:
+                status = subprocess.run(
+                    ['git', 'status', '--porcelain'],
+                    cwd=repo_root, capture_output=True, text=True, timeout=10,
+                ).stdout.strip()
+                if status:
+                    commit += '-dirty'
+        except (OSError, subprocess.SubprocessError):
+            commit = ''
+        _git_commit = commit or 'unknown'
+    return _git_commit
 
 
 def get_rank():

@@ -31,7 +31,7 @@ from models.cosmos_predict2_modeling import (
     VideoRopePosition3DEmb,
 )
 from models.base import make_contiguous
-from utils.common import AUTOCAST_DTYPE, is_main_process
+from utils.common import AUTOCAST_DTYPE, is_main_process, get_git_commit
 
 
 # ---------------------------------------------------------------------------
@@ -774,6 +774,8 @@ class EasyControlPipeline(CosmosPredict2Pipeline):
             'network_alpha': str(self.control_alpha),
             'cond_size': str(self.control_cond_size),
             'n_loras': str(self.control_n_loras),
+            'condition_dropout': str(self.condition_dropout),
+            'diffusion_pipe_commit': get_git_commit(),
         }
         safetensors.torch.save_file(state_dict, save_dir / 'adapter_model.safetensors', metadata=metadata)
 

@@ -25,7 +25,7 @@ from accelerate.utils import set_module_tensor_to_device
 
 from models.base import BasePipeline, PreprocessMediaFile, make_contiguous
 from models.cosmos_predict2_modeling import MiniTrainDIT
-from utils.common import load_state_dict, AUTOCAST_DTYPE, is_main_process, iterate_safetensors
+from utils.common import load_state_dict, AUTOCAST_DTYPE, is_main_process, iterate_safetensors, get_git_commit
 from utils.offloading import ModelOffloader
 from models.wan.vae2_1 import WanVAE_
 
@@ -238,6 +238,10 @@ class CosmosPredict2Pipeline(BasePipeline):
     name = 'cosmos_predict2'
     framerate = 16
     checkpointable_layers = ['TransformerLayer']
+    # Control subclasses (IC-LoRA, OminiControl) set this to
+    # ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS so every save is audited (F1.2).
+    # Empty = no audit (plain full-target LoRA is legitimate here).
+    forbidden_adapter_key_patterns = ()
     adapter_target_modules = [
         'Block',
         'TransformerBlock',  # LLM adapter
@@ -378,7 +382,40 @@ class CosmosPredict2Pipeline(BasePipeline):
         self.peft_config.save_pretrained(save_dir)
         # ComfyUI format.
         peft_state_dict = {'diffusion_model.'+k: v for k, v in peft_state_dict.items()}
-        safetensors.torch.save_file(peft_state_dict, save_dir / 'adapter_model.safetensors', metadata={'format': 'pt'})
+        self._audit_adapter_keys(peft_state_dict.keys(), save_dir)
+        metadata = {
+            'format': 'pt',
+            'diffusion_pipe_commit': get_git_commit(),
+            'model_type': str(self.model_config.get('type', self.name)),
+        }
+        safetensors.torch.save_file(peft_state_dict, save_dir / 'adapter_model.safetensors', metadata=metadata)
+
+    def _audit_adapter_keys(self, keys, save_dir):
+        """Post-save audit (F1.2): control adapters must never contain LoRA on
+        adaln_modulation/cross_attn/llm_adapter. Warns loudly and drops a marker
+        file instead of raising, so an audit failure never destroys a finished
+        training run — but it cannot be missed either."""
+        if not self.forbidden_adapter_key_patterns:
+            return
+        contaminated = sorted(
+            k for k in keys
+            if any(pattern in k for pattern in self.forbidden_adapter_key_patterns)
+        )
+        if contaminated:
+            lines = [
+                'ADAPTER AUDIT FAILED: checkpoint contains LoRA keys on forbidden modules.',
+                f'Forbidden patterns: {list(self.forbidden_adapter_key_patterns)}',
+                f'{len(contaminated)} contaminated keys, first 10:',
+                *(f'  {k}' for k in contaminated[:10]),
+                'This checkpoint will reproduce the blur/contamination problem at inference.',
+                'Fix configure_adapter before training further.',
+            ]
+            text = '\n'.join(lines)
+            print('\n' + '!' * 80 + f'\n{text}\n' + '!' * 80 + '\n')
+            with open(save_dir / 'ADAPTER_AUDIT_FAILED.txt', 'w') as f:
+                f.write(text + '\n')
+        else:
+            print(f'Adapter audit OK: {len(keys)} keys, none matching {list(self.forbidden_adapter_key_patterns)}')
 
     def save_model(self, save_dir, state_dict):
         state_dict = {'net.'+k: v for k, v in state_dict.items()}
