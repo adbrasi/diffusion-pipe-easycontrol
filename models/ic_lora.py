@@ -15,7 +15,13 @@ Based on:
 import torch
 import torch.nn.functional as F
 
-from models.cosmos_predict2 import CosmosPredict2Pipeline, get_lin_function, time_shift
+from models.cosmos_predict2 import (
+    CosmosPredict2Pipeline,
+    ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS,
+    configure_anima_control_adapter,
+    get_lin_function,
+    time_shift,
+)
 
 
 class ICLoraPipeline(CosmosPredict2Pipeline):
@@ -30,6 +36,15 @@ class ICLoraPipeline(CosmosPredict2Pipeline):
     - EasyControl: custom LoRA with binary masking, causal attention, separate condition stream
     - IC-LoRA: standard PEFT LoRA, full bidirectional attention, per-token timestep differentiation
     """
+
+    forbidden_adapter_key_patterns = ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS
+    adapter_log_tag = 'IC-LoRA V1'
+
+    def configure_adapter(self, adapter_config):
+        """LoRA on self_attn + mlp only. Earlier trainings used the base
+        configure_adapter (every linear) and baked adaln_modulation/cross_attn/
+        llm_adapter into the checkpoints — the root cause of the blurry results."""
+        configure_anima_control_adapter(self, adapter_config, self.adapter_log_tag)
 
     def prepare_inputs(self, inputs, timestep_quantile=None):
         latents = inputs['latents'].float()

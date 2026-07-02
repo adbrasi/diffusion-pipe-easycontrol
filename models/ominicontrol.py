@@ -20,12 +20,12 @@ Based on: OminiControl v1 (arXiv:2411.15098) and OminiControl v2 (arXiv:2503.082
 """
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-import peft
 
 from models.cosmos_predict2 import (
     CosmosPredict2Pipeline,
+    ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS,
+    configure_anima_control_adapter,
     InitialLayer,
     TransformerLayer,
     FinalLayer,
@@ -36,7 +36,7 @@ from models.cosmos_predict2 import (
     _compute_text_embeddings,
 )
 from models.base import make_contiguous
-from utils.common import AUTOCAST_DTYPE, is_main_process
+from utils.common import AUTOCAST_DTYPE
 
 
 class OminiControlPipeline(CosmosPredict2Pipeline):
@@ -51,6 +51,9 @@ class OminiControlPipeline(CosmosPredict2Pipeline):
         condition_timestep: float (default: 0.0)
             - Timestep assigned to condition tokens (0 = clean)
     """
+
+    forbidden_adapter_key_patterns = ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS
+    adapter_log_tag = 'OminiControl'
 
     def __init__(self, config):
         super().__init__(config)
@@ -149,45 +152,7 @@ class OminiControlPipeline(CosmosPredict2Pipeline):
         of adaln_modulation made inference depend on skip_adaln workarounds, so
         training and ComfyUI now use the same target set.
         """
-        target_linear_modules = set()
-        for name, module in self.transformer.named_modules():
-            if module.__class__.__name__ not in self.adapter_target_modules:
-                continue
-            if name.startswith('llm_adapter'):
-                continue
-            for full_submodule_name, submodule in module.named_modules(prefix=name):
-                if isinstance(submodule, nn.Linear):
-                    parts = full_submodule_name.split('.')
-                    if any(
-                        part.startswith('adaln_modulation') or part == 'cross_attn'
-                        for part in parts
-                    ):
-                        continue
-                    target_linear_modules.add(full_submodule_name)
-        target_linear_modules = list(target_linear_modules)
-
-        if is_main_process():
-            print(f'[OminiControl] LoRA targets: {len(target_linear_modules)} linear modules (excluding adaln_modulation, cross_attn)')
-
-        adapter_type = adapter_config['type']
-        if adapter_type == 'lora':
-            peft_config = peft.LoraConfig(
-                r=adapter_config['rank'],
-                lora_alpha=adapter_config['alpha'],
-                lora_dropout=adapter_config['dropout'],
-                bias='none',
-                target_modules=target_linear_modules
-            )
-        else:
-            raise NotImplementedError(f'Adapter type {adapter_type} is not implemented')
-        self.peft_config = peft_config
-        self.lora_model = peft.get_peft_model(self.transformer, peft_config)
-        if is_main_process():
-            self.lora_model.print_trainable_parameters()
-        for name, p in self.transformer.named_parameters():
-            p.original_name = name
-            if p.requires_grad:
-                p.data = p.data.to(adapter_config['dtype'])
+        configure_anima_control_adapter(self, adapter_config, self.adapter_log_tag)
 
     def to_layers(self):
         transformer = self.transformer

@@ -16,6 +16,7 @@ import os.path
 import torch
 from torch import nn
 import torch.nn.functional as F
+import peft
 import safetensors
 import transformers
 from transformers import T5TokenizerFast, T5EncoderModel, AutoTokenizer, AutoModelForCausalLM
@@ -151,6 +152,66 @@ def get_dit_config(state_dict, key_prefix=''):
     dit_config["rope_enable_fps_modulation"] = False
 
     return dit_config
+
+
+# Modules that Anima control adapters (IC-LoRA, OminiControl) must never train:
+# - adaln_modulation: Anima has an internal adaln_lora path; PEFT LoRA on top causes
+#   double-LoRA amplification and required skip_adaln workarounds at inference.
+# - cross_attn / llm_adapter: text conditioning; spending LoRA capacity there degrades
+#   the visual ref->target relation and contaminates checkpoints.
+ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS = ('adaln_modulation', 'cross_attn', 'llm_adapter')
+
+
+def configure_anima_control_adapter(pipeline, adapter_config, log_tag):
+    """Apply LoRA only to self_attn and mlp linears inside the DiT Blocks.
+
+    Shared by all Anima control pipelines (ic_lora, ic_lora_full, ic_lora_v2,
+    ominicontrol, ominicontrol2) so the exclusion rules live in one place and
+    can never drift between training modes again.
+    """
+    target_linear_modules = set()
+    for name, module in pipeline.transformer.named_modules():
+        if module.__class__.__name__ not in pipeline.adapter_target_modules:
+            continue
+        if name.startswith('llm_adapter'):
+            continue
+        for full_submodule_name, submodule in module.named_modules(prefix=name):
+            if isinstance(submodule, nn.Linear):
+                parts = full_submodule_name.split('.')
+                if any(
+                    part.startswith('adaln_modulation') or part == 'cross_attn'
+                    for part in parts
+                ):
+                    continue
+                target_linear_modules.add(full_submodule_name)
+    target_linear_modules = list(target_linear_modules)
+
+    for module_name in target_linear_modules:
+        assert not any(pattern in module_name for pattern in ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS), \
+            f'[{log_tag}] LoRA target {module_name} matches a forbidden pattern; the exclusion logic is broken'
+
+    if is_main_process():
+        print(f'[{log_tag}] LoRA targets: {len(target_linear_modules)} linear modules (excluding adaln_modulation, cross_attn, llm_adapter)')
+
+    adapter_type = adapter_config['type']
+    if adapter_type == 'lora':
+        peft_config = peft.LoraConfig(
+            r=adapter_config['rank'],
+            lora_alpha=adapter_config['alpha'],
+            lora_dropout=adapter_config['dropout'],
+            bias='none',
+            target_modules=target_linear_modules
+        )
+    else:
+        raise NotImplementedError(f'Adapter type {adapter_type} is not implemented')
+    pipeline.peft_config = peft_config
+    pipeline.lora_model = peft.get_peft_model(pipeline.transformer, peft_config)
+    if is_main_process():
+        pipeline.lora_model.print_trainable_parameters()
+    for name, p in pipeline.transformer.named_parameters():
+        p.original_name = name
+        if p.requires_grad:
+            p.data = p.data.to(adapter_config['dtype'])
 
 
 def _tokenize(tokenizer, prompts):

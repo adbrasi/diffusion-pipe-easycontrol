@@ -21,14 +21,10 @@ References:
 """
 
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-
-import peft
 
 from models.ic_lora_full import ICLoraFullPipeline
 from models.cosmos_predict2 import get_lin_function, time_shift, _tokenize
-from utils.common import is_main_process
 
 
 def _shifted_logit_normal_shift(num_tokens, min_tokens=1024, max_tokens=4096, min_shift=0.95, max_shift=2.05):
@@ -73,6 +69,8 @@ class ICLoraV2Pipeline(ICLoraFullPipeline):
         max_shift: float (default: 2.05)
             Shift (logit-normal mean) for long sequences.
     """
+
+    adapter_log_tag = 'IC-LoRA V2'
 
     def __init__(self, config):
         super().__init__(config)
@@ -183,52 +181,3 @@ class ICLoraV2Pipeline(ICLoraFullPipeline):
             t = t.view(-1, 1)  # (B, 1)
 
         return (noisy_latents, t, *prompt_embeds_or_batch_encoding), (target, mask)
-
-    def configure_adapter(self, adapter_config):
-        """Apply LoRA ONLY to self_attn and mlp modules inside Block/TransformerBlock.
-
-        Excluded:
-        - adaln_modulation: Anima has internal adaln_lora (bottleneck dim=256).
-          Adding PEFT LoRA on top causes double-LoRA amplification.
-        - cross_attn: handles text conditioning, not visual consistency.
-          Training it wastes LoRA capacity on text alignment that the base model already does well.
-        """
-        target_linear_modules = set()
-        for name, module in self.transformer.named_modules():
-            if module.__class__.__name__ not in self.adapter_target_modules:
-                continue
-            if name.startswith('llm_adapter'):
-                continue
-            for full_submodule_name, submodule in module.named_modules(prefix=name):
-                if isinstance(submodule, nn.Linear):
-                    parts = full_submodule_name.split('.')
-                    if any(
-                        part.startswith('adaln_modulation') or part == 'cross_attn'
-                        for part in parts
-                    ):
-                        continue
-                    target_linear_modules.add(full_submodule_name)
-        target_linear_modules = list(target_linear_modules)
-
-        if is_main_process():
-            print(f'[IC-LoRA V2] LoRA targets: {len(target_linear_modules)} linear modules (excluding adaln_modulation, cross_attn)')
-
-        adapter_type = adapter_config['type']
-        if adapter_type == 'lora':
-            peft_config = peft.LoraConfig(
-                r=adapter_config['rank'],
-                lora_alpha=adapter_config['alpha'],
-                lora_dropout=adapter_config['dropout'],
-                bias='none',
-                target_modules=target_linear_modules
-            )
-        else:
-            raise NotImplementedError(f'Adapter type {adapter_type} is not implemented')
-        self.peft_config = peft_config
-        self.lora_model = peft.get_peft_model(self.transformer, peft_config)
-        if is_main_process():
-            self.lora_model.print_trainable_parameters()
-        for name, p in self.transformer.named_parameters():
-            p.original_name = name
-            if p.requires_grad:
-                p.data = p.data.to(adapter_config['dtype'])

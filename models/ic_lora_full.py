@@ -31,7 +31,14 @@ References:
 import torch
 import torch.nn.functional as F
 
-from models.cosmos_predict2 import CosmosPredict2Pipeline, get_lin_function, time_shift, _tokenize
+from models.cosmos_predict2 import (
+    CosmosPredict2Pipeline,
+    ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS,
+    configure_anima_control_adapter,
+    get_lin_function,
+    time_shift,
+    _tokenize,
+)
 
 
 class ICLoraFullPipeline(CosmosPredict2Pipeline):
@@ -55,12 +62,21 @@ class ICLoraFullPipeline(CosmosPredict2Pipeline):
             Timestep for condition tokens. 0.0 = clean (standard).
     """
 
+    forbidden_adapter_key_patterns = ANIMA_CONTROL_FORBIDDEN_KEY_PATTERNS
+    adapter_log_tag = 'IC-LoRA Full'
+
     def __init__(self, config):
         super().__init__(config)
         oc_config = config.get('ic_lora_full', {})
         self.condition_dropout = oc_config.get('condition_dropout', 0.1)
         self.ref_first = oc_config.get('ref_first', True)
         self.condition_timestep = oc_config.get('condition_timestep', 0.0)
+
+    def configure_adapter(self, adapter_config):
+        """LoRA on self_attn + mlp only. The base configure_adapter targets every
+        linear (adaln_modulation, cross_attn, llm_adapter included) and produced
+        the contaminated April checkpoints — never fall back to it here."""
+        configure_anima_control_adapter(self, adapter_config, self.adapter_log_tag)
 
     def prepare_inputs(self, inputs, timestep_quantile=None):
         latents = inputs['latents'].float()
