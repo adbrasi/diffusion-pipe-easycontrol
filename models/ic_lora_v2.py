@@ -44,6 +44,9 @@ def _shifted_logit_normal_shift(num_tokens, min_tokens=1024, max_tokens=4096, mi
     Returns:
         float: the shift value for the logit-normal mean
     """
+    # LTX-2 extrapolates linearly beyond [min_tokens, max_tokens]; we clamp,
+    # which is safer for outlier buckets. Set max_tokens to the largest bucket
+    # (e.g. 9216 for 1536px) so the clamp never engages in normal training.
     t = max(0.0, min(1.0, (num_tokens - min_tokens) / (max_tokens - min_tokens)))
     return min_shift + t * (max_shift - min_shift)
 
@@ -127,7 +130,9 @@ class ICLoraV2Pipeline(ICLoraFullPipeline):
             else:
                 shift = 0.0  # standard logit-normal (mean=0, no shift)
 
-            dist = torch.distributions.normal.Normal(shift, 1.0)
+            # The shift is added AFTER sigmoid_scale below; sampling from N(0,1)
+            # here keeps sigmoid_scale from amplifying the mean to scale*shift.
+            dist = torch.distributions.normal.Normal(0.0, 1.0)
         elif timestep_sample_method == 'uniform':
             dist = torch.distributions.uniform.Uniform(0, 1)
         else:
@@ -140,7 +145,9 @@ class ICLoraV2Pipeline(ICLoraFullPipeline):
 
         if timestep_sample_method == 'logit_normal':
             sigmoid_scale = self.model_config.get('sigmoid_scale', 1.0)
-            t = t * sigmoid_scale
+            # LTX-2 ShiftedLogitNormalTimestepSampler: sigmoid(shift + std * N(0,1)).
+            # sigmoid_scale plays the std role and must scale only the noise term.
+            t = t * sigmoid_scale + shift
             t = torch.sigmoid(t)
 
         if static_shift := self.model_config.get('shift', None):
