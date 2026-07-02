@@ -47,6 +47,9 @@ alpha = 128.0
 n_loras = 1
 cond_size = 512  # condition image resolution (pixels)
 # lr = 1e-4     # optional: separate LR for control LoRA (defaults to optimizer lr)
+# condition_dropout: probability of zeroing the condition latents during training
+# (mirrors OminiControl's drop_image_prob). Enables condition CFG at inference.
+condition_dropout = 0.1
 
 # No [adapter] section — EasyControl uses custom LoRA, not PEFT.
 

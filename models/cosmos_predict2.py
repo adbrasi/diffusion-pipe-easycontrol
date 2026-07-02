@@ -580,8 +580,8 @@ class CosmosPredict2Pipeline(BasePipeline):
                     loss = torch.sqrt((output-target)**2 + c**2) - c
                 else:
                     loss = F.mse_loss(output, target, reduction='none')
-                # empty tensor means no masking
-                if mask.numel() > 0:
+                # None or empty tensor means no masking
+                if mask is not None and mask.numel() > 0:
                     mask = mask.to(output.device, torch.float32)
                     loss *= mask
                 loss = loss.mean()

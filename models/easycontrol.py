@@ -608,6 +608,9 @@ class EasyControlPipeline(CosmosPredict2Pipeline):
         self.control_alpha = self.control_config.get('alpha', 128.0)
         self.control_n_loras = self.control_config.get('n_loras', 1)
         self.control_cond_size = self.control_config.get('cond_size', 512)
+        # Mirrors OminiControl's drop_image_prob (the EasyControl original has no
+        # dropout); required for condition CFG at inference. Set 0 to disable.
+        self.condition_dropout = self.control_config.get('condition_dropout', 0.1)
 
     def load_diffusion_model(self):
         super().load_diffusion_model()
@@ -641,7 +644,8 @@ class EasyControlPipeline(CosmosPredict2Pipeline):
         if is_main_process():
             print(f'EasyControl: rank={self.control_rank}, alpha={self.control_alpha}, '
                   f'n_loras={self.control_n_loras}, cond_size={self.control_cond_size}, '
-                  f'cond_tokens={cond_token_count}, blocks={num_blocks}')
+                  f'cond_tokens={cond_token_count}, blocks={num_blocks}, '
+                  f'condition_dropout={self.condition_dropout}')
             print(f'EasyControl: trainable LoRA parameters: {trainable_params:,}')
 
     def load_adapter_weights(self, path):
@@ -733,6 +737,14 @@ class EasyControlPipeline(CosmosPredict2Pipeline):
 
         # Append control latents as a separate tensor (NOT temporal concat)
         control_latents = inputs['control_latents'].float()
+
+        # Condition dropout: zeroed cond latents teach the model an "empty
+        # condition" mode, enabling condition CFG at inference.
+        if self.condition_dropout > 0:
+            drop_mask = torch.rand(bs, device=latents.device) < self.condition_dropout
+            if drop_mask.any():
+                control_latents = control_latents.clone()
+                control_latents[drop_mask] = 0.0
 
         return (noisy_latents, t, *prompt_embeds_or_batch_encoding, control_latents), (target, mask)
 
