@@ -33,8 +33,10 @@ condition_timestep = 0.0
 independent_condition = true
 
 # position_scale: scale factor for condition RoPE coordinates.
-# Use 2.0 with condition at half resolution for 4x fewer tokens.
-# Use 1.0 for full resolution (same as v1).
+# MUST stay 1.0: the dataset encodes the condition at the same resolution as
+# the target, so any other value pushes RoPE coords outside the target grid.
+# (Values != 1.0 are rejected at startup until a low-res condition encode
+# path exists.)
 position_scale = 1.0
 
 # Anima control LoRA targets self-attention + MLP only, same as v1.

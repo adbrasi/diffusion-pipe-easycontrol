@@ -52,11 +52,22 @@ class OminiControl2Pipeline(OminiControlPipeline):
             Use 2.0 with condition at half resolution for compact tokens.
     """
 
+    adapter_log_tag = 'OminiControl2'
+
     def __init__(self, config):
         super().__init__(config)
         oc_config = config.get('ominicontrol', {})
         self.independent_condition = oc_config.get('independent_condition', True)
         self.position_scale = oc_config.get('position_scale', 1.0)
+
+        if self.position_scale != 1.0:
+            raise ValueError(
+                f'ominicontrol2: position_scale={self.position_scale} is not supported. '
+                'The dataset pipeline VAE-encodes the condition at the SAME resolution as '
+                'the target, so scaled RoPE coordinates would fall outside the target grid '
+                'and corrupt spatial alignment. Set position_scale = 1.0 (or remove it) '
+                'until a low-resolution condition encode path exists.'
+            )
 
     def to_layers(self):
         transformer = self.transformer
