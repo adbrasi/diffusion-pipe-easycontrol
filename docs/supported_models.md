@@ -688,3 +688,9 @@ diffusion_model_dtype = 'float8'
 timestep_sample_method = 'logit_normal'
 ```
 This configuration can train a rank 32 LoRA at 512 resolution with 24GB VRAM.
+
+Reference-conditioned Krea 2 and OminiControl adapters use model types
+`krea2_ic_lora`, `krea2_ominicontrol`, and `krea2_ominicontrol2`. Ideogram 4
+also exposes `ideogram4_ominicontrol` and `ideogram4_ominicontrol2`. See
+`docs/reference_adapters.md` for their paired-dataset contract, safe pilot
+order, checkpoint metadata, and the non-ComfyUI inference runner.

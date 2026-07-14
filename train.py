@@ -393,9 +393,24 @@ if __name__ == '__main__':
     elif model_type == 'ideogram4_ic_lora':
         from models import ideogram4_ic_lora
         model = ideogram4_ic_lora.Ideogram4ICLoRAPipeline(config)
+    elif model_type == 'ideogram4_ominicontrol':
+        from models import ideogram4_ominicontrol
+        model = ideogram4_ominicontrol.Ideogram4OminiControlPipeline(config)
+    elif model_type == 'ideogram4_ominicontrol2':
+        from models import ideogram4_ominicontrol2
+        model = ideogram4_ominicontrol2.Ideogram4OminiControl2Pipeline(config)
     elif model_type == 'krea2':
         from models import krea2
         model = krea2.Krea2Pipeline(config)
+    elif model_type == 'krea2_ic_lora':
+        from models import krea2_ic_lora
+        model = krea2_ic_lora.Krea2ICLoRAPipeline(config)
+    elif model_type == 'krea2_ominicontrol':
+        from models import krea2_ominicontrol
+        model = krea2_ominicontrol.Krea2OminiControlPipeline(config)
+    elif model_type == 'krea2_ominicontrol2':
+        from models import krea2_ominicontrol2
+        model = krea2_ominicontrol2.Krea2OminiControl2Pipeline(config)
     else:
         raise NotImplementedError(f'Model type {model_type} is not implemented')
 

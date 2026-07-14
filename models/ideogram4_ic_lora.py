@@ -18,6 +18,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from models.ideogram4 import (
+    IMAGE_POSITION_OFFSET,
     Ideogram4Pipeline,
     LLM_TOKEN_INDICATOR,
     OUTPUT_IMAGE_INDICATOR,
@@ -94,12 +95,16 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
             if len(args) == 2:
                 target, reference = args
                 result = parent_vae_fn(target)
-                reference_result = parent_vae_fn(reference)
+                reference_result = parent_vae_fn(self.prepare_reference_media(reference))
                 result['control_latents'] = reference_result['latents']
                 return result
             raise RuntimeError(f'Unexpected number of VAE inputs: {len(args)}')
 
         return fn
+
+    def prepare_reference_media(self, reference):
+        """Transform reference pixels before VAE encoding (identity for IC-LoRA/v1)."""
+        return reference
 
     def prepare_inputs(self, inputs, timestep_quantile=None):
         if 'control_latents' not in inputs:
@@ -110,7 +115,19 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
 
         model_inputs, labels = super().prepare_inputs(inputs, timestep_quantile=timestep_quantile)
         noisy_target = model_inputs[0]
-        reference_latents = inputs['control_latents'].float()
+        reference_latents = self.prepare_reference_latents(
+            inputs['control_latents'].float(),
+            noisy_target,
+            timestep_quantile=timestep_quantile,
+        )
+        return (*model_inputs, reference_latents), labels
+
+    def prepare_reference_latents(self, reference_latents, noisy_target, timestep_quantile=None):
+        """Validate/transform reference latents before sequence packing.
+
+        OminiControl2 overrides this hook to create a compact reference token
+        grid. The default IC-LoRA contract intentionally remains same-size.
+        """
         if reference_latents.shape != noisy_target.shape:
             raise ValueError(
                 'Ideogram4 reference latents must match target latent shape, got '
@@ -123,7 +140,7 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
             self.condition_dropout,
             enabled=timestep_quantile is None,
         )
-        return (*model_inputs, reference_latents), labels
+        return reference_latents
 
     def configure_adapter(self, adapter_config):
         """CommonPipeline.configure_adapter with adaln_modulation excluded.
@@ -221,11 +238,15 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
             'condition_dropout': str(self.condition_dropout),
             'lora_train_adaln_modulation': str(self.train_adaln_modulation).lower(),
         }
+        metadata.update(self.get_reference_metadata())
         safetensors.torch.save_file(
             state_dict,
             save_dir / 'adapter_model.safetensors',
             metadata=metadata,
         )
+
+    def get_reference_metadata(self):
+        return {}
 
     def _audit_adapter_keys(self, keys, save_dir):
         """Post-save audit in the fork's standard style: warn loudly and drop a
@@ -261,7 +282,14 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
 class Ideogram4ReferenceInitialLayer(nn.Module):
     """Pack text, target, and reference tokens for the Ideogram transformer."""
 
-    def __init__(self, model, reference_position_offset=1, reference_model_timestep=1.0):
+    def __init__(
+        self,
+        model,
+        reference_position_offset=1,
+        reference_model_timestep=1.0,
+        reference_position_scale=1.0,
+        require_matching_shape=True,
+    ):
         super().__init__()
         self.input_proj = model.input_proj
         self.t_embedding = model.t_embedding
@@ -271,6 +299,8 @@ class Ideogram4ReferenceInitialLayer(nn.Module):
         self.embed_image_indicator = model.embed_image_indicator
         self.reference_position_offset = reference_position_offset
         self.reference_model_timestep = reference_model_timestep
+        self.reference_position_scale = reference_position_scale
+        self.require_matching_shape = require_matching_shape
         self.model = [model]
 
     def __getattr__(self, name):
@@ -284,19 +314,27 @@ class Ideogram4ReferenceInitialLayer(nn.Module):
                 item.requires_grad_(True)
 
         target, timesteps, context, text_attention_mask, reference = inputs
-        if reference.shape != target.shape:
+        if self.require_matching_shape and reference.shape != target.shape:
             raise ValueError(
                 'Ideogram4 reference latents must match target latent shape, got '
                 f'{tuple(reference.shape)} and {tuple(target.shape)}'
             )
 
+        if reference.shape[0] != target.shape[0] or reference.shape[1] != target.shape[1]:
+            raise ValueError(
+                'Ideogram4 reference batch/channels must match target, got '
+                f'{tuple(reference.shape)} and {tuple(target.shape)}'
+            )
+
         batch_size, _, grid_h, grid_w = target.shape
+        _, _, reference_grid_h, reference_grid_w = reference.shape
         device = target.device
         target_tokens = self._img_to_tokens(target)
         reference_tokens = self._img_to_tokens(reference)
         text_length = context.shape[1]
-        image_length = target_tokens.shape[1]
-        sequence_length = text_length + image_length * 2
+        target_length = target_tokens.shape[1]
+        reference_length = reference_tokens.shape[1]
+        sequence_length = text_length + target_length + reference_length
         latent_dim = target_tokens.shape[-1]
 
         packed = torch.zeros(
@@ -307,14 +345,21 @@ class Ideogram4ReferenceInitialLayer(nn.Module):
             device=device,
         )
         target_start = text_length
-        target_end = target_start + image_length
+        target_end = target_start + target_length
         packed[:, target_start:target_end] = target_tokens
         packed[:, target_end:] = reference_tokens
 
         text_positions = torch.arange(text_length, device=device).view(-1, 1).expand(text_length, 3)
         target_positions = self._image_position_ids(grid_h, grid_w, device)
+        reference_positions = self._image_position_ids(reference_grid_h, reference_grid_w, device)
+        if self.reference_position_scale != 1.0:
+            reference_positions = reference_positions.to(torch.float32)
+            scale_bias = (self.reference_position_scale - 1.0) / 2.0
+            reference_positions[:, 1:] = IMAGE_POSITION_OFFSET + (
+                reference_positions[:, 1:] - IMAGE_POSITION_OFFSET
+            ) * self.reference_position_scale + scale_bias
         reference_positions = offset_reference_positions(
-            target_positions,
+            reference_positions,
             self.reference_position_offset,
         )
         position_ids = torch.cat(
