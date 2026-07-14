@@ -105,7 +105,14 @@ sequence_layout: text,target,reference
 reference_indicator: 4
 reference_position_offset: 1
 reference_model_timestep: 1.0
+lora_train_adaln_modulation: false
 ```
+
+`lora_train_adaln_modulation: false` confirms the adapter carries no
+`adaln_modulation` keys (audited at save time; a violation writes
+`ADAPTER_AUDIT_FAILED.txt` next to the checkpoint). Note that `--test_sample`
+is not supported by this pipeline: it samples text-to-image without a
+reference, which does not match the packed input contract.
 
 If 512px runs out of memory on a 32GB card, raise `blocks_to_swap` from 8 to
 12, then 16. If 1024px later runs out of memory, block swap can reduce weight
@@ -145,6 +152,54 @@ Use the normal ComfyUI LoRA loader for `adapter_model.safetensors`, then attach
 the reference only to positive conditioning with `Ideogram 4 Reference
 Conditioning`. The target latent fixes the output grid, and the node must encode
 the reference to exactly the same 128-channel latent shape.
+
+Preprocessing caveat: this trainer center-crops both images (`ImageOps.fit`),
+while BitPoet's own LoRAs were trained with aspect-distorting stretch. The two
+contracts are otherwise identical, so his node works for our adapters — but the
+resize mode selected in the node must match the training side: `center_crop`
+for adapters trained here, `stretch` only for BitPoet's published LoRAs.
+
+## 7. Fallbacks if the main method underperforms
+
+Decide by symptom, in this order:
+
+1. **Smoke test crashes** — that is a code bug in this repo, not a method
+   failure. Capture the stack trace; do not switch methods.
+2. **Pilot trains but the reference is ignored** — try the negative temporal
+   offset variant `examples/ideogram4_ic_lora_ab_offset_neg1.toml` (ID-LoRA
+   convention), and `examples/ideogram4_ic_lora_ab_nodropout.toml` (BitPoet
+   parity: no condition dropout). Also inspect the dataset for near-duplicate
+   pairs; a copy shortcut suppresses real conditioning. For pixel-aligned
+   edit-style data, `examples/ideogram4_ic_lora_ab_omini_aligned.toml`
+   (OminiControl-style shared positions, offset 0) conditions more directly.
+3. **Pilot copies the reference too literally** — keep dropout at 0.1, widen
+   the temporal gaps in the data, and prefer earlier checkpoints.
+4. **Global color/contrast drift or fried texture** — confirm the checkpoint
+   metadata shows `lora_train_adaln_modulation: false`; halve the learning
+   rate before anything else.
+5. **Quality plateau you suspect is the AdaLN exclusion** — run
+   `examples/ideogram4_ic_lora_ab_adaln.toml`, which restores the upstream
+   all-linears behavior (BitPoet's ai-toolkit default also trains AdaLN).
+6. **Reference pathway fundamentally broken** — fall back to classic stitched
+   IC-LoRA, which uses the stock `type = 'ideogram4'` pipeline and none of the
+   custom packing code:
+
+   ```bash
+   python tools/make_ideogram4_stitched_pairs.py \
+       --target_dir /workspace/dataset/target_images \
+       --reference_dir /workspace/dataset/reference_images \
+       --output_dir /workspace/dataset/stitched_pairs
+
+   deepspeed --num_gpus=1 train.py --deepspeed \
+       --config examples/ideogram4_stitched_ic_lora.toml
+   ```
+
+   It trains the model to generate `[reference | target]` panels side by side.
+   Inference works on stock ComfyUI (generate a consistent two-panel image in
+   one pass); pinning an existing reference into the left panel additionally
+   needs masked/inpaint tooling. If the stitched LoRA learns the relation but
+   the reference-token LoRA does not, the bug is in the packing contract; if
+   neither learns, the problem is the dataset or captions.
 
 Ideogram model weights and derivatives have license restrictions independent
 of this repository's code license. Confirm that the license covering the

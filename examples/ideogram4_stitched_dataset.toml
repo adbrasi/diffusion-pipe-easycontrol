@@ -1,0 +1,14 @@
+# Dataset of stitched [reference | target] pairs produced by
+# tools/make_ideogram4_stitched_pairs.py. Stitched images are ~2:1, so the
+# aspect-ratio ceiling must admit them; 768px area keeps each panel usable.
+
+resolutions = [768]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.5
+num_ar_buckets = 9
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/dataset/stitched_pairs'
+num_repeats = 1

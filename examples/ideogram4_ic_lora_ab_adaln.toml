@@ -1,7 +1,9 @@
-# Ideogram 4 reference-conditioned IC-LoRA pilot for a single RTX 5090.
-# Start at 512px to validate the full cache -> train -> save contract before 1024px.
+# Ablation B: also train adaln_modulation linears (upstream all-linears
+# behavior). Use only to test whether the default exclusion is limiting
+# quality; watch for global color/contrast drift. Identical to
+# examples/ideogram4_ic_lora.toml otherwise.
 
-output_dir = '/workspace/ideogram4_ic_lora_output'
+output_dir = '/workspace/ideogram4_ic_lora_ab_adaln_output'
 dataset = 'examples/ideogram4_ic_lora_dataset.toml'
 
 epochs = 1000
@@ -19,9 +21,6 @@ partition_method = 'parameters'
 save_dtype = 'bfloat16'
 caching_batch_size = 1
 steps_per_print = 1
-
-# The reference doubles image-token sequence length. Increase this if 1024px
-# does not fit; the Ideogram 4 implementation allows at most 32 swapped blocks.
 blocks_to_swap = 8
 
 [model]
@@ -37,17 +36,10 @@ timestep_sample_method = 'logit_normal'
 shift = 3
 
 [ideogram4_ic_lora]
-# Keeps the reference slots but zeros the latent content for CFG-style training.
 condition_dropout = 0.1
-# Working Ideogram precedent: target at native image time, reference at +1.
 reference_position_offset = 1
-# Ideogram's internal convention is inverted: 1.0 means a clean token.
 reference_model_timestep = 1.0
-# adaln_modulation linears are excluded from the LoRA by default: they only see
-# the timestep embedding (content-blind) and the reference's pinned clean
-# timestep makes them the most distribution-shifted pathway. Uncomment to
-# restore the upstream all-linears behavior.
-#train_adaln_modulation = true
+train_adaln_modulation = true
 
 [adapter]
 type = 'lora'

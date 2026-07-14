@@ -1,16 +1,22 @@
-# Ten-step end-to-end smoke test for a single RTX 5090.
+# Fallback method: classic IC-LoRA via stitched pairs on the STOCK upstream
+# ideogram4 pipeline. No custom packing code is involved, so this isolates
+# whether the model can learn the pair relation independently of the
+# reference-token implementation. Inference works on stock ComfyUI by
+# generating both panels together (consistent pair in one image).
 
-output_dir = '/workspace/ideogram4_ic_lora_smoke_output'
-dataset = 'examples/ideogram4_ic_lora_dataset.toml'
+output_dir = '/workspace/ideogram4_stitched_output'
+dataset = 'examples/ideogram4_stitched_dataset.toml'
 
 epochs = 1000
-max_steps = 10
+max_steps = 7000
 micro_batch_size_per_gpu = 1
-gradient_accumulation_steps = 1
+gradient_accumulation_steps = 4
 pipeline_stages = 1
 gradient_clipping = 1.0
-warmup_steps = 0
-save_every_n_steps = 10
+warmup_steps = 100
+
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 120
 activation_checkpointing = true
 partition_method = 'parameters'
 save_dtype = 'bfloat16'
@@ -19,7 +25,7 @@ steps_per_print = 1
 blocks_to_swap = 8
 
 [model]
-type = 'ideogram4_ic_lora'
+type = 'ideogram4'
 diffusion_model = '/workspace/models/ideogram4_fp8_scaled.safetensors'
 vae = '/workspace/models/flux2-vae.safetensors'
 text_encoders = [
@@ -29,12 +35,6 @@ dtype = 'bfloat16'
 diffusion_model_dtype = 'float8'
 timestep_sample_method = 'logit_normal'
 shift = 3
-
-[ideogram4_ic_lora]
-condition_dropout = 0.1
-reference_position_offset = 1
-reference_model_timestep = 1.0
-#train_adaln_modulation = true
 
 [adapter]
 type = 'lora'
