@@ -662,10 +662,17 @@ increase `blocks_to_swap` only after the 512px path succeeds.
 Saved adapters include
 `reference_contract=ideogram4_reference_conditioning_v1` and the packing
 parameters in safetensors metadata. Inference must reproduce this contract
-exactly. The adapter targets all linear layers inside
-`Ideogram4TransformerBlock`, matching the upstream Ideogram LoRA path. The
-Anima-specific AdaLN exclusion must not be copied here: Ideogram does not have
-Anima's internal double-LoRA path.
+exactly. The adapter targets the attention and feed-forward linears inside
+`Ideogram4TransformerBlock`; per-block `adaln_modulation` linears are excluded
+by default. This is not Anima's double-LoRA concern (Ideogram has no internal
+adaln_lora path) — the reasons are specific to reference training:
+`adaln_modulation` only sees the timestep embedding, so LoRA there cannot
+encode the ref->target relation, and the reference's pinned clean timestep
+makes it the most distribution-shifted pathway. kohya musubi-tuner's Ideogram4
+LoRA makes the same exclusion. Set `train_adaln_modulation = true` under
+`[ideogram4_ic_lora]` to restore the upstream all-linears behavior; every save
+is audited either way and a failed audit writes `ADAPTER_AUDIT_FAILED.txt`
+next to the checkpoint instead of aborting the run.
 
 ## Krea 2
 ```

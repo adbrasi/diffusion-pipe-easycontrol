@@ -27,11 +27,13 @@ from models.ideogram4 import (
 from comfy.text_encoders.llama import precompute_freqs_cis
 from models.base import make_contiguous
 from models.ideogram4_reference_contract import (
+    LORA_FORBIDDEN_MODULE_PATTERNS,
     REFERENCE_CONTRACT_VERSION,
     REFERENCE_IMAGE_INDICATOR,
     apply_reference_dropout,
     build_model_timesteps,
     offset_reference_positions,
+    split_lora_target_modules,
 )
 from utils.common import get_git_commit
 
@@ -48,6 +50,11 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
         Offset applied only to the temporal MRoPE coordinate of the reference.
     ``reference_model_timestep`` (default ``1.0``)
         Timestep in Ideogram's internal convention, where ``1.0`` is clean.
+    ``train_adaln_modulation`` (default ``false``)
+        When false, per-block ``adaln_modulation`` linears are excluded from the
+        LoRA. Their input is the timestep embedding alone, so they cannot learn
+        the ref->target relation, and the reference's fixed clean timestep makes
+        them the most distribution-shifted pathway in this pipeline.
     """
 
     name = 'ideogram4_ic_lora'
@@ -58,6 +65,7 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
         self.condition_dropout = float(reference_config.get('condition_dropout', 0.1))
         self.reference_position_offset = int(reference_config.get('reference_position_offset', 1))
         self.reference_model_timestep = float(reference_config.get('reference_model_timestep', 1.0))
+        self.train_adaln_modulation = bool(reference_config.get('train_adaln_modulation', False))
 
         if not 0.0 <= self.condition_dropout <= 1.0:
             raise ValueError('condition_dropout must be between 0.0 and 1.0')
@@ -117,6 +125,69 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
         )
         return (*model_inputs, reference_latents), labels
 
+    def configure_adapter(self, adapter_config):
+        """CommonPipeline.configure_adapter with adaln_modulation excluded.
+
+        The copy is deliberate: the base implementation offers no hook to filter
+        target modules, and control adapters in this fork must never silently
+        regain forbidden targets through an upstream default.
+        """
+        if self.train_adaln_modulation:
+            super().configure_adapter(adapter_config)
+            return
+
+        import peft
+        from utils.common import is_main_process
+
+        target_model = self.diffusion_model
+        target_linear_modules = set()
+        for name, module in target_model.named_modules():
+            if module.__class__.__name__ not in self.adapter_target_modules:
+                continue
+            for full_submodule_name, submodule in module.named_modules(prefix=name):
+                if isinstance(submodule, nn.Linear):
+                    target_linear_modules.add(full_submodule_name)
+        target_linear_modules, excluded = split_lora_target_modules(
+            sorted(target_linear_modules),
+            LORA_FORBIDDEN_MODULE_PATTERNS,
+        )
+        if not target_linear_modules:
+            raise RuntimeError('No LoRA target modules remain after exclusion')
+        if is_main_process():
+            print(
+                f'[{self.name}] LoRA targets: {len(target_linear_modules)} linears, '
+                f'excluded {len(excluded)} matching {list(LORA_FORBIDDEN_MODULE_PATTERNS)} '
+                '(set train_adaln_modulation = true to include them)'
+            )
+
+        adapter_type = adapter_config['type']
+        if adapter_type == 'lora':
+            peft_config = peft.LoraConfig(
+                r=adapter_config['rank'],
+                lora_alpha=adapter_config['alpha'],
+                lora_dropout=adapter_config['dropout'],
+                bias='none',
+                target_modules=target_linear_modules,
+            )
+        elif adapter_type == 'lokr':
+            peft_config = peft.LoKrConfig(
+                r=adapter_config['rank'],
+                decompose_factor=adapter_config['decompose_factor'],
+                alpha=adapter_config['alpha'],
+                rank_dropout=adapter_config['rank_dropout'],
+                target_modules=target_linear_modules,
+            )
+        else:
+            raise NotImplementedError(f'Adapter type {adapter_type} is not implemented')
+        self.peft_config = peft_config
+        self.lora_model = peft.get_peft_model(target_model, peft_config)
+        if is_main_process():
+            self.lora_model.print_trainable_parameters()
+        for name, p in target_model.named_parameters():
+            p.original_name = name
+            if p.requires_grad:
+                p.data = p.data.to(adapter_config['dtype'])
+
     def to_layers(self):
         diffusion_model = self.diffusion_model
         layers = [
@@ -136,14 +207,7 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
         save_dir = Path(save_dir)
         self.peft_config.save_pretrained(save_dir)
         state_dict = {f'diffusion_model.{key}': value for key, value in state_dict.items()}
-
-        unexpected = sorted(key for key in state_dict if '.layers.' not in key)
-        if unexpected:
-            preview = '\n'.join(f'  {key}' for key in unexpected[:10])
-            raise RuntimeError(
-                'Ideogram4 IC-LoRA adapter contains keys outside transformer layers:\n'
-                f'{preview}'
-            )
+        self._audit_adapter_keys(state_dict.keys(), save_dir)
 
         metadata = {
             'format': 'pt',
@@ -155,12 +219,43 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
             'reference_position_offset': str(self.reference_position_offset),
             'reference_model_timestep': str(self.reference_model_timestep),
             'condition_dropout': str(self.condition_dropout),
+            'lora_train_adaln_modulation': str(self.train_adaln_modulation).lower(),
         }
         safetensors.torch.save_file(
             state_dict,
             save_dir / 'adapter_model.safetensors',
             metadata=metadata,
         )
+
+    def _audit_adapter_keys(self, keys, save_dir):
+        """Post-save audit in the fork's standard style: warn loudly and drop a
+        marker file instead of raising, so an audit failure never destroys a
+        finished training run — but it cannot be missed either."""
+        problems = []
+        outside_layers = sorted(key for key in keys if '.layers.' not in key)
+        if outside_layers:
+            problems.append(('keys outside transformer layers', outside_layers))
+        if not self.train_adaln_modulation:
+            forbidden = sorted(
+                key for key in keys
+                if any(pattern in key for pattern in LORA_FORBIDDEN_MODULE_PATTERNS)
+            )
+            if forbidden:
+                problems.append(
+                    (f'keys matching forbidden patterns {list(LORA_FORBIDDEN_MODULE_PATTERNS)}', forbidden)
+                )
+        if not problems:
+            print(f'[{self.name}] adapter audit OK: {len(list(keys))} keys')
+            return
+        lines = ['ADAPTER AUDIT FAILED: checkpoint contains unexpected LoRA keys.']
+        for description, bad_keys in problems:
+            lines.append(f'{description} ({len(bad_keys)}), first 10:')
+            lines.extend(f'  {key}' for key in bad_keys[:10])
+        lines.append('Fix configure_adapter before training further.')
+        text = '\n'.join(lines)
+        print('\n' + '!' * 80 + f'\n{text}\n' + '!' * 80 + '\n')
+        with open(save_dir / 'ADAPTER_AUDIT_FAILED.txt', 'w') as marker:
+            marker.write(text + '\n')
 
 
 class Ideogram4ReferenceInitialLayer(nn.Module):

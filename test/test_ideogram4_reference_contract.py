@@ -12,6 +12,7 @@ from models.ideogram4_reference_contract import (
     apply_reference_dropout,
     build_model_timesteps,
     offset_reference_positions,
+    split_lora_target_modules,
 )
 
 
@@ -42,6 +43,18 @@ class ReferenceContractHelpersTest(unittest.TestCase):
 
         self.assertEqual(torch.count_nonzero(dropped).item(), 0)
         torch.testing.assert_close(preserved, reference)
+
+    def test_split_lora_targets_excludes_adaln_modulation(self):
+        names = [
+            'layers.0.attention.qkv',
+            'layers.0.adaln_modulation',
+            'layers.1.feed_forward.w1',
+            'layers.10.adaln_modulation',
+        ]
+        allowed, excluded = split_lora_target_modules(names)
+
+        self.assertEqual(allowed, ['layers.0.attention.qkv', 'layers.1.feed_forward.w1'])
+        self.assertEqual(excluded, ['layers.0.adaln_modulation', 'layers.10.adaln_modulation'])
 
 
 class _FakeTimestepEmbedding(nn.Module):

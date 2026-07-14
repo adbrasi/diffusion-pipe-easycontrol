@@ -6,6 +6,25 @@ import torch
 REFERENCE_IMAGE_INDICATOR = 4
 REFERENCE_CONTRACT_VERSION = 'ideogram4_reference_conditioning_v1'
 
+# adaln_modulation input is a function of the timestep embedding only, so LoRA
+# there cannot encode the ref->target relation; it can only re-tune global
+# modulation. With reference rows pinned at a clean timestep the adaln pathway
+# sees a shifted input distribution, making it the highest-risk place to adapt.
+# kohya musubi-tuner's Ideogram4 LoRA also targets only attention/feed_forward.
+LORA_FORBIDDEN_MODULE_PATTERNS = ('adaln_modulation',)
+
+
+def split_lora_target_modules(module_names, forbidden_patterns=LORA_FORBIDDEN_MODULE_PATTERNS):
+    """Split module names into (allowed, excluded) by forbidden substring."""
+    allowed = []
+    excluded = []
+    for name in module_names:
+        if any(pattern in name for pattern in forbidden_patterns):
+            excluded.append(name)
+        else:
+            allowed.append(name)
+    return allowed, excluded
+
 
 def apply_reference_dropout(reference_latents, dropout_probability, *, enabled=True):
     """Zero whole reference samples while preserving a fixed sequence shape."""
