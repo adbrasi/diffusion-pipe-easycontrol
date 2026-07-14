@@ -1,0 +1,16 @@
+# Target/reference files are paired by filename stem. For example:
+#   target_images/shot_0008.png
+#   reference_images/shot_0008.png
+#   target_images/shot_0008.txt  (describes the target and desired transition)
+
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 9
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/dataset/target_images'
+control_path = '/workspace/dataset/reference_images'
+num_repeats = 1

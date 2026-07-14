@@ -616,6 +616,52 @@ shift = 3
 ```
 This configuration should train a LoRA with 24GB VRAM. Models are saved in ComfyUI format.
 
+### Ideogram4 reference-conditioned IC-LoRA
+
+Use `type = 'ideogram4_ic_lora'` to train Ideogram 4 from paired target and
+reference images. The implementation packs one clean reference after the noisy
+target:
+
+```
+[text | noisy target | clean reference]
+```
+
+The reference uses its own temporal MRoPE coordinate and a clean per-token
+timestep. Attention is fully bidirectional between valid text, target, and
+reference tokens. Only the target span is decoded and included in the loss.
+This is reference-conditioned generation rather than pixel-mask inpainting.
+
+Start from the provided files:
+
+```
+examples/ideogram4_ic_lora.toml
+examples/ideogram4_ic_lora_dataset.toml
+```
+
+Every dataset `[[directory]]` must contain both `path` (target images) and
+`control_path` (reference images). Files are paired by filename stem. Both
+images pass through the same size bucket and VAE, and the pipeline rejects a
+pair if the resulting latent grids differ.
+
+Run cache validation before starting an expensive training job:
+
+```
+deepspeed --num_gpus=1 train.py --deepspeed \
+    --config examples/ideogram4_ic_lora.toml --cache_only
+```
+
+Then start training with the same command without `--cache_only`. The example
+is a 512px, rank-64 pilot for a 32GB GPU. A reference doubles the image-token
+part of the sequence, so 1024px requires materially more activation memory;
+increase `blocks_to_swap` only after the 512px path succeeds.
+
+Saved adapters include `reference_contract=ideogram4_reference_v1` and the
+packing parameters in safetensors metadata. Inference must reproduce this
+contract exactly. The adapter targets all linear layers inside
+`Ideogram4TransformerBlock`, matching the upstream Ideogram LoRA path. The
+Anima-specific AdaLN exclusion must not be copied here: Ideogram does not have
+Anima's internal double-LoRA path.
+
 ## Krea 2
 ```
 [model]

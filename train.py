@@ -390,6 +390,9 @@ if __name__ == '__main__':
     elif model_type == 'ideogram4':
         from models import ideogram4
         model = ideogram4.Ideogram4Pipeline(config)
+    elif model_type == 'ideogram4_ic_lora':
+        from models import ideogram4_ic_lora
+        model = ideogram4_ic_lora.Ideogram4ICLoRAPipeline(config)
     elif model_type == 'krea2':
         from models import krea2
         model = krea2.Krea2Pipeline(config)
