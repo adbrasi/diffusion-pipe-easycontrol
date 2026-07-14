@@ -635,8 +635,12 @@ Start from the provided files:
 
 ```
 examples/ideogram4_ic_lora.toml
+examples/ideogram4_ic_lora_smoke.toml
 examples/ideogram4_ic_lora_dataset.toml
 ```
+
+See `docs/ideogram4_ic_lora_runpod.md` for the complete preflight, smoke test,
+and compatible inference checklist.
 
 Every dataset `[[directory]]` must contain both `path` (target images) and
 `control_path` (reference images). Files are paired by filename stem. Both
@@ -655,9 +659,10 @@ is a 512px, rank-64 pilot for a 32GB GPU. A reference doubles the image-token
 part of the sequence, so 1024px requires materially more activation memory;
 increase `blocks_to_swap` only after the 512px path succeeds.
 
-Saved adapters include `reference_contract=ideogram4_reference_v1` and the
-packing parameters in safetensors metadata. Inference must reproduce this
-contract exactly. The adapter targets all linear layers inside
+Saved adapters include
+`reference_contract=ideogram4_reference_conditioning_v1` and the packing
+parameters in safetensors metadata. Inference must reproduce this contract
+exactly. The adapter targets all linear layers inside
 `Ideogram4TransformerBlock`, matching the upstream Ideogram LoRA path. The
 Anima-specific AdaLN exclusion must not be copied here: Ideogram does not have
 Anima's internal double-LoRA path.

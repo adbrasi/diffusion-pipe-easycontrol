@@ -4,7 +4,7 @@ import torch
 
 
 REFERENCE_IMAGE_INDICATOR = 4
-REFERENCE_CONTRACT_VERSION = 'ideogram4_reference_v1'
+REFERENCE_CONTRACT_VERSION = 'ideogram4_reference_conditioning_v1'
 
 
 def apply_reference_dropout(reference_latents, dropout_probability, *, enabled=True):

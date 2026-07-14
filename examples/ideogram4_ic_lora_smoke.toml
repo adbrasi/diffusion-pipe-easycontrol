@@ -1,0 +1,48 @@
+# Ten-step end-to-end smoke test for a single RTX 5090.
+
+output_dir = '/workspace/ideogram4_ic_lora_smoke_output'
+dataset = 'examples/ideogram4_ic_lora_dataset.toml'
+
+epochs = 1000
+max_steps = 10
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 1
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 0
+save_every_n_steps = 10
+activation_checkpointing = true
+partition_method = 'parameters'
+save_dtype = 'bfloat16'
+caching_batch_size = 1
+steps_per_print = 1
+blocks_to_swap = 8
+
+[model]
+type = 'ideogram4_ic_lora'
+diffusion_model = '/workspace/models/ideogram4_fp8_scaled.safetensors'
+vae = '/workspace/models/flux2-vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/qwen3vl_8b_fp8_scaled.safetensors', type = 'ideogram4'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+shift = 3
+
+[ideogram4_ic_lora]
+condition_dropout = 0.1
+reference_position_offset = 1
+reference_model_timestep = 1.0
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 5e-5
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false
