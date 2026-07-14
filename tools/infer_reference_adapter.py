@@ -1,0 +1,419 @@
+#!/usr/bin/env python3
+"""Reference-conditioned inference for diffusion-pipe adapters.
+
+This runner intentionally builds the model from the pipeline's ``to_layers()``
+implementation. Training and inference therefore share the exact sequence
+packing, role masks, MRoPE coordinates, clean-reference timestep, compact-token
+transform, and target-only output slicing.
+
+Supported model types:
+
+* ideogram4_ic_lora
+* ideogram4_ominicontrol
+* ideogram4_ominicontrol2
+* krea2_ic_lora
+* krea2_ominicontrol
+* krea2_ominicontrol2
+"""
+
+from __future__ import annotations
+
+import argparse
+import importlib
+import json
+from pathlib import Path
+import sys
+
+import toml
+import torch
+from PIL import Image, ImageOps
+from safetensors import safe_open
+from tqdm import tqdm
+
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+COMFY_ROOT = REPO_ROOT / 'submodules' / 'ComfyUI'
+sys.path.insert(0, str(REPO_ROOT))
+sys.path.insert(0, str(COMFY_ROOT))
+
+
+MODEL_CLASSES = {
+    'ideogram4_ic_lora': ('models.ideogram4_ic_lora', 'Ideogram4ICLoRAPipeline'),
+    'ideogram4_ominicontrol': ('models.ideogram4_ominicontrol', 'Ideogram4OminiControlPipeline'),
+    'ideogram4_ominicontrol2': ('models.ideogram4_ominicontrol2', 'Ideogram4OminiControl2Pipeline'),
+    'krea2_ic_lora': ('models.krea2_ic_lora', 'Krea2ICLoRAPipeline'),
+    'krea2_ominicontrol': ('models.krea2_ominicontrol', 'Krea2OminiControlPipeline'),
+    'krea2_ominicontrol2': ('models.krea2_ominicontrol2', 'Krea2OminiControl2Pipeline'),
+}
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Run a diffusion-pipe clean-reference adapter without ComfyUI.'
+    )
+    parser.add_argument('--config', type=Path, required=True, help='Training TOML used for the adapter.')
+    parser.add_argument('--adapter', type=Path, required=True, help='Checkpoint directory containing one safetensors file.')
+    parser.add_argument('--reference', type=Path, help='Reference/control image.')
+    parser.add_argument('--prompt', default='', help='Target prompt (Ideogram structured JSON is accepted).')
+    parser.add_argument('--negative-prompt', default='', help='Negative/unconditional prompt.')
+    parser.add_argument('--output', type=Path, default=Path('reference_sample.png'))
+    parser.add_argument('--width', type=int, default=1024)
+    parser.add_argument('--height', type=int, default=1024)
+    parser.add_argument('--steps', type=int, default=20)
+    parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--text-guidance', type=float, default=1.0)
+    parser.add_argument('--reference-guidance', type=float, default=1.0)
+    parser.add_argument('--adapter-scale', type=float, default=1.0)
+    parser.add_argument('--shift', type=float, default=None, help='Scheduler shift; defaults to model config or 3.')
+    parser.add_argument('--blocks-to-swap', type=int, default=None, help='Override block swapping from the TOML.')
+    parser.add_argument(
+        '--reference-fit', choices=('crop', 'stretch', 'exact'), default='crop',
+        help='How to map the reference to the requested output size.',
+    )
+    parser.add_argument('--allow-contract-mismatch', action='store_true')
+    parser.add_argument(
+        '--validate-only', action='store_true',
+        help='Validate config/checkpoint metadata without loading CUDA models.',
+    )
+    return parser.parse_args()
+
+
+def find_adapter_file(path: Path) -> Path:
+    if path.is_file():
+        if path.suffix != '.safetensors':
+            raise ValueError(f'Adapter file must be safetensors: {path}')
+        return path
+    files = sorted(path.glob('*.safetensors'))
+    if not files:
+        raise FileNotFoundError(f'No safetensors adapter found in {path}')
+    if len(files) != 1:
+        raise RuntimeError(f'Expected one safetensors adapter in {path}, found {len(files)}')
+    return files[0]
+
+
+def read_metadata(adapter_file: Path) -> dict[str, str]:
+    with safe_open(adapter_file, framework='pt', device='cpu') as handle:
+        return dict(handle.metadata() or {})
+
+
+def load_raw_config(path: Path) -> dict:
+    with path.open() as handle:
+        return json.loads(json.dumps(toml.load(handle)))
+
+
+def expected_contract(config: dict) -> dict[str, str]:
+    model_type = config['model']['type']
+    expected = {'model_type': model_type, 'sequence_layout': 'text,target,reference'}
+    if model_type.startswith('ideogram4_'):
+        section = config.get('ideogram4_ic_lora', {})
+        control = config.get('ominicontrol', {})
+        expected.update({
+            'reference_model_timestep': str(float(control.get(
+                'reference_model_timestep', section.get('reference_model_timestep', 1.0)
+            ))),
+        })
+        if 'ominicontrol' in model_type:
+            expected['condition_only_lora'] = str(bool(control.get('condition_only_lora', True))).lower()
+    else:
+        section_name = 'krea2_ic_lora' if model_type == 'krea2_ic_lora' else 'ominicontrol'
+        section = config.get(section_name, {})
+        expected.update({
+            'reference_model_timestep': '0.0',
+            'position_mode': str(section.get('position_mode', 'subject')),
+            'condition_token_stride': str(int(section.get('condition_token_stride', 1))),
+        })
+        if 'ominicontrol' in model_type:
+            expected['condition_only_lora'] = str(bool(section.get('condition_only_lora', True))).lower()
+    if model_type.endswith('ominicontrol2'):
+        control = config.get('ominicontrol', {})
+        expected.update({
+            'control_family': 'ominicontrol_v2',
+            'condition_token_stride': str(int(control.get('condition_token_stride', 2))),
+            'independent_condition': str(bool(control.get('independent_condition', True))).lower(),
+            'condition_encode': 'pixel_bilinear',
+        })
+    return expected
+
+
+def validate_contract(config: dict, metadata: dict[str, str], allow_mismatch: bool) -> None:
+    model_type = config['model']['type']
+    if model_type not in MODEL_CLASSES:
+        raise ValueError(f'Unsupported reference model type: {model_type}')
+    if not metadata:
+        message = 'Adapter has no reference-contract metadata; exact compatibility cannot be verified.'
+        if allow_mismatch:
+            print(f'WARNING: {message}')
+            return
+        raise RuntimeError(message + ' Use --allow-contract-mismatch only for a known legacy checkpoint.')
+
+    mismatches = []
+    missing = []
+    for key, expected in expected_contract(config).items():
+        actual = metadata.get(key)
+        if actual is None:
+            missing.append(key)
+        elif actual != expected:
+            mismatches.append(f'{key}: checkpoint={actual!r}, config={expected!r}')
+    if missing or mismatches:
+        details = []
+        if missing:
+            details.append('missing metadata: ' + ', '.join(missing))
+        details.extend(mismatches)
+        message = 'Reference adapter contract mismatch:\n  ' + '\n  '.join(details)
+        if allow_mismatch:
+            print('WARNING: ' + message)
+        else:
+            raise RuntimeError(message)
+
+
+def normalize_runtime_config(config: dict) -> None:
+    from utils import common
+
+    model = config['model']
+    dtype_name = model['dtype']
+    model['dtype'] = common.DTYPE_MAP[dtype_name]
+    for key in ('transformer_dtype', 'diffusion_model_dtype'):
+        if key in model:
+            model[key] = common.DTYPE_MAP[model[key]]
+    adapter = config.get('adapter')
+    if adapter is None:
+        raise ValueError('Inference requires the original [adapter] section in the TOML')
+    adapter['alpha'] = adapter.get('alpha', adapter['rank'])
+    adapter['dropout'] = 0.0
+    adapter['dtype'] = common.DTYPE_MAP[adapter.get('dtype', dtype_name)]
+    config.setdefault('reentrant_activation_checkpointing', False)
+    common.AUTOCAST_DTYPE = model['dtype']
+
+
+def create_pipeline(config: dict):
+    model_type = config['model']['type']
+    module_name, class_name = MODEL_CLASSES[model_type]
+    module = importlib.import_module(module_name)
+    return getattr(module, class_name)(config)
+
+
+def load_reference_pixels(path: Path, width: int, height: int, fit: str) -> torch.Tensor:
+    image = Image.open(path)
+    if image.mode == 'RGBA' or ('transparency' in image.info and image.mode != 'RGB'):
+        rgba = image.convert('RGBA')
+        canvas = Image.new('RGBA', rgba.size, (255, 255, 255, 255))
+        canvas.alpha_composite(rgba)
+        image = canvas.convert('RGB')
+    else:
+        image = image.convert('RGB')
+    requested = (width, height)
+    if fit == 'exact':
+        if image.size != requested:
+            raise ValueError(f'Reference is {image.size}, expected exactly {requested}')
+    elif fit == 'stretch':
+        image = image.resize(requested, Image.Resampling.LANCZOS)
+    else:
+        image = ImageOps.fit(image, requested, method=Image.Resampling.LANCZOS)
+
+    import torchvision.transforms.functional as TF
+    pixels = TF.pil_to_tensor(image).to(torch.float32) / 127.5 - 1.0
+    return pixels.unsqueeze(0)
+
+
+@torch.no_grad()
+def encode_reference(pipeline, path: Path, width: int, height: int, fit: str) -> torch.Tensor:
+    from comfy import model_management
+
+    pixels = load_reference_pixels(path, width, height, fit)
+    if pipeline.is_video_vae:
+        pixels = pixels.unsqueeze(2)
+    pixels = pipeline.prepare_reference_media(pixels)
+    vae = pipeline.get_vae()
+    vae.load_model_if_needed()
+    latents = pipeline.vae_encode(pixels.to('cuda', pipeline.dtype)).float().cpu()
+    model_management.unload_all_models()
+    torch.cuda.empty_cache()
+    return latents
+
+
+def scale_adapter(pipeline, scale: float) -> int:
+    count = 0
+    for module in pipeline.diffusion_model.modules():
+        scaling = getattr(module, 'scaling', None)
+        if not isinstance(scaling, dict):
+            continue
+        for adapter_name in list(scaling):
+            scaling[adapter_name] *= scale
+            count += 1
+    return count
+
+
+def setup_diffusion_pipeline(pipeline, adapter_path: Path, config: dict, blocks_to_swap: int | None):
+    pipeline.load_diffusion_model()
+    pipeline.configure_adapter(config['adapter'])
+    pipeline.load_adapter_weights(adapter_path)
+    pipeline.diffusion_model.eval()
+
+    blocks = config.get('blocks_to_swap', 0) if blocks_to_swap is None else blocks_to_swap
+    if blocks:
+        pipeline.enable_block_swap(blocks)
+        pipeline.prepare_block_swap_inference()
+    else:
+        pipeline.diffusion_model.to('cuda')
+
+    sequential = torch.nn.Sequential(*pipeline.to_layers())
+    sequential.eval()
+    return sequential, blocks
+
+
+def call_model(model, latent, timestep, conds, reference):
+    return model((latent, timestep, *conds, reference)).float()
+
+
+@torch.no_grad()
+def denoise(
+    pipeline,
+    model,
+    reference,
+    target_shape,
+    steps,
+    seed,
+    text_guidance,
+    reference_guidance,
+    shift,
+):
+    from diffusers import FlowMatchEulerDiscreteScheduler
+
+    scheduler = FlowMatchEulerDiscreteScheduler(shift=shift)
+    sigmas = torch.linspace(1.0, 1.0 / steps, steps)
+    scheduler.set_timesteps(sigmas=sigmas, device='cuda')
+    generator = torch.Generator(device='cuda').manual_seed(seed)
+    latent = torch.randn(target_shape, generator=generator, device='cuda')
+    reference = reference.to('cuda')
+    zero_reference = torch.zeros_like(reference)
+    conds = tuple(value.to('cuda') for value in pipeline.conds)
+    unconds = tuple(value.to('cuda') for value in getattr(pipeline, 'unconds', ()))
+
+    for step in tqdm(scheduler.timesteps, desc='Reference sampling'):
+        timestep = (step / 1000).float().view(1)
+        if text_guidance == 1.0 and reference_guidance == 1.0:
+            velocity = call_model(model, latent, timestep, conds, reference)
+        elif text_guidance != 1.0 and reference_guidance == 1.0:
+            negative = call_model(model, latent, timestep, unconds, reference)
+            full = call_model(model, latent, timestep, conds, reference)
+            velocity = negative + text_guidance * (full - negative)
+        elif text_guidance == 1.0:
+            no_reference = call_model(model, latent, timestep, conds, zero_reference)
+            full = call_model(model, latent, timestep, conds, reference)
+            velocity = no_reference + reference_guidance * (full - no_reference)
+        else:
+            unconditional = call_model(model, latent, timestep, unconds, zero_reference)
+            with_reference = call_model(model, latent, timestep, unconds, reference)
+            full = call_model(model, latent, timestep, conds, reference)
+            velocity = (
+                unconditional
+                + reference_guidance * (with_reference - unconditional)
+                + text_guidance * (full - with_reference)
+            )
+        latent = scheduler.step(velocity, step, latent, return_dict=False)[0]
+    return latent
+
+
+def offload_diffusion(pipeline, sequential) -> None:
+    del sequential
+    pipeline.diffusion_model.to('cpu')
+    torch.cuda.empty_cache()
+
+
+@torch.no_grad()
+def decode_and_save(pipeline, latent: torch.Tensor, output: Path) -> None:
+    from comfy import model_management
+    import torchvision.utils
+
+    vae = pipeline.get_vae()
+    vae.load_model_if_needed()
+    image = pipeline.vae_decode(latent)
+    model_management.unload_all_models()
+
+    # Comfy VAE output is channel-last; Krea's image VAE retains a frame axis.
+    if image.ndim == 5:
+        image = image[:, 0]
+    if image.ndim != 4:
+        raise RuntimeError(f'Unexpected decoded image shape: {tuple(image.shape)}')
+    if image.shape[-1] in (3, 4):
+        image = image.movedim(-1, 1)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    torchvision.utils.save_image(image[:, :3].float().clamp(0, 1).cpu(), output)
+
+
+def main():
+    args = parse_args()
+    config = load_raw_config(args.config)
+    adapter_file = find_adapter_file(args.adapter)
+    metadata = read_metadata(adapter_file)
+    validate_contract(config, metadata, args.allow_contract_mismatch)
+    print(json.dumps({
+        'model_type': config['model']['type'],
+        'adapter': str(adapter_file),
+        'contract': metadata.get('reference_contract', 'unknown'),
+        'control_family': metadata.get('control_family', 'ic_lora'),
+    }, indent=2))
+    if args.validate_only:
+        return
+    if args.reference is None:
+        raise ValueError('--reference is required unless --validate-only is used')
+    if args.width <= 0 or args.height <= 0 or args.steps <= 0:
+        raise ValueError('width, height, and steps must be positive')
+
+    normalize_runtime_config(config)
+    pipeline = create_pipeline(config)
+    if args.width % pipeline.pixels_round_to_multiple or args.height % pipeline.pixels_round_to_multiple:
+        raise ValueError(
+            f'width/height must be multiples of {pipeline.pixels_round_to_multiple} for {pipeline.name}'
+        )
+    need_unconditional = args.text_guidance != 1.0
+    pipeline.prepare_sample_test(
+        args.prompt,
+        negative_prompt=args.negative_prompt,
+        cfg=2 if need_unconditional else 1,
+    )
+    full_reference = encode_reference(
+        pipeline, args.reference, args.width, args.height, args.reference_fit
+    )
+    target_shape = (
+        (1, pipeline.channels, args.height // pipeline.spatial_compression, args.width // pipeline.spatial_compression)
+        if not pipeline.is_video_vae else
+        (1, pipeline.channels, 1, args.height // pipeline.spatial_compression, args.width // pipeline.spatial_compression)
+    )
+
+    sequential, blocks = setup_diffusion_pipeline(
+        pipeline,
+        adapter_file,
+        config,
+        args.blocks_to_swap,
+    )
+    scaled = scale_adapter(pipeline, args.adapter_scale)
+    print(f'Adapter scale applied to {scaled} PEFT modules; block swap={blocks}')
+
+    target_template = torch.zeros(target_shape, dtype=full_reference.dtype)
+    reference = pipeline.prepare_reference_latents(
+        full_reference,
+        target_template,
+        timestep_quantile=0.5,
+    )
+    shift = args.shift
+    if shift is None:
+        shift = float(config['model'].get('shift', 3.0))
+    latent = denoise(
+        pipeline,
+        sequential,
+        reference,
+        target_shape,
+        args.steps,
+        args.seed,
+        args.text_guidance,
+        args.reference_guidance,
+        shift,
+    )
+    offload_diffusion(pipeline, sequential)
+    decode_and_save(pipeline, latent, args.output)
+    print(f'Saved {args.output}')
+
+
+if __name__ == '__main__':
+    main()

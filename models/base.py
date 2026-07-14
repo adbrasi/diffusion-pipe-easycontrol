@@ -313,7 +313,8 @@ class BasePipeline(CommonPipeline):
     def load_adapter_weights(self, adapter_path):
         if is_main_process():
             print(f'Loading adapter weights from path {adapter_path}')
-        safetensors_files = list(Path(adapter_path).glob('*.safetensors'))
+        adapter_path = Path(adapter_path)
+        safetensors_files = [adapter_path] if adapter_path.is_file() else list(adapter_path.glob('*.safetensors'))
         if len(safetensors_files) == 0:
             raise RuntimeError(f'No safetensors file found in {adapter_path}')
         if len(safetensors_files) > 1:
@@ -615,7 +616,8 @@ class ComfyPipeline(CommonPipeline):
     def load_adapter_weights(self, adapter_path):
         if is_main_process():
             print(f'Loading adapter weights from path {adapter_path}')
-        safetensors_files = list(Path(adapter_path).glob('*.safetensors'))
+        adapter_path = Path(adapter_path)
+        safetensors_files = [adapter_path] if adapter_path.is_file() else list(adapter_path.glob('*.safetensors'))
         if len(safetensors_files) == 0:
             raise RuntimeError(f'No safetensors file found in {adapter_path}')
         if len(safetensors_files) > 1:

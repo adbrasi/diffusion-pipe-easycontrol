@@ -1,0 +1,124 @@
+# Reference adapters for Ideogram 4 and Krea 2
+
+This fork contains three clean-reference adapter families for each model:
+
+| Model type | Adapter behavior |
+|---|---|
+| `ideogram4_ic_lora` | Global task LoRA over `[text, noisy target, clean reference]` |
+| `ideogram4_ominicontrol` | OminiControl v1; LoRA runs only on reference rows |
+| `ideogram4_ominicontrol2` | v1 plus compact reference encoding and independent condition attention |
+| `krea2_ic_lora` | Global task LoRA over `[text, noisy target, clean reference]` |
+| `krea2_ominicontrol` | OminiControl v1; LoRA runs only on reference rows |
+| `krea2_ominicontrol2` | v1 plus compact reference encoding and independent condition attention |
+
+All variants supervise and decode target tokens only. Ideogram uses internal
+reference timestep `1.0` (clean); Krea uses reference timestep `0.0` (clean).
+OminiControl adapters preserve PEFT checkpoint keys while routing each LoRA
+delta only to reference rows. Target and text rows execute the frozen base
+linear path.
+
+## Dataset contract
+
+Target and reference files must have matching stems:
+
+```text
+dataset/
+  target_images/
+    shot_0001.png
+    shot_0001.txt
+  reference_images/
+    shot_0001.png
+```
+
+The caption describes the target, including the intended change relative to
+the reference. Each dataset directory must define `control_path`; see
+`examples/ideogram4_reference_dataset.toml` and
+`examples/krea2_reference_dataset.toml`.
+
+For next-shot consistency, avoid a dataset made only from adjacent frames.
+Mix temporal gaps so copying the reference is not the easiest solution.
+
+OminiControl2 downsamples reference pixels before VAE encoding. Do not reuse a
+latent cache made with IC-LoRA/OminiControl v1; regenerate it after selecting a
+v2 config. The saved checkpoint records `condition_encode`, stride, position
+scale, attention independence and condition-only routing.
+
+## Safe pilot order
+
+Start with 512px and one GPU:
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 \
+deepspeed --num_gpus=1 train.py --deepspeed \
+  --config examples/ideogram4_ominicontrol.toml \
+  --cache_only --regenerate_cache
+```
+
+Then run a short training pilot by lowering `max_steps` to 20-50 in a copied
+config. Verify that a checkpoint contains `adapter_model.safetensors` and no
+`ADAPTER_AUDIT_FAILED.txt` before starting a long run.
+
+```bash
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 \
+deepspeed --num_gpus=1 train.py --deepspeed \
+  --config /workspace/configs/ideogram4_ominicontrol_smoke.toml
+```
+
+Use the equivalent Krea examples for Krea 2. OminiControl condition-only
+routing can leave the final block's reference-only output/MLP LoRA parameters
+unused. The supplied examples intentionally use a single GPU, avoiding DDP's
+unused-parameter constraint.
+
+## Inference without ComfyUI
+
+`tools/infer_reference_adapter.py` uses the training pipeline's own
+`to_layers()` objects. It does not reproduce packing separately. This keeps
+training and inference identical for role masks, positions, timesteps,
+compact-reference transforms and output slicing.
+
+First validate checkpoint metadata without loading a model:
+
+```bash
+python tools/infer_reference_adapter.py \
+  --config /workspace/configs/ideogram4_ominicontrol_smoke.toml \
+  --adapter /workspace/output/20260714_000000/step20 \
+  --validate-only
+```
+
+Generate an image:
+
+```bash
+python tools/infer_reference_adapter.py \
+  --config /workspace/configs/ideogram4_ominicontrol_smoke.toml \
+  --adapter /workspace/output/20260714_000000/step20 \
+  --reference /workspace/test/reference.png \
+  --prompt '{"description":"same character walking through the room"}' \
+  --width 512 --height 512 \
+  --steps 20 --seed 123 \
+  --text-guidance 1.0 \
+  --reference-guidance 1.0 \
+  --output /workspace/test/result.png
+```
+
+The adapter argument may be either the safetensors file or a directory that
+contains exactly one safetensors file. The runner offloads the diffusion model
+before VAE decode and honors `blocks_to_swap` from the training config.
+
+Independent guidance is available because reference dropout is part of the
+training recipe:
+
+```text
+v = v_unconditional
+  + reference_guidance * (v_reference - v_unconditional)
+  + text_guidance * (v_full - v_reference)
+```
+
+Increase reference guidance only after a scale of `1.0` works. High values can
+turn consistency into copying. `--reference-fit exact` is recommended for
+spatial controls; it rejects accidental resize/crop misalignment.
+
+OminiControl2 inference currently uses its compact and independent condition
+contract without KV caching. This is correct but not yet the paper's optimized
+runtime. A later cache optimization can be added without changing checkpoints.
