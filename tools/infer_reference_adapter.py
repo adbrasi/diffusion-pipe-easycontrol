@@ -30,11 +30,12 @@ from PIL import Image, ImageOps
 from safetensors import safe_open
 from tqdm import tqdm
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMFY_ROOT = REPO_ROOT / 'submodules' / 'ComfyUI'
 sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(COMFY_ROOT))
+
+from tools.krea2_sampling import build_krea2_timesteps
 
 
 MODEL_CLASSES = {
@@ -64,7 +65,18 @@ def parse_args():
     parser.add_argument('--text-guidance', type=float, default=1.0)
     parser.add_argument('--reference-guidance', type=float, default=1.0)
     parser.add_argument('--adapter-scale', type=float, default=1.0)
-    parser.add_argument('--shift', type=float, default=None, help='Scheduler shift; defaults to model config or 3.')
+    parser.add_argument(
+        '--shift', type=float, default=None,
+        help='FlowMatchEuler shift for non-Krea models; defaults to model config or 3.',
+    )
+    parser.add_argument(
+        '--mu', type=float, default=None,
+        help='Explicit Krea 2 timestep-shift mu. By default it is derived from output resolution.',
+    )
+    parser.add_argument('--krea-min-res', type=int, default=256)
+    parser.add_argument('--krea-max-res', type=int, default=1280)
+    parser.add_argument('--krea-y1', type=float, default=0.5)
+    parser.add_argument('--krea-y2', type=float, default=1.15)
     parser.add_argument('--blocks-to-swap', type=int, default=None, help='Override block swapping from the TOML.')
     parser.add_argument(
         '--reference-fit', choices=('crop', 'stretch', 'exact'), default='crop',
@@ -276,12 +288,16 @@ def denoise(
     text_guidance,
     reference_guidance,
     shift,
+    width,
+    height,
+    krea_mu,
+    krea_min_res,
+    krea_max_res,
+    krea_y1,
+    krea_y2,
 ):
     from diffusers import FlowMatchEulerDiscreteScheduler
 
-    scheduler = FlowMatchEulerDiscreteScheduler(shift=shift)
-    sigmas = torch.linspace(1.0, 1.0 / steps, steps)
-    scheduler.set_timesteps(sigmas=sigmas, device='cuda')
     generator = torch.Generator(device='cuda').manual_seed(seed)
     latent = torch.randn(target_shape, generator=generator, device='cuda')
     reference = reference.to('cuda')
@@ -289,28 +305,60 @@ def denoise(
     conds = tuple(value.to('cuda') for value in pipeline.conds)
     unconds = tuple(value.to('cuda') for value in getattr(pipeline, 'unconds', ()))
 
-    for step in tqdm(scheduler.timesteps, desc='Reference sampling'):
-        timestep = (step / 1000).float().view(1)
+    def predict_velocity(timestep):
         if text_guidance == 1.0 and reference_guidance == 1.0:
-            velocity = call_model(model, latent, timestep, conds, reference)
+            return call_model(model, latent, timestep, conds, reference)
         elif text_guidance != 1.0 and reference_guidance == 1.0:
             negative = call_model(model, latent, timestep, unconds, reference)
             full = call_model(model, latent, timestep, conds, reference)
-            velocity = negative + text_guidance * (full - negative)
+            return negative + text_guidance * (full - negative)
         elif text_guidance == 1.0:
             no_reference = call_model(model, latent, timestep, conds, zero_reference)
             full = call_model(model, latent, timestep, conds, reference)
-            velocity = no_reference + reference_guidance * (full - no_reference)
+            return no_reference + reference_guidance * (full - no_reference)
         else:
             unconditional = call_model(model, latent, timestep, unconds, zero_reference)
             with_reference = call_model(model, latent, timestep, unconds, reference)
             full = call_model(model, latent, timestep, conds, reference)
-            velocity = (
+            return (
                 unconditional
                 + reference_guidance * (with_reference - unconditional)
                 + text_guidance * (full - with_reference)
             )
-        latent = scheduler.step(velocity, step, latent, return_dict=False)[0]
+
+    if pipeline.name.startswith('krea2_'):
+        patch = int(pipeline.diffusion_model.patch)
+        sequence_length = (target_shape[-2] // patch) * (target_shape[-1] // patch)
+        schedule, resolved_mu = build_krea2_timesteps(
+            sequence_length,
+            steps,
+            min_resolution=krea_min_res,
+            max_resolution=krea_max_res,
+            spatial_compression=pipeline.spatial_compression,
+            patch_size=patch,
+            y1=krea_y1,
+            y2=krea_y2,
+            mu=krea_mu,
+        )
+        print(
+            f'Krea 2 official Euler schedule: {width}x{height}, '
+            f'image_tokens={sequence_length}, mu={resolved_mu:.6f}'
+        )
+        pairs = zip(schedule[:-1], schedule[1:])
+        for current, next_value in tqdm(
+            pairs, total=steps, desc='Reference sampling (Krea 2)'
+        ):
+            timestep = latent.new_full((latent.shape[0],), current)
+            velocity = predict_velocity(timestep)
+            latent = latent + (next_value - current) * velocity
+    else:
+        scheduler = FlowMatchEulerDiscreteScheduler(shift=shift)
+        sigmas = torch.linspace(1.0, 1.0 / steps, steps)
+        scheduler.set_timesteps(sigmas=sigmas, device='cuda')
+        for step in tqdm(scheduler.timesteps, desc='Reference sampling'):
+            timestep = (step / 1000).float().view(1)
+            velocity = predict_velocity(timestep)
+            latent = scheduler.step(velocity, step, latent, return_dict=False)[0]
     return latent
 
 
@@ -396,9 +444,15 @@ def main():
         target_template,
         timestep_quantile=0.5,
     )
+    is_krea = pipeline.name.startswith('krea2_')
+    if is_krea and args.shift is not None:
+        raise ValueError('Krea 2 uses --mu (or resolution-derived mu), not --shift')
     shift = args.shift
-    if shift is None:
+    if not is_krea and shift is None:
         shift = float(config['model'].get('shift', 3.0))
+    krea_mu = args.mu
+    if is_krea and krea_mu is None and 'mu' in config['model']:
+        krea_mu = float(config['model']['mu'])
     latent = denoise(
         pipeline,
         sequential,
@@ -409,6 +463,13 @@ def main():
         args.text_guidance,
         args.reference_guidance,
         shift,
+        args.width,
+        args.height,
+        krea_mu,
+        args.krea_min_res,
+        args.krea_max_res,
+        args.krea_y1,
+        args.krea_y2,
     )
     offload_diffusion(pipeline, sequential)
     decode_and_save(pipeline, latent, args.output)

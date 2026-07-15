@@ -185,6 +185,7 @@ class Krea2ReferencePipeline(Krea2Pipeline):
         save_dir = Path(save_dir)
         self.peft_config.save_pretrained(save_dir)
         state_dict = {f'diffusion_model.{key}': value for key, value in state_dict.items()}
+        self._audit_adapter_keys(state_dict.keys(), save_dir)
         metadata = {
             'format': 'pt',
             'diffusion_pipe_commit': str(get_git_commit()),
@@ -205,6 +206,35 @@ class Krea2ReferencePipeline(Krea2Pipeline):
 
     def get_reference_metadata(self):
         return {}
+
+    def _audit_adapter_keys(self, keys, save_dir):
+        """Leave a visible marker if a completed save violates the Krea contract."""
+        keys = list(keys)
+        problems = []
+        if not keys:
+            problems.append(('checkpoint has no trainable adapter keys', []))
+        outside_blocks = sorted(key for key in keys if '.blocks.' not in key)
+        if outside_blocks:
+            problems.append(('keys outside SingleStreamBlock modules', outside_blocks))
+        non_lora = sorted(
+            key for key in keys if '.lora_A.' not in key and '.lora_B.' not in key
+        )
+        if non_lora:
+            problems.append(('trainable keys that are not LoRA A/B tensors', non_lora))
+
+        if not problems:
+            print(f'[{self.name}] adapter audit OK: {len(keys)} keys')
+            return
+
+        lines = ['ADAPTER AUDIT FAILED: checkpoint violates the Krea reference contract.']
+        for description, bad_keys in problems:
+            lines.append(f'{description} ({len(bad_keys)}), first 10:')
+            lines.extend(f'  {key}' for key in bad_keys[:10])
+        lines.append('Do not use this checkpoint for inference until configure_adapter is fixed.')
+        message = '\n'.join(lines)
+        print('\n' + '!' * 80 + f'\n{message}\n' + '!' * 80 + '\n')
+        with open(save_dir / 'ADAPTER_AUDIT_FAILED.txt', 'w') as marker:
+            marker.write(message + '\n')
 
 
 class Krea2ReferenceInitialLayer(nn.Module):

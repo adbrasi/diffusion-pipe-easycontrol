@@ -71,6 +71,19 @@ routing can leave the final block's reference-only output/MLP LoRA parameters
 unused. The supplied examples intentionally use a single GPU, avoiding DDP's
 unused-parameter constraint.
 
+For the one-reference Krea 2 IC-LoRA pilot, run the dependency-free preflight
+before allocating the GPU:
+
+```bash
+python tools/preflight_krea2_ic_lora.py \
+  --config examples/krea2_ic_lora.toml
+```
+
+The expected dataset pair is `control/reference image -> target image`. The
+caption belongs to the target and should state the intended change. The Krea
+preflight validates one control per target, matching stems, captions, model
+paths, one-frame buckets and the 512px token count.
+
 ## Inference without ComfyUI
 
 `tools/infer_reference_adapter.py` uses the training pipeline's own
@@ -118,6 +131,12 @@ v = v_unconditional
 Increase reference guidance only after a scale of `1.0` works. High values can
 turn consistency into copying. `--reference-fit exact` is recommended for
 spatial controls; it rejects accidental resize/crop misalignment.
+
+Krea 2 inference follows its official resolution-dependent flow schedule. The
+runner derives `mu` from the image-token count using the official
+`y1=0.5`/`y2=1.15`, 256px/1280px endpoints. Use `--mu 1.15` only when an
+experiment deliberately needs a fixed Krea schedule; `--shift` is reserved for
+the non-Krea schedulers.
 
 OminiControl2 inference currently uses its compact and independent condition
 contract without KV caching. This is correct but not yet the paper's optimized
