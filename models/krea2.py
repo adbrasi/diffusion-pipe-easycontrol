@@ -140,7 +140,11 @@ class Krea2Pipeline(ComfyPipeline):
         if shift := self.model_config.get('shift', None):
             t = (t * shift) / (1 + (shift - 1) * t)
         elif self.model_config.get('flux_shift', False):
-            mu = get_lin_function(y1=0.5, y2=1.15)((h // 2) * (w // 2))
+            # Krea 2's official sampler interpolates mu over image-token count
+            # between 256px (256 tokens, mu 0.5) and 1280px (6400 tokens,
+            # mu 1.15) — see tools/krea2_sampling.py. get_lin_function's
+            # default x2=4096 is Flux's 1024px endpoint and would overshoot mu.
+            mu = get_lin_function(x1=256, y1=0.5, x2=6400, y2=1.15)((h // 2) * (w // 2))
             t = time_shift(mu, 1.0, t)
 
         noise = torch.randn_like(latents)

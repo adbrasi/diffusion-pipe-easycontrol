@@ -526,9 +526,10 @@ class ComfyPipeline(CommonPipeline):
 
             self.text_encoders.append(ModelWrapper(load_fn))
 
-    def dequantize(self, model, diffusion_model_dtype):
+    def dequantize(self, model, diffusion_model_dtype, name_prefix=''):
         operations = comfy.ops.disable_weight_init
         for mod_name, module in model.named_children():
+            full_mod_name = f'{name_prefix}{mod_name}'
             is_quantized = False
             for p_name, p in module.named_parameters(recurse=False):
                 if p.__class__.__name__ == 'QuantizedTensor':
@@ -536,7 +537,11 @@ class ComfyPipeline(CommonPipeline):
                     p = getattr(module, p_name)
                     is_quantized = True
 
-                name = f'{mod_name}.{p_name}'
+                # Full dotted path from the model root. Matching on the immediate
+                # child name alone would let parameters of nested modules (e.g.
+                # tmlp.0.weight, txtfusion.layerwise_blocks.*) slip past
+                # keep_in_high_precision and get cast to the low-precision dtype.
+                name = f'{full_mod_name}.{p_name}'
                 if any(keyword in name for keyword in self.keep_in_high_precision) or p.ndim == 1:
                     continue
                 p.data = p.data.to(diffusion_model_dtype)
@@ -552,7 +557,7 @@ class ComfyPipeline(CommonPipeline):
                 model._modules[mod_name] = new_linear
 
             if len(list(module.children())) > 0:
-                self.dequantize(module, diffusion_model_dtype)
+                self.dequantize(module, diffusion_model_dtype, name_prefix=f'{full_mod_name}.')
 
     def load_diffusion_model(self):
         dtype = self.model_config['dtype']
@@ -633,7 +638,35 @@ class ComfyPipeline(CommonPipeline):
             if k not in model_parameters:
                 raise RuntimeError(f'modified_state_dict key {k} is not in the model parameters')
             modified_state_dict[k] = v
-        self.diffusion_model.load_state_dict(modified_state_dict, strict=False)
+        # Do not call load_state_dict() on the whole mixed-precision model with
+        # this sparse LoRA-only dictionary. ComfyUI quantized Linear modules
+        # treat an absent base ``weight`` as a real missing load and replace it
+        # with None even under strict=False. Copying the already validated LoRA
+        # parameters directly preserves the fp8 base weights.
+        named_parameters = dict(self.diffusion_model.named_parameters())
+        model_lora_parameters = {
+            name for name in named_parameters if '.lora_A.' in name or '.lora_B.' in name
+        }
+        not_loaded = model_lora_parameters - set(modified_state_dict)
+        if not_loaded and is_main_process():
+            examples = ', '.join(sorted(not_loaded)[:5])
+            print(
+                f'WARNING: {len(not_loaded)} adapter parameters in the model were not present in '
+                f'{safetensors_files[0]} and keep their fresh initialization (e.g. {examples}). '
+                'This is only expected when warm-starting a wider adapter from a narrower checkpoint.'
+            )
+        with torch.no_grad():
+            for name, value in modified_state_dict.items():
+                parameter = named_parameters[name]
+                if parameter.dtype not in (torch.float32, torch.bfloat16, torch.float16):
+                    # copy_ would silently quantize the adapter (e.g. to fp8) if a
+                    # config ever lets the adapter parameters inherit a low-precision
+                    # dtype. Fail loudly instead.
+                    raise RuntimeError(
+                        f'Refusing to load adapter weight {name} into a {parameter.dtype} parameter; '
+                        'set [adapter] dtype to bfloat16/float32 in the config.'
+                    )
+                parameter.copy_(value.to(device=parameter.device, dtype=parameter.dtype))
 
     def load_and_fuse_adapter(self, path):
         raise NotImplementedError()

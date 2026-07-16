@@ -28,6 +28,11 @@ from utils.common import AUTOCAST_DTYPE, get_git_commit, is_main_process
 class Krea2ReferencePipeline(Krea2Pipeline):
     name = 'krea2_reference'
     config_section = 'krea2_reference'
+    # The reference pipeline replaces InitialLayer with its own class; the
+    # inherited list would silently skip activation checkpointing for it
+    # (DeepSpeed matches checkpointable layers by exact class name), leaving
+    # the trainable txtfusion without checkpointing.
+    checkpointable_layers = ['Krea2ReferenceInitialLayer', 'TransformerLayer']
     # Key substrings a saved adapter is allowed to touch; the save audit
     # flags anything else. Subclasses widen this to match their contract.
     adapter_allowed_key_substrings = ('.blocks.',)
@@ -189,10 +194,15 @@ class Krea2ReferencePipeline(Krea2Pipeline):
         self.peft_config.save_pretrained(save_dir)
         state_dict = {f'diffusion_model.{key}': value for key, value in state_dict.items()}
         self._audit_adapter_keys(state_dict.keys(), save_dir)
+        base_model_path = Path(self.model_config['diffusion_model'])
         metadata = {
             'format': 'pt',
             'diffusion_pipe_commit': str(get_git_commit()),
             'model_type': self.name,
+            # Identity of the frozen base the adapter was trained on, so
+            # inference can warn about e.g. a Raw-trained LoRA on Turbo.
+            'base_model_file': base_model_path.name,
+            'base_model_size': str(base_model_path.stat().st_size if base_model_path.exists() else 0),
             'reference_contract': 'krea2_clean_reference_v1',
             'sequence_layout': 'text,target,reference',
             'position_mode': self.position_mode,

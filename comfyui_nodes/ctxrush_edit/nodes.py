@@ -22,6 +22,7 @@ from einops import rearrange
 import comfy.conds
 import comfy.ldm.common_dit
 import comfy.model_management
+import comfy.model_sampling
 import comfy.utils
 import node_helpers
 from comfy.ldm.flux.layers import timestep_embedding
@@ -33,6 +34,36 @@ VISION_BLOCK = "<|vision_start|><|image_pad|><|vision_end|>"
 DEFAULT_VL_MAX_PIXELS = 384 * 384
 PUBLIC_REFERENCE_MAX_PIXELS = 1024 * 1024
 REFERENCE_SNAP = 16
+
+# Krea 2 Raw official mu interpolation in image-token space: 256px -> mu 0.5,
+# 1280px -> mu 1.15 (same constants as tools/krea2_sampling.py). ComfyUI's
+# stock Krea 2 config uses a fixed mu of 1.15, which matches Turbo but roughly
+# doubles the effective shift for Raw at 672x384.
+KREA2_MU_TOKENS_MIN = 256
+KREA2_MU_TOKENS_MAX = 6400
+KREA2_MU_MIN = 0.5
+KREA2_MU_MAX = 1.15
+KREA2_TURBO_MU = 1.15
+
+
+def _krea2_raw_mu(width, height):
+    tokens = (width // 16) * (height // 16)
+    slope = (KREA2_MU_MAX - KREA2_MU_MIN) / (KREA2_MU_TOKENS_MAX - KREA2_MU_TOKENS_MIN)
+    return slope * tokens + (KREA2_MU_MIN - slope * KREA2_MU_TOKENS_MIN)
+
+
+def _apply_krea2_sampling(patched_model, mu):
+    """Set the model's flow shift to ``mu``, mirroring the validated runner."""
+
+    class _Krea2ModelSampling(
+        comfy.model_sampling.ModelSamplingFlux, comfy.model_sampling.CONST
+    ):
+        pass
+
+    model_sampling = _Krea2ModelSampling(patched_model.model.model_config)
+    model_sampling.set_parameters(shift=mu)
+    patched_model.add_object_patch("model_sampling", model_sampling)
+    return patched_model
 
 
 @dataclass(frozen=True)
@@ -609,7 +640,28 @@ class CtxRushKrea2EditModelPatch:
                             "no-op when conditioning contains no reference."
                         )
                     },
-                )
+                ),
+                "model_variant": (
+                    ["raw", "turbo"],
+                    {
+                        "default": "raw",
+                        "tooltip": (
+                            "Raw derives the flow shift (mu) from the output "
+                            "resolution like the official Krea sampler; Turbo "
+                            "keeps the fixed mu 1.15."
+                        ),
+                    },
+                ),
+                "width": (
+                    "INT",
+                    {"default": 672, "min": 64, "max": 4096, "step": 16,
+                     "tooltip": "Output width, used to derive the Raw flow shift."},
+                ),
+                "height": (
+                    "INT",
+                    {"default": 384, "min": 64, "max": 4096, "step": 16,
+                     "tooltip": "Output height, used to derive the Raw flow shift."},
+                ),
             }
         }
 
@@ -619,11 +671,14 @@ class CtxRushKrea2EditModelPatch:
     CATEGORY = "CtxRush/Krea 2 Edit"
     DESCRIPTION = (
         "Enable the clean-reference sequence used by diffusion-pipe krea2_edit: "
-        "text, noisy target, clean reference at t=0/RoPE frame 1."
+        "text, noisy target, clean reference at t=0/RoPE frame 1. Also sets the "
+        "resolution-dependent Raw flow shift (ComfyUI's stock Krea 2 config uses "
+        "Turbo's fixed mu 1.15, which over-shifts Raw)."
     )
 
-    def patch(self, model):
-        return (_patch_model(model),)
+    def patch(self, model, model_variant="raw", width=672, height=384):
+        mu = _krea2_raw_mu(width, height) if model_variant == "raw" else KREA2_TURBO_MU
+        return (_apply_krea2_sampling(_patch_model(model), mu),)
 
 
 class CtxRushKrea2EditSetup:
@@ -731,8 +786,10 @@ class CtxRushKrea2EditSetup:
             clip, negative_prompt, encoded_reference
         )
         steps, cfg = (28, 5.5) if model_variant == "raw" else (8, 1.0)
+        mu = _krea2_raw_mu(width, height) if model_variant == "raw" else KREA2_TURBO_MU
+        patched_model = _apply_krea2_sampling(_patch_model(model), mu)
         return (
-            _patch_model(model),
+            patched_model,
             positive,
             negative,
             _empty_krea_latent(width, height, batch_size),

@@ -91,6 +91,20 @@ def parse_args():
     parser.add_argument('--reference-guidance', type=float, default=1.0)
     parser.add_argument('--adapter-scale', type=float, default=1.0)
     parser.add_argument(
+        '--disable-vl-reference', action='store_true',
+        help=(
+            'Ablation: do not show the reference to Qwen3-VL. The clean VAE '
+            'reference branch remains active.'
+        ),
+    )
+    parser.add_argument(
+        '--disable-vae-reference', action='store_true',
+        help=(
+            'Ablation: zero the image signal in the clean VAE reference branch. '
+            'Qwen3-VL visual grounding remains active for krea2_edit.'
+        ),
+    )
+    parser.add_argument(
         '--shift', type=float, default=None,
         help='FlowMatchEuler shift for non-Krea models; defaults to model config or 3.',
     )
@@ -222,6 +236,17 @@ def validate_contract(config: dict, metadata: dict[str, str], allow_mismatch: bo
             print(f'WARNING: {message}')
             return
         raise RuntimeError(message + ' Use --allow-contract-mismatch only for a known legacy checkpoint.')
+
+    # Soft check: warn (never fail) when the adapter was trained on a different
+    # base checkpoint, e.g. a Raw-trained LoRA applied to Turbo. That can be
+    # intentional, but should never happen silently.
+    trained_base = metadata.get('base_model_file')
+    inference_base = Path(config['model']['diffusion_model']).name
+    if trained_base and trained_base != inference_base:
+        print(
+            f'WARNING: adapter was trained on base model {trained_base!r} but inference '
+            f'is using {inference_base!r}. Cross-applying is out of the trained distribution.'
+        )
 
     mismatches = []
     missing = []
@@ -482,7 +507,7 @@ def main():
         )
     need_unconditional = args.text_guidance != 1.0
     sample_kwargs = {}
-    if config['model']['type'] == 'krea2_edit':
+    if config['model']['type'] == 'krea2_edit' and not args.disable_vl_reference:
         # Dual conditioning: the reference grounds the Qwen3-VL embeddings of
         # both the conditional and the unconditional prompt.
         sample_kwargs['control_files'] = [str(args.reference)]
@@ -494,6 +519,13 @@ def main():
     )
     full_reference = encode_reference(
         pipeline, args.reference, args.width, args.height, args.reference_fit
+    )
+    if args.disable_vae_reference:
+        full_reference = torch.zeros_like(full_reference)
+    print(
+        'Reference branches: '
+        f'Qwen3-VL={"off" if args.disable_vl_reference else "on"}, '
+        f'VAE-image={"off" if args.disable_vae_reference else "on"}'
     )
     target_shape = (
         (1, pipeline.channels, args.height // pipeline.spatial_compression, args.width // pipeline.spatial_compression)
