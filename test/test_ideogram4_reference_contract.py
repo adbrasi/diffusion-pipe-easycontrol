@@ -120,6 +120,7 @@ def _load_pipeline_module(position_capture):
 
     ideogram_module = types.ModuleType('models.ideogram4')
     ideogram_module.Ideogram4Pipeline = object
+    ideogram_module.IMAGE_POSITION_OFFSET = 65536
     ideogram_module.LLM_TOKEN_INDICATOR = 3
     ideogram_module.OUTPUT_IMAGE_INDICATOR = 2
     ideogram_module.SEQUENCE_PADDING_INDICATOR = -1
