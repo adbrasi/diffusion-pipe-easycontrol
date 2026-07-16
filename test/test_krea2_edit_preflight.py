@@ -111,16 +111,15 @@ vl_image_max_pixels = 147456
             self.assertTrue(any('no reference' in error for error in errors))
             self.assertTrue(any('No valid control/target pairs' in error for error in errors))
 
-    def test_nonzero_dropout_warns(self):
+    def test_nonzero_dropout_fails(self):
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             config, _, _ = self._make_project(root)
             text = config.read_text().replace('condition_dropout = 0.0', 'condition_dropout = 0.1')
             config.write_text(text)
-            errors, warnings, _ = PREFLIGHT.validate(config)
+            errors, _, _ = PREFLIGHT.validate(config)
 
-            self.assertEqual(errors, [])
-            self.assertTrue(any('local extension' in warning for warning in warnings))
+            self.assertTrue(any('condition_dropout = 0.0' in error for error in errors))
 
 
 if __name__ == '__main__':

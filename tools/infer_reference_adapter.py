@@ -142,6 +142,7 @@ def expected_contract(config: dict) -> dict[str, str]:
             'control_family': 'krea2_edit_dual',
             'vl_conditioning': 'qwen3vl_image_grounded',
             'vl_image_max_pixels': str(int(section.get('vl_image_max_pixels', 384 * 384))),
+            'lora_targets': 'blocks+txtfusion',
         })
     else:
         section_name = 'krea2_ic_lora' if model_type == 'krea2_ic_lora' else 'ominicontrol'

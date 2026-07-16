@@ -28,12 +28,13 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
+import peft
 from PIL import Image
 
 from models.krea2_reference import Krea2ReferencePipeline
 from comfy.text_encoders.krea2 import KREA2_TEMPLATE
 from comfy import model_management
-from utils.common import AUTOCAST_DTYPE
+from utils.common import AUTOCAST_DTYPE, is_main_process
 
 VISION_BLOCK = '<|vision_start|><|image_pad|><|vision_end|>'
 
@@ -78,6 +79,7 @@ def prepare_vl_image(image_path, max_pixels):
 class Krea2EditPipeline(Krea2ReferencePipeline):
     name = 'krea2_edit'
     config_section = 'krea2_edit'
+    adapter_allowed_key_substrings = ('.blocks.', '.txtfusion.')
 
     def __init__(self, config):
         super().__init__(config)
@@ -89,10 +91,76 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
             raise ValueError(
                 'krea2_edit follows the canonical Krea Edit contract; condition_token_stride must be 1'
             )
-        # The public edit training never drops references; nonzero dropout on
-        # the VAE branch stays available but is a local extension.
-        if 'condition_dropout' not in section:
-            self.condition_dropout = 0.0
+        # The public edit training never drops references, and a nonzero value
+        # here would only zero the VAE branch while Qwen3-VL keeps seeing the
+        # reference — an incoherent partial dropout. Reject it outright.
+        self.condition_dropout = 0.0
+        if float(section.get('condition_dropout', 0.0)) != 0.0:
+            raise ValueError(
+                'krea2_edit does not support condition_dropout: the public Krea Edit '
+                'training never drops references, and dropping only the VAE branch '
+                'while the Qwen3-VL grounding remains would be inconsistent'
+            )
+
+    def configure_adapter(self, adapter_config):
+        """Match the public Krea Edit LoRA coverage: DiT blocks + text fusion.
+
+        Public dual-conditioning LoRAs (Krea2OstrisEdit family; verified from
+        the ostris style-reference and conradlocke identity-edit safetensors
+        headers, 448 + 64 tensors) adapt every linear in the 28
+        SingleStreamBlocks plus the 4 TextFusionBlocks (layerwise + refiner),
+        excluding the layer projector and txtmlp. The text fusion is where the
+        stacked Qwen3-VL hidden states — including the reference's vision
+        tokens — are collapsed, so it must be trainable for the visual
+        grounding to adapt.
+        """
+        target_model = self.diffusion_model
+        target_linear_modules = set()
+        for name, module in target_model.named_modules():
+            if module.__class__.__name__ not in ('SingleStreamBlock', 'TextFusionTransformer'):
+                continue
+            for full_name, submodule in module.named_modules(prefix=name):
+                if not isinstance(submodule, nn.Linear):
+                    continue
+                if full_name.endswith('projector'):
+                    continue
+                target_linear_modules.add(full_name)
+        targets = sorted(target_linear_modules)
+        if not targets:
+            raise RuntimeError('No Krea2 DiT linear modules found for the edit adapter')
+
+        adapter_type = adapter_config['type']
+        if adapter_type == 'lora':
+            peft_config = peft.LoraConfig(
+                r=adapter_config['rank'],
+                lora_alpha=adapter_config['alpha'],
+                lora_dropout=adapter_config['dropout'],
+                bias='none',
+                target_modules=targets,
+            )
+        elif adapter_type == 'lokr':
+            peft_config = peft.LoKrConfig(
+                r=adapter_config['rank'],
+                decompose_factor=adapter_config['decompose_factor'],
+                alpha=adapter_config['alpha'],
+                rank_dropout=adapter_config['rank_dropout'],
+                target_modules=targets,
+            )
+        else:
+            raise NotImplementedError(f'Adapter type {adapter_type} is not implemented')
+        self.peft_config = peft_config
+        self.lora_model = peft.get_peft_model(target_model, peft_config)
+        if is_main_process():
+            fusion = sum(1 for name in targets if 'txtfusion' in name)
+            print(
+                f'[{self.name}] dual-conditioning LoRA targets: {len(targets)} linears '
+                f'({len(targets) - fusion} in DiT blocks, {fusion} in text fusion)'
+            )
+            self.lora_model.print_trainable_parameters()
+        for name, parameter in target_model.named_parameters():
+            parameter.original_name = name
+            if parameter.requires_grad:
+                parameter.data = parameter.data.to(adapter_config['dtype'])
 
     def get_call_text_encoder_fn(self, text_encoder):
         te_idx = None
@@ -181,4 +249,5 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
             'vl_image_max_pixels': str(self.vl_image_max_pixels),
             'vl_prompt_layout': 'picture_n_vision_blocks',
             'vl_reference_in_uncond': 'true',
+            'lora_targets': 'blocks+txtfusion',
         }

@@ -67,11 +67,21 @@ Operational notes:
   `(caption + ~144 vision tokens) x 12 layers x 2560 x 2 bytes ~= 8-14 MB` of
   cache per pair, and pass `--regenerate_cache` whenever reference images
   change in place.
-- `condition_dropout` defaults to `0.0` (the public edit training never drops
-  references; CFG contrasts the prompt only, with the reference grounded in
-  both conditional and unconditional embeddings).
+- `condition_dropout` must be `0.0` (enforced): the public edit training never
+  drops references — CFG contrasts the prompt only, with the reference
+  grounded in both conditional and unconditional embeddings — and dropping
+  only the VAE branch while Qwen3-VL keeps seeing the reference would be an
+  inconsistent partial dropout.
 - `condition_token_stride` is fixed at 1; compact-stride encoding belongs to
   the OminiControl variants only.
+- LoRA coverage matches the public dual-conditioning checkpoints (verified
+  from the ostris style-reference and conradlocke identity-edit headers):
+  every linear in the 28 `SingleStreamBlock`s **plus** the 4
+  `TextFusionTransformer` blocks (`txtfusion.layerwise_blocks` and
+  `txtfusion.refiner_blocks`, 512 tensors total), excluding the layer
+  projector and `txtmlp`. The text fusion consumes the Qwen3-VL stack —
+  including the reference's vision tokens — so it must adapt. `krea2_ic_lora`
+  (VAE-only) keeps its blocks-only coverage.
 
 ```bash
 python tools/preflight_krea2_edit.py --config examples/krea2_edit.toml

@@ -28,6 +28,9 @@ from utils.common import AUTOCAST_DTYPE, get_git_commit, is_main_process
 class Krea2ReferencePipeline(Krea2Pipeline):
     name = 'krea2_reference'
     config_section = 'krea2_reference'
+    # Key substrings a saved adapter is allowed to touch; the save audit
+    # flags anything else. Subclasses widen this to match their contract.
+    adapter_allowed_key_substrings = ('.blocks.',)
 
     def __init__(self, config):
         super().__init__(config)
@@ -213,9 +216,12 @@ class Krea2ReferencePipeline(Krea2Pipeline):
         problems = []
         if not keys:
             problems.append(('checkpoint has no trainable adapter keys', []))
-        outside_blocks = sorted(key for key in keys if '.blocks.' not in key)
+        outside_blocks = sorted(
+            key for key in keys
+            if not any(substring in key for substring in self.adapter_allowed_key_substrings)
+        )
         if outside_blocks:
-            problems.append(('keys outside SingleStreamBlock modules', outside_blocks))
+            problems.append(('keys outside the allowed adapter modules', outside_blocks))
         non_lora = sorted(
             key for key in keys if '.lora_A.' not in key and '.lora_B.' not in key
         )

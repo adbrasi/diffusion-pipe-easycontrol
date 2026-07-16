@@ -119,12 +119,11 @@ def validate(config_path):
 
     section = config.get('krea2_edit', {})
     dropout = float(section.get('condition_dropout', 0.0))
-    if not 0.0 <= dropout <= 1.0:
-        errors.append('condition_dropout must be between 0.0 and 1.0')
-    if dropout > 0.0:
-        warnings.append(
-            'condition_dropout > 0 is a local extension: the public Krea Edit '
-            'training never drops references'
+    if dropout != 0.0:
+        errors.append(
+            'krea2_edit requires condition_dropout = 0.0: the public Krea Edit '
+            'training never drops references, and dropping only the VAE branch '
+            'while the Qwen3-VL grounding remains would be inconsistent'
         )
     position_mode = section.get('position_mode', 'subject')
     if position_mode not in ('subject', 'spatial'):

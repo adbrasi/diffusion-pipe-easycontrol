@@ -32,7 +32,8 @@ timestep_sample_method = 'logit_normal'
 [krea2_edit]
 position_mode = 'subject'
 reference_position_offset = 1.0
-# Public edit training never drops references (CFG contrasts the prompt only).
+# Must stay 0.0: public edit training never drops references (CFG contrasts
+# the prompt only) and a partial VAE-only dropout would be inconsistent.
 condition_dropout = 0.0
 # VL copy of the reference is downscaled to fit this area (384*384, the
 # ostris / ComfyUI EditPlus budget). Detail flows through the VAE branch.
