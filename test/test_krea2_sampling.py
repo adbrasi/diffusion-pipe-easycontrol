@@ -1,10 +1,53 @@
 import math
 import unittest
 
-from tools.krea2_sampling import build_krea2_timesteps
+from tools.krea2_sampling import (
+    build_krea2_timesteps,
+    resolve_krea2_inference_defaults,
+    resolve_krea2_inference_mu,
+)
 
 
 class Krea2SamplingTest(unittest.TestCase):
+    def test_raw_inference_defaults_use_cfg(self):
+        variant, steps, guidance = resolve_krea2_inference_defaults(
+            '/models/krea2_raw_bf16.safetensors'
+        )
+
+        self.assertEqual(variant, 'raw')
+        self.assertEqual(steps, 28)
+        self.assertEqual(guidance, 5.5)
+
+    def test_turbo_inference_defaults_disable_cfg(self):
+        variant, steps, guidance = resolve_krea2_inference_defaults(
+            '/models/Krea-2-Turbo/model.safetensors'
+        )
+
+        self.assertEqual(variant, 'turbo')
+        self.assertEqual(steps, 8)
+        self.assertEqual(guidance, 1.0)
+
+    def test_explicit_inference_values_win(self):
+        variant, steps, guidance = resolve_krea2_inference_defaults(
+            '/models/ambiguous.safetensors',
+            variant='turbo',
+            steps=12,
+            text_guidance=1.25,
+        )
+
+        self.assertEqual(variant, 'turbo')
+        self.assertEqual(steps, 12)
+        self.assertEqual(guidance, 1.25)
+
+    def test_invalid_inference_variant_fails(self):
+        with self.assertRaises(ValueError):
+            resolve_krea2_inference_defaults('/models/krea2.safetensors', variant='unknown')
+
+    def test_turbo_uses_fixed_mu_and_raw_stays_dynamic(self):
+        self.assertEqual(resolve_krea2_inference_mu('turbo'), 1.15)
+        self.assertIsNone(resolve_krea2_inference_mu('raw'))
+        self.assertEqual(resolve_krea2_inference_mu('raw', 0.75), 0.75)
+
     def test_schedule_matches_resolution_endpoints(self):
         low, low_mu = build_krea2_timesteps(16 * 16, 4)
         high, high_mu = build_krea2_timesteps(80 * 80, 4)

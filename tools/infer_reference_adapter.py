@@ -39,9 +39,18 @@ from tqdm import tqdm
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COMFY_ROOT = REPO_ROOT / 'submodules' / 'ComfyUI'
 sys.path.insert(0, str(REPO_ROOT))
+# The repo's `utils` is a namespace package (no __init__.py) while ComfyUI
+# ships a regular `utils` package, which wins resolution regardless of
+# sys.path order. Import the repo package first so it lands in sys.modules
+# before COMFY_ROOT is visible (train.py relies on the same ordering).
+import utils.common  # noqa: E402,F401
 sys.path.insert(0, str(COMFY_ROOT))
 
-from tools.krea2_sampling import build_krea2_timesteps
+from tools.krea2_sampling import (
+    build_krea2_timesteps,
+    resolve_krea2_inference_defaults,
+    resolve_krea2_inference_mu,
+)
 
 
 MODEL_CLASSES = {
@@ -67,9 +76,18 @@ def parse_args():
     parser.add_argument('--output', type=Path, default=Path('reference_sample.png'))
     parser.add_argument('--width', type=int, default=1024)
     parser.add_argument('--height', type=int, default=1024)
-    parser.add_argument('--steps', type=int, default=20)
+    parser.add_argument(
+        '--steps', type=int, default=None,
+        help='Denoising steps. Defaults to Raw=28, Turbo=8, and non-Krea=20.',
+    )
     parser.add_argument('--seed', type=int, default=0)
-    parser.add_argument('--text-guidance', type=float, default=1.0)
+    parser.add_argument(
+        '--text-guidance', type=float, default=None,
+        help=(
+            'Standard CFG scale used by this runner. Defaults to Raw=5.5 '
+            '(equivalent to Krea guidance 4.5), Turbo=1.0, and non-Krea=1.0.'
+        ),
+    )
     parser.add_argument('--reference-guidance', type=float, default=1.0)
     parser.add_argument('--adapter-scale', type=float, default=1.0)
     parser.add_argument(
@@ -84,6 +102,13 @@ def parse_args():
     parser.add_argument('--krea-max-res', type=int, default=1280)
     parser.add_argument('--krea-y1', type=float, default=0.5)
     parser.add_argument('--krea-y2', type=float, default=1.15)
+    parser.add_argument(
+        '--krea-variant', choices=('auto', 'raw', 'turbo'), default='auto',
+        help=(
+            'Select Krea inference defaults. Auto recognizes "turbo" in the '
+            'diffusion checkpoint path and otherwise uses Raw.'
+        ),
+    )
     parser.add_argument('--blocks-to-swap', type=int, default=None, help='Override block swapping from the TOML.')
     parser.add_argument(
         '--reference-fit', choices=('crop', 'stretch', 'exact'), default='crop',
@@ -118,6 +143,28 @@ def read_metadata(adapter_file: Path) -> dict[str, str]:
 def load_raw_config(path: Path) -> dict:
     with path.open() as handle:
         return json.loads(json.dumps(toml.load(handle)))
+
+
+def resolve_sampling_args(config: dict, args) -> None:
+    """Fill model-specific defaults without overriding explicit CLI values."""
+    model_type = config['model']['type']
+    if model_type.startswith('krea2_'):
+        variant, args.steps, args.text_guidance = resolve_krea2_inference_defaults(
+            config['model'].get('diffusion_model', ''),
+            variant=args.krea_variant,
+            steps=args.steps,
+            text_guidance=args.text_guidance,
+        )
+        args.mu = resolve_krea2_inference_mu(variant, args.mu)
+        mu_label = 'resolution-derived' if args.mu is None else str(args.mu)
+        print(
+            f'Krea 2 inference profile: variant={variant}, steps={args.steps}, '
+            f'text_guidance={args.text_guidance}, mu={mu_label} '
+            f'(standard CFG convention)'
+        )
+    else:
+        args.steps = 20 if args.steps is None else args.steps
+        args.text_guidance = 1.0 if args.text_guidance is None else args.text_guidance
 
 
 def expected_contract(config: dict) -> dict[str, str]:
@@ -410,6 +457,7 @@ def decode_and_save(pipeline, latent: torch.Tensor, output: Path) -> None:
 def main():
     args = parse_args()
     config = load_raw_config(args.config)
+    resolve_sampling_args(config, args)
     adapter_file = find_adapter_file(args.adapter)
     metadata = read_metadata(adapter_file)
     validate_contract(config, metadata, args.allow_contract_mismatch)

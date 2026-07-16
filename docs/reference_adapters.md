@@ -82,6 +82,19 @@ Operational notes:
   projector and `txtmlp`. The text fusion consumes the Qwen3-VL stack —
   including the reference's vision tokens — so it must adapt. `krea2_ic_lora`
   (VAE-only) keeps its blocks-only coverage.
+- The diffusion-pipe path currently crops the reference and target to the same
+  training bucket. This is internally consistent and matches the paired
+  dataset used by this fork, but differs from AI Toolkit/Krea2OstrisEdit,
+  which can preserve an independent reference aspect ratio under a separate
+  pixel budget.
+
+Runtime validation on an RTX 5090 covered a 5-step smoke, a 50-step pilot and
+a resumed 50-to-60-step run. The saved adapter contained the expected 512
+LoRA tensors (448 in the DiT blocks and 64 in `txtfusion`), and loaded without
+key conversion when compared with the public rank-64 identity-edit layout.
+The training and inference paths both use `to_layers()`, and their Krea
+resolution-dependent schedule was numerically checked against the Ostris
+pipeline.
 
 ```bash
 python tools/preflight_krea2_edit.py --config examples/krea2_edit.toml
@@ -158,6 +171,35 @@ python tools/infer_reference_adapter.py \
   --reference-guidance 1.0 \
   --output /workspace/test/result.png
 ```
+
+### Krea 2 sampling profiles
+
+Krea 2 Raw is not a CFG-free model. The runner now resolves model-specific
+defaults from the diffusion checkpoint name:
+
+| Checkpoint | Steps | `--text-guidance` | Timestep shift |
+|---|---:|---:|---|
+| Krea 2 Raw | 28 | 5.5 | resolution-dependent `mu` |
+| Krea 2 Turbo | 8 | 1.0 | fixed `mu=1.15` |
+
+This runner uses standard CFG,
+`uncond + scale * (cond - uncond)`. Krea2OstrisEdit exposes
+`cond + scale * (cond - uncond)`, so its Raw guidance `4.5` is `5.5` here.
+Use `--krea-variant raw` or `--krea-variant turbo` when the checkpoint path
+does not identify the variant. Explicit `--steps` and `--text-guidance` values
+always override the profile.
+
+Infer at the same resolution/aspect bucket used by the evaluated pair before
+testing generalization. In particular, using Raw with the old generic defaults
+of 20 steps and guidance 1.0 can leave a noisy or mosaic-like result that looks
+like broken reference packing even when the checkpoint is valid.
+
+`--adapter-scale 0` is **not** a vanilla Krea baseline: it disables the LoRA
+weights but still sends clean reference tokens and image-grounded Qwen3-VL
+conditioning through the custom edit sequence. Use a true text-to-image Krea
+pipeline without a reference to validate the base model. Public edit LoRAs
+without this fork's contract metadata can be tested deliberately with
+`--allow-contract-mismatch` after their architecture and rank are verified.
 
 The adapter argument may be either the safetensors file or a directory that
 contains exactly one safetensors file. The runner offloads the diffusion model
