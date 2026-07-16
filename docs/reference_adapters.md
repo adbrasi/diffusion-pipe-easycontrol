@@ -96,6 +96,33 @@ The training and inference paths both use `to_layers()`, and their Krea
 resolution-dependent schedule was numerically checked against the Ostris
 pipeline.
 
+### ComfyUI inference
+
+The one-reference custom node pack is available at
+`comfyui_nodes/ctxrush_edit.zip`. Extract it directly into a ComfyUI install:
+
+```bash
+unzip comfyui_nodes/ctxrush_edit.zip -d /path/to/ComfyUI/custom_nodes
+```
+
+For daily use, connect the loaded Krea 2 model after its LoRA, the Krea 2
+Qwen3-VL text encoder, Qwen Image VAE and one source image to **CtxRush - Krea
+2 Edit Setup**. The node returns the patched model, positive/negative
+conditioning, an empty target latent and the Raw/Turbo sampling profile.
+
+The setup deliberately binds the Qwen visual image and VAE latent into one
+reference object and attaches that same reference to both CFG branches. This
+prevents an easy-to-miss mismatch where the diffusion model receives one
+reference while Qwen3-VL describes another. Its default `training_crop` mode
+matches this fork's same-bucket training geometry; `preserve_aspect_1mp` is an
+explicit compatibility mode for public Ostris/ai-toolkit edit LoRAs.
+
+The modular Reference Encode, Edit CFG Encode and Edit Model Patch nodes expose
+the same path for advanced graphs. The model patch calls the stock Krea 2
+forward when no reference is attached, and does not expose reference timestep
+or RoPE position controls: this adapter was trained at fixed `t=0`, frame `1`.
+See `comfyui_nodes/ctxrush_edit/README.md` for the complete wiring diagram.
+
 ```bash
 python tools/preflight_krea2_edit.py --config examples/krea2_edit.toml
 ```
