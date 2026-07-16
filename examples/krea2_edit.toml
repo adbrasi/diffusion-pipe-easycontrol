@@ -1,0 +1,51 @@
+# Krea 2 Edit: dual conditioning (clean VAE reference + Qwen3-VL image grounding).
+# Matches the public Krea Edit contract (Krea2OstrisEdit / ai-toolkit edit mode).
+# Train on Krea 2 Raw; apply the LoRA on Raw or Turbo at inference.
+output_dir = '/workspace/krea2_edit_output'
+dataset = 'examples/krea2_reference_dataset.toml'
+epochs = 1000
+max_steps = 7000
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_steps = 250
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1
+blocks_to_swap = 8
+
+[model]
+type = 'krea2_edit'
+diffusion_model = '/workspace/models/krea2_raw.safetensors'
+vae = '/workspace/models/qwen_image_vae.safetensors'
+# The text encoder checkpoint MUST include the Qwen3-VL vision tower
+# (visual.* weights); run tools/preflight_krea2_edit.py to verify.
+text_encoders = [
+    {path = '/workspace/models/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+
+[krea2_edit]
+position_mode = 'subject'
+reference_position_offset = 1.0
+# Public edit training never drops references (CFG contrasts the prompt only).
+condition_dropout = 0.0
+# VL copy of the reference is downscaled to fit this area (384*384, the
+# ostris / ComfyUI EditPlus budget). Detail flows through the VAE branch.
+vl_image_max_pixels = 147456
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 5e-5
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

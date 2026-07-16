@@ -12,8 +12,14 @@ Supported model types:
 * ideogram4_ominicontrol
 * ideogram4_ominicontrol2
 * krea2_ic_lora
+* krea2_edit
 * krea2_ominicontrol
 * krea2_ominicontrol2
+
+For ``krea2_edit`` the reference image also grounds the Qwen3-VL text
+embeddings (conditional and unconditional), matching the public Krea Edit
+contract. ``--reference-guidance`` only zeroes the VAE branch for that model;
+the VL grounding stays in place.
 """
 
 from __future__ import annotations
@@ -43,6 +49,7 @@ MODEL_CLASSES = {
     'ideogram4_ominicontrol': ('models.ideogram4_ominicontrol', 'Ideogram4OminiControlPipeline'),
     'ideogram4_ominicontrol2': ('models.ideogram4_ominicontrol2', 'Ideogram4OminiControl2Pipeline'),
     'krea2_ic_lora': ('models.krea2_ic_lora', 'Krea2ICLoRAPipeline'),
+    'krea2_edit': ('models.krea2_edit', 'Krea2EditPipeline'),
     'krea2_ominicontrol': ('models.krea2_ominicontrol', 'Krea2OminiControlPipeline'),
     'krea2_ominicontrol2': ('models.krea2_ominicontrol2', 'Krea2OminiControl2Pipeline'),
 }
@@ -126,6 +133,16 @@ def expected_contract(config: dict) -> dict[str, str]:
         })
         if 'ominicontrol' in model_type:
             expected['condition_only_lora'] = str(bool(control.get('condition_only_lora', True))).lower()
+    elif model_type == 'krea2_edit':
+        section = config.get('krea2_edit', {})
+        expected.update({
+            'reference_model_timestep': '0.0',
+            'position_mode': str(section.get('position_mode', 'subject')),
+            'condition_token_stride': '1',
+            'control_family': 'krea2_edit_dual',
+            'vl_conditioning': 'qwen3vl_image_grounded',
+            'vl_image_max_pixels': str(int(section.get('vl_image_max_pixels', 384 * 384))),
+        })
     else:
         section_name = 'krea2_ic_lora' if model_type == 'krea2_ic_lora' else 'ominicontrol'
         section = config.get(section_name, {})
@@ -415,10 +432,16 @@ def main():
             f'width/height must be multiples of {pipeline.pixels_round_to_multiple} for {pipeline.name}'
         )
     need_unconditional = args.text_guidance != 1.0
+    sample_kwargs = {}
+    if config['model']['type'] == 'krea2_edit':
+        # Dual conditioning: the reference grounds the Qwen3-VL embeddings of
+        # both the conditional and the unconditional prompt.
+        sample_kwargs['control_files'] = [str(args.reference)]
     pipeline.prepare_sample_test(
         args.prompt,
         negative_prompt=args.negative_prompt,
         cfg=2 if need_unconditional else 1,
+        **sample_kwargs,
     )
     full_reference = encode_reference(
         pipeline, args.reference, args.width, args.height, args.reference_fit

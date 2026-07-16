@@ -8,6 +8,7 @@ This fork contains three clean-reference adapter families for each model:
 | `ideogram4_ominicontrol` | OminiControl v1; LoRA runs only on reference rows |
 | `ideogram4_ominicontrol2` | v1 plus compact reference encoding and independent condition attention |
 | `krea2_ic_lora` | Global task LoRA over `[text, noisy target, clean reference]` |
+| `krea2_edit` | `krea2_ic_lora` plus Qwen3-VL image grounding of the reference (public Krea Edit dual contract) |
 | `krea2_ominicontrol` | OminiControl v1; LoRA runs only on reference rows |
 | `krea2_ominicontrol2` | v1 plus compact reference encoding and independent condition attention |
 
@@ -42,6 +43,39 @@ OminiControl2 downsamples reference pixels before VAE encoding. Do not reuse a
 latent cache made with IC-LoRA/OminiControl v1; regenerate it after selecting a
 v2 config. The saved checkpoint records `condition_encode`, stride, position
 scale, attention independence and condition-only routing.
+
+## Krea 2 Edit dual conditioning
+
+`krea2_edit` reproduces the public Krea Edit contract (Krea2OstrisEdit /
+ai-toolkit `edit=true` / ComfyUI grounded encode). Each reference conditions
+the model twice:
+
+- clean VAE latents appended after the noisy target at timestep `0.0`, RoPE
+  frame `1` (unchanged from `krea2_ic_lora`);
+- an image-grounded Qwen3-VL prompt: the reference is serialized as
+  `Picture 1: <|vision_start|><|image_pad|><|vision_end|>` ahead of the
+  caption inside the standard Krea 2 conditioning template. The VL copy is
+  downscaled (aspect preserved, never upscaled) to `vl_image_max_pixels`
+  (default `147456` = 384*384).
+
+Operational notes:
+
+- The text encoder checkpoint must include the Qwen3-VL vision tower
+  (`visual.*` weights). `tools/preflight_krea2_edit.py` verifies this from the
+  safetensors header without loading torch.
+- Text embeddings now depend on the reference image. Expect roughly
+  `(caption + ~144 vision tokens) x 12 layers x 2560 x 2 bytes ~= 8-14 MB` of
+  cache per pair, and pass `--regenerate_cache` whenever reference images
+  change in place.
+- `condition_dropout` defaults to `0.0` (the public edit training never drops
+  references; CFG contrasts the prompt only, with the reference grounded in
+  both conditional and unconditional embeddings).
+- `condition_token_stride` is fixed at 1; compact-stride encoding belongs to
+  the OminiControl variants only.
+
+```bash
+python tools/preflight_krea2_edit.py --config examples/krea2_edit.toml
+```
 
 ## Safe pilot order
 
