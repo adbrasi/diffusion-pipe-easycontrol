@@ -191,6 +191,15 @@ def expected_contract(config: dict) -> dict[str, str]:
             'reference_model_timestep': str(float(control.get(
                 'reference_model_timestep', section.get('reference_model_timestep', 1.0)
             ))),
+            # Packing geometry must match training: an adapter trained with
+            # e.g. offset -1 silently produces wrong RoPE placement under the
+            # default config otherwise.
+            'reference_position_offset': str(int(control.get(
+                'reference_position_offset', section.get('reference_position_offset', 1)
+            ))),
+            'condition_dropout': str(float(control.get(
+                'condition_dropout', section.get('condition_dropout', 0.1)
+            ))),
         })
         if 'ominicontrol' in model_type:
             expected['condition_only_lora'] = str(bool(control.get('condition_only_lora', True))).lower()
@@ -553,7 +562,16 @@ def main():
         raise ValueError('Krea 2 uses --mu (or resolution-derived mu), not --shift')
     shift = args.shift
     if not is_krea and shift is None:
-        shift = float(config['model'].get('shift', 3.0))
+        # Priority: config -> adapter's recorded training shift -> legacy 3.
+        # ComfyUI's canonical Ideogram 4 sampling is shift=1.0; the adapter
+        # metadata makes the training-time schedule reproducible here.
+        metadata_shift = metadata.get('training_shift')
+        if 'shift' in config['model']:
+            shift = float(config['model']['shift'])
+        elif metadata_shift not in (None, 'none'):
+            shift = float(metadata_shift)
+        else:
+            shift = 3.0
     krea_mu = args.mu
     if is_krea and krea_mu is None and 'mu' in config['model']:
         krea_mu = float(config['model']['mu'])

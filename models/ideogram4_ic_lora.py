@@ -226,6 +226,7 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
         state_dict = {f'diffusion_model.{key}': value for key, value in state_dict.items()}
         self._audit_adapter_keys(state_dict.keys(), save_dir)
 
+        base_model_path = Path(self.model_config['diffusion_model'])
         metadata = {
             'format': 'pt',
             'diffusion_pipe_commit': str(get_git_commit()),
@@ -237,6 +238,14 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
             'reference_model_timestep': str(self.reference_model_timestep),
             'condition_dropout': str(self.condition_dropout),
             'lora_train_adaln_modulation': str(self.train_adaln_modulation).lower(),
+            # Identity of the frozen base and the training-time flow shift, so
+            # inference can warn about cross-application and reproduce the
+            # schedule the adapter was trained against (ComfyUI's canonical
+            # Ideogram 4 sampling is shift=1.0; the fork's example configs
+            # train with shift=3).
+            'base_model_file': base_model_path.name,
+            'base_model_size': str(base_model_path.stat().st_size if base_model_path.exists() else 0),
+            'training_shift': str(self.model_config.get('shift', 'none')),
         }
         metadata.update(self.get_reference_metadata())
         safetensors.torch.save_file(
@@ -252,10 +261,18 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
         """Post-save audit in the fork's standard style: warn loudly and drop a
         marker file instead of raising, so an audit failure never destroys a
         finished training run — but it cannot be missed either."""
+        keys = list(keys)
         problems = []
+        if not keys:
+            problems.append(('checkpoint has no trainable adapter keys', []))
         outside_layers = sorted(key for key in keys if '.layers.' not in key)
         if outside_layers:
             problems.append(('keys outside transformer layers', outside_layers))
+        non_lora = sorted(
+            key for key in keys if '.lora_A.' not in key and '.lora_B.' not in key
+        )
+        if non_lora:
+            problems.append(('trainable keys that are not LoRA A/B tensors', non_lora))
         if not self.train_adaln_modulation:
             forbidden = sorted(
                 key for key in keys
@@ -266,7 +283,7 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
                     (f'keys matching forbidden patterns {list(LORA_FORBIDDEN_MODULE_PATTERNS)}', forbidden)
                 )
         if not problems:
-            print(f'[{self.name}] adapter audit OK: {len(list(keys))} keys')
+            print(f'[{self.name}] adapter audit OK: {len(keys)} keys')
             return
         lines = ['ADAPTER AUDIT FAILED: checkpoint contains unexpected LoRA keys.']
         for description, bad_keys in problems:

@@ -17,6 +17,11 @@ from models.ideogram4_ic_lora import (
 
 class Ideogram4OminiControlPipeline(Ideogram4ICLoRAPipeline):
     name = 'ideogram4_ominicontrol'
+    # to_layers() wraps blocks in Ideogram4OminiTransformerLayer; DeepSpeed
+    # matches checkpointable layers by exact class name, so the inherited
+    # ['TransformerLayer'] alone would silently disable activation
+    # checkpointing for every block (same bug class as Krea2ReferenceInitialLayer).
+    checkpointable_layers = ['TransformerLayer', 'Ideogram4OminiTransformerLayer']
 
     def __init__(self, config):
         super().__init__(config)
