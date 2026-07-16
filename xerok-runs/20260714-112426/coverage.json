@@ -1,0 +1,85 @@
+{
+  "run_dir": "/home/adolfocesar/projects/controllite_anima/diffusion-pipe/xerok-runs/20260714-112426",
+  "lanes": [
+    "comparator",
+    "critic",
+    "evidence"
+  ],
+  "evidence_total_raw": 82,
+  "evidence_total_deduped": 82,
+  "duplicates_removed": 0,
+  "unique_sources": 55,
+  "non_primary_evidence": 3,
+  "non_primary_examples": [
+    {
+      "url": "https://easycontrolproj.github.io/",
+      "reason": "bare-homepage"
+    },
+    {
+      "url": "https://style-aligned-gen.github.io/",
+      "reason": "bare-homepage"
+    },
+    {
+      "url": "https://rf-inversion.github.io/",
+      "reason": "bare-homepage"
+    }
+  ],
+  "coverage": [
+    {
+      "sub_question": 1,
+      "text": "Qual é a superfície local verificável do Ideogram 4 (pesos, VAE, Qwen3-VL, transformer e pipeline ComfyUI/diffusion-pipe) e qual decisão ela permite tomar?",
+      "evidence_count": 4,
+      "gap": false
+    },
+    {
+      "sub_question": 2,
+      "text": "O que a evidência pública realmente estabelece — e não estabelece — sobre o mecanismo de denoising do Ideogram 4, especialmente backbone, espaço latente, sequência de tokens e blocos de atenção?",
+      "evidence_count": 9,
+      "gap": false
+    },
+    {
+      "sub_question": 3,
+      "text": "Quais são os pontos de injeção e o contrato de treino/inferência de ControlNet-LLLite/ControlLite, e quais pré-requisitos do modelo-base eles exigem?",
+      "evidence_count": 20,
+      "gap": false
+    },
+    {
+      "sub_question": 4,
+      "text": "Com os pesos locais e o forward do Ideogram 4, é possível treinar e conectar diretamente um ControlLite? Qual é o veredito sim/não, com condicionantes explícitos?",
+      "evidence_count": 13,
+      "gap": false
+    },
+    {
+      "sub_question": 5,
+      "text": "Como ControlLoRA, ControlNet-XS e ControlNeXt diferem de ControlNet-LLLite em custo, fidelidade espacial, dados, acoplamento ao backbone e portabilidade?",
+      "evidence_count": 33,
+      "gap": false
+    },
+    {
+      "sub_question": 6,
+      "text": "Como OminiControl, EasyControl, IP-Adapter e condicionamento por reference tokens se comparam para referência visual, estrutura e controle multiimagem no modelo local?",
+      "evidence_count": 18,
+      "gap": false
+    },
+    {
+      "sub_question": 7,
+      "text": "Qual é o delta concreto no diffusion-pipe para cada rota plausível: arquitetura/model loader, dataset e preprocessadores, módulos treináveis, loss/checkpoint e pipeline de inferência?",
+      "evidence_count": 30,
+      "gap": false
+    },
+    {
+      "sub_question": 8,
+      "text": "Qual contrato de inferência precisa ser reproduzido no ComfyUI para cada rota; como validar o MVP sem confundir suporte de treino com suporte de inferência?",
+      "evidence_count": 32,
+      "gap": false
+    },
+    {
+      "sub_question": 9,
+      "text": "Qual recomendação ranqueada equilibra viabilidade, custo e utilidade, e qual plano em fases separa controle estrutural, referência visual rica e combinações multi-condição?",
+      "evidence_count": 40,
+      "gap": false
+    }
+  ],
+  "gaps": [],
+  "bank": "/home/adolfocesar/projects/controllite_anima/diffusion-pipe/xerok-runs/20260714-112426/evidence/bank.jsonl"
+}

@@ -1,0 +1,89 @@
+{
+  "question": "É plausível criar um ControlNet-LLLite/ControlLite para Ideogram 4? Compare métodos leves e completos para entregar imagem de referência, estrutura e condicionamento ao Ideogram 4, considerando a arquitetura real, treino no diffusion-pipe e inferência compatível.",
+  "language": "pt-BR",
+  "depth": "standard",
+  "created": "20260714-112426",
+  "intent": "Determinar, com um sim ou não técnico e um caminho de implementação priorizado, se um adaptador de controle leve no estilo ControlNet-LLLite/ControlLite pode condicionar Ideogram 4 com imagem de referência e sinais estruturais; distinguir o que é comprovadamente integrável hoje do que exigiria acesso, engenharia ou treino não disponível.",
+  "archetype": "comparison",
+  "entities": [
+    {
+      "term": "Ideogram 4",
+      "resolved": "Pesos locais Ideogram 4 publicados pela Ideogram e a implementação verificável do transformer no ComfyUI/diffusion-pipe, não apenas a API hospedada.",
+      "caveat": "Separar o que está explícito no código e model card do que seria uma nova extensão experimental de controle."
+    },
+    {
+      "term": "ControlNet-LLLite / ControlLite",
+      "resolved": "Adaptadores leves que injetam condicionamento espacial em camadas internas de um backbone de difusão, em vez de treinar uma cópia completa do UNet/transformer.",
+      "caveat": "O nome ControlLite é usado de modo amplo; identificar a implementação/paper específico e os pontos de injeção, não tratar variantes como equivalentes."
+    },
+    {
+      "term": "diffusion-pipe",
+      "resolved": "Repositório local alvo para treinamento de adaptadores/diffusion models e para avaliar o delta real de suporte a uma nova arquitetura.",
+      "caveat": "A compatibilidade deve ser estabelecida pela árvore, loaders, modelos e scripts atuais do checkout, não por suporte alegado de projetos vizinhos."
+    },
+    {
+      "term": "imagem de referência",
+      "resolved": "Condicionamento por identidade, aparência, estilo ou composição sem necessariamente impor correspondência pixel a pixel.",
+      "caveat": "Distinguir de controle estrutural (edge/depth/pose/segmentation) e de image-to-image, pois os contratos de treino e inferência diferem."
+    }
+  ],
+  "sub_questions": [
+    "Qual é a superfície local verificável do Ideogram 4 (pesos, VAE, Qwen3-VL, transformer e pipeline ComfyUI/diffusion-pipe) e qual decisão ela permite tomar?",
+    "O que a evidência pública realmente estabelece — e não estabelece — sobre o mecanismo de denoising do Ideogram 4, especialmente backbone, espaço latente, sequência de tokens e blocos de atenção?",
+    "Quais são os pontos de injeção e o contrato de treino/inferência de ControlNet-LLLite/ControlLite, e quais pré-requisitos do modelo-base eles exigem?",
+    "Com os pesos locais e o forward do Ideogram 4, é possível treinar e conectar diretamente um ControlLite? Qual é o veredito sim/não, com condicionantes explícitos?",
+    "Como ControlLoRA, ControlNet-XS e ControlNeXt diferem de ControlNet-LLLite em custo, fidelidade espacial, dados, acoplamento ao backbone e portabilidade?",
+    "Como OminiControl, EasyControl, IP-Adapter e condicionamento por reference tokens se comparam para referência visual, estrutura e controle multiimagem no modelo local?",
+    "Qual é o delta concreto no diffusion-pipe para cada rota plausível: arquitetura/model loader, dataset e preprocessadores, módulos treináveis, loss/checkpoint e pipeline de inferência?",
+    "Qual contrato de inferência precisa ser reproduzido no ComfyUI para cada rota; como validar o MVP sem confundir suporte de treino com suporte de inferência?",
+    "Qual recomendação ranqueada equilibra viabilidade, custo e utilidade, e qual plano em fases separa controle estrutural, referência visual rica e combinações multi-condição?"
+  ],
+  "research_queries": [
+    "site:docs.ideogram.ai Ideogram 4 API reference image parameters",
+    "site:docs.ideogram.ai Ideogram 4 image generation API model parameters",
+    "site:ideogram.ai Ideogram 4 technical architecture diffusion transformer",
+    "Ideogram 4 API reference images style reference character reference documentation",
+    "Ideogram 4 image editing remix API documentation input image",
+    "ControlNet-LLLite official GitHub paper lightweight local control injection",
+    "ControlNet-LLLite arXiv architecture conditioning injection points",
+    "ControlLLLite ControlNet lightweight training code official repository",
+    "ControlNet original paper zero convolution architecture official arXiv",
+    "ControlLoRA official paper controllora lightweight controllable diffusion",
+    "ControlNet-XS official paper arXiv efficient controllable image generation",
+    "ControlNeXt official GitHub paper controllable image generation lightweight",
+    "OminiControl official GitHub universal control diffusion transformer paper",
+    "EasyControl official GitHub unified conditional diffusion transformer image control",
+    "IP-Adapter official GitHub paper image prompt adapter cross attention",
+    "reference tokens image conditioning diffusion transformer official paper",
+    "site:github.com diffusion-pipe ControlNet LoRA training model support",
+    "site:github.com diffusion-pipe architecture model loader trainer inference pipeline",
+    "diffusion-pipe documentation ControlNet training configuration",
+    "diffusion-pipe source code supported model architectures ControlNet adapter",
+    "Ideogram API terms model weights self hosting API closed source",
+    "Ideogram API image reference limitation structure control pose depth edge",
+    "ControlNet LLLite inference requires access UNet transformer hidden states",
+    "IP-Adapter black box image generation API feasibility client side",
+    "ControlNet-XS benchmark parameter count inference speed ControlNet",
+    "ControlLoRA parameter efficient controllable diffusion benchmark trainable parameters"
+  ],
+  "acceptance_criteria": [
+    "Sim, condicionalmente",
+    "Arquitetura real e veredito de compatibilidade",
+    "ControlLite-I4 estrutural proposto",
+    "Referência visual, estrutura e rotas sem treino",
+    "In-Context LoRA da Ali-ViLab",
+    "LatentUnfold",
+    "DirectEdit",
+    "Delta de implementação no diffusion-pipe e ComfyUI",
+    "Limitations and Caveats"
+  ],
+  "numeric_spine": [
+    "34 blocos",
+    "4608 → 13824",
+    "10.027.008",
+    "20.567.552",
+    "22M",
+    "0,1%",
+    "3×3"
+  ]
+}
