@@ -105,6 +105,27 @@ def _fit_area(image, max_pixels, snap=1):
     return samples.movedim(1, -1)
 
 
+def _fit_vl(image, max_pixels):
+    """Resize the Qwen3-VL copy exactly like training's prepare_vl_image:
+    aspect-preserving downscale-only, bicubic with antialias, 28px floor per
+    side (models/krea2_edit.py). The generic _fit_area (area kernel, 1px
+    floor) stays for the VAE branch only."""
+    samples = image.movedim(-1, 1)
+    height, width = samples.shape[-2:]
+    scale = min(1.0, math.sqrt(max_pixels / (height * width)))
+    new_height = max(round(height * scale), 28)
+    new_width = max(round(width * scale), 28)
+    if (new_height, new_width) == (height, width):
+        return image
+    samples = torch.nn.functional.interpolate(
+        samples.float(),
+        size=(new_height, new_width),
+        mode="bicubic",
+        antialias=True,
+    ).clamp(0.0, 1.0).to(image.dtype)
+    return samples.movedim(1, -1)
+
+
 def _crop_fit(image, width, height):
     """Match diffusion-pipe's same-bucket center-crop reference contract."""
     samples = image.movedim(-1, 1)
@@ -132,7 +153,7 @@ def _build_reference(
     if width % REFERENCE_SNAP or height % REFERENCE_SNAP:
         raise ValueError("Target width and height must be multiples of 16.")
 
-    vl_image = _fit_area(image, vl_image_max_pixels)
+    vl_image = _fit_vl(image, vl_image_max_pixels)
     if fit_mode == "training_crop":
         vae_image = _crop_fit(image, width, height)
     elif fit_mode == "preserve_aspect_1mp":
