@@ -375,8 +375,11 @@ def sample_ic_lora_full(
         noise_pred = output[:, :, -1:, :, :]
 
         if do_cfg:
+            # Trained uncond (condition_dropout) = text uncond + reference ZEROED.
+            # Keeping the ref in the neg pass (common-mode) dampens control response.
+            x_input_neg = torch.cat([torch.zeros_like(ctrl), latents], dim=2)
             with torch.autocast('cuda', dtype=torch.bfloat16):
-                output_neg = dit(x_input, t_per_token, neg_context, padding_mask=padding_mask)
+                output_neg = dit(x_input_neg, t_per_token, neg_context, padding_mask=padding_mask)
             uncond_pred = output_neg[:, :, -1:, :, :]
             noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
 
@@ -439,8 +442,10 @@ def sample_ominicontrol(
             noise_pred = output[:, :, :1, :, :]
 
             if do_cfg:
+                # Trained uncond (condition_dropout) = text uncond + condition ZEROED.
+                x_input_neg = torch.cat([latents, torch.zeros_like(ctrl)], dim=2)
                 with torch.autocast('cuda', dtype=torch.bfloat16):
-                    output_neg = dit(x_input, t_per_token, neg_context, padding_mask=padding_mask)
+                    output_neg = dit(x_input_neg, t_per_token, neg_context, padding_mask=padding_mask)
                 uncond_pred = output_neg[:, :, :1, :, :]
                 noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
 
