@@ -417,6 +417,13 @@ if __name__ == '__main__':
     else:
         raise NotImplementedError(f'Model type {model_type} is not implemented')
 
+    # Coherent caption dropout for dual-conditioning models: swap in a
+    # per-sample GROUNDED unconditional (empty caption, reference kept in both
+    # branches) for this fraction of fetches. The pipeline exposes the knob.
+    dataset_util.CAPTION_DROPOUT = float(getattr(model, 'caption_dropout', 0.0))
+    if dataset_util.CAPTION_DROPOUT > 0 and is_main_process():
+        print(f'caption_dropout={dataset_util.CAPTION_DROPOUT}: caching per-sample grounded uncond embeddings')
+
     # import sys, PIL
     # test_image = sys.argv[1]
     # with torch.no_grad():

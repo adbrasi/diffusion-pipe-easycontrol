@@ -54,8 +54,8 @@ class Krea2ReferencePipeline(Krea2Pipeline):
         self.condition_token_stride = int(reference.get('condition_token_stride', 1))
         if not 0 <= self.condition_dropout <= 1:
             raise ValueError('condition_dropout must be between 0 and 1')
-        if self.position_mode not in ('spatial', 'subject'):
-            raise ValueError("position_mode must be 'spatial' or 'subject'")
+        if self.position_mode not in ('spatial', 'subject', 'width_shift'):
+            raise ValueError("position_mode must be 'spatial', 'subject' or 'width_shift'")
         if self.condition_token_stride < 1:
             raise ValueError('condition_token_stride must be >= 1')
 
@@ -351,6 +351,12 @@ class Krea2ReferenceInitialLayer(nn.Module):
         )
         if self.position_mode == 'subject':
             reference_pos[..., 0] = self.reference_position_offset
+        elif self.position_mode == 'width_shift':
+            # OminiControl paper convention for non-aligned tasks: the condition
+            # lives "beside" the target in the SAME 2D plane (delta on the width
+            # axis), frame axis untouched. Their ablation reports faster
+            # convergence than shared positions for subject-driven tasks.
+            reference_pos[..., 2] = reference_pos[..., 2] + float(target_grid_w)
         text_pos = combined.new_zeros(batch, text_length, 3)
         positions = torch.cat([text_pos, target_pos, reference_pos], dim=1)
         freqs = self.pe_embedder(positions)

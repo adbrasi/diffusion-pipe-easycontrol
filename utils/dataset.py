@@ -35,6 +35,10 @@ CAPTIONS_JSON_FILE = 'captions.json'
 ROUND_DECIMAL_DIGITS = 3
 
 UNCOND_FRACTION = 0.0
+# Set by train.py from the model pipeline (e.g. krea2_edit caption_dropout):
+# fraction of fetches that swap the caption embedding for a per-sample
+# GROUNDED unconditional (empty caption, reference kept in both branches).
+CAPTION_DROPOUT = 0.0
 
 
 def shuffle_with_seed(l, seed=None):
@@ -174,7 +178,8 @@ class TextEmbeddingDataset:
         return self.te_dataset[self.image_spec_to_te_idx[image_spec][caption_number]]
 
 
-def _cache_text_embeddings(metadata_dataset, map_fn, i, cache_dir, regenerate_cache, caching_batch_size):
+def _cache_text_embeddings(metadata_dataset, map_fn, i, cache_dir, regenerate_cache, caching_batch_size,
+                           cache_file_prefix='text_embeddings_'):
 
     def flatten_captions(example):
         result = {key: [] for key in example}
@@ -192,13 +197,27 @@ def _cache_text_embeddings(metadata_dataset, map_fn, i, cache_dir, regenerate_ca
         flattened_captions,
         map_fn,
         cache_dir,
-        cache_file_prefix=f'text_embeddings_{i}_',
+        cache_file_prefix=f'{cache_file_prefix}{i}_',
         new_fingerprint_args=[i],
         regenerate_cache=regenerate_cache,
         caching_batch_size=caching_batch_size,
     )
     assert len(te_dataset) == len(flattened_captions)
     return TextEmbeddingDataset(te_dataset, flattened_captions)
+
+
+def _cache_grounded_uncond_embeddings(metadata_dataset, map_fn, i, cache_dir, regenerate_cache, caching_batch_size):
+    """Per-sample unconditional embeddings: EMPTY caption but the sample's own
+    control_file kept, so the text encoder still grounds the reference — the
+    exact unconditional CFG uses at inference for dual-conditioning models."""
+    blanked = metadata_dataset.map(
+        lambda example: {'caption': [[''] for _ in example['caption']]},
+        batched=True, keep_in_memory=True,
+    )
+    return _cache_text_embeddings(
+        blanked, map_fn, i, cache_dir, regenerate_cache, caching_batch_size,
+        cache_file_prefix='grounded_uncond_',
+    )
 
 
 # The smallest unit of a dataset. Represents a single size bucket from a single folder of images
@@ -225,6 +244,7 @@ class SizeBucketDataset:
         os.makedirs(self.cache_dir, exist_ok=True)
         self.text_embedding_datasets = []
         self.uncond_text_embeddings = []
+        self.grounded_uncond_datasets = []
         self.num_repeats = self.directory_config['num_repeats']
         self.shuffle_skip = max(directory_config.get('cache_shuffle_num', 0), 1) # Should be provided in DirectoryDataset
         if self.num_repeats <= 0:
@@ -301,9 +321,16 @@ class SizeBucketDataset:
         print(f'caching text embeddings: {self.size_bucket}')
         te_dataset = _cache_text_embeddings(self.metadata_dataset, map_fn, i, self.cache_dir, regenerate_cache, caching_batch_size)
         self.text_embedding_datasets.append(te_dataset)
+        if CAPTION_DROPOUT > 0:
+            self.grounded_uncond_datasets.append(_cache_grounded_uncond_embeddings(
+                self.metadata_dataset, map_fn, i, self.cache_dir, regenerate_cache, caching_batch_size
+            ))
 
     def add_text_embedding_dataset(self, te_dataset):
         self.text_embedding_datasets.append(te_dataset)
+
+    def add_grounded_uncond_dataset(self, te_dataset):
+        self.grounded_uncond_datasets.append(te_dataset)
 
     def __getitem__(self, idx):
         idx = idx % len(self.iteration_order)
@@ -311,7 +338,8 @@ class SizeBucketDataset:
 
         ret = self.latent_dataset[entry['latents_idx']]
 
-        use_uncond = UNCOND_FRACTION > 0 and random.random() < UNCOND_FRACTION
+        drop_fraction = max(UNCOND_FRACTION, CAPTION_DROPOUT)
+        use_uncond = drop_fraction > 0 and random.random() < drop_fraction
         if use_uncond:
             caption = ''
         else:
@@ -326,8 +354,19 @@ class SizeBucketDataset:
             else:
                 caption = entry['caption']
 
-        for ds, uncond_ds in zip(self.text_embedding_datasets, self.uncond_text_embeddings):
-            emb_dict = uncond_ds[0] if use_uncond else ds.get_text_embeddings(tuple(entry['image_spec']), entry['caption_number'])
+        for te_idx, (ds, uncond_ds) in enumerate(zip(self.text_embedding_datasets, self.uncond_text_embeddings)):
+            if use_uncond:
+                grounded = (
+                    self.grounded_uncond_datasets[te_idx]
+                    if te_idx < len(self.grounded_uncond_datasets) else None
+                )
+                if grounded is not None:
+                    # Per-sample grounded uncond (empty caption, reference kept).
+                    emb_dict = grounded.get_text_embeddings(tuple(entry['image_spec']), 0)
+                else:
+                    emb_dict = uncond_ds[0]
+            else:
+                emb_dict = ds.get_text_embeddings(tuple(entry['image_spec']), entry['caption_number'])
             ret.update(emb_dict)
         ret['caption'] = caption
         return ret
@@ -442,6 +481,12 @@ class ARBucketDataset:
         te_dataset = _cache_text_embeddings(self.metadata_dataset, map_fn, i, self.cache_dir, regenerate_cache, caching_batch_size)
         for size_bucket_dataset in self.size_buckets:
             size_bucket_dataset.add_text_embedding_dataset(te_dataset)
+        if CAPTION_DROPOUT > 0:
+            grounded = _cache_grounded_uncond_embeddings(
+                self.metadata_dataset, map_fn, i, self.cache_dir, regenerate_cache, caching_batch_size
+            )
+            for size_bucket_dataset in self.size_buckets:
+                size_bucket_dataset.add_grounded_uncond_dataset(grounded)
 
 
 class DirectoryDataset:

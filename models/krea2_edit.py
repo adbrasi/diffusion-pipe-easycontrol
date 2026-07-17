@@ -123,6 +123,24 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
         self.vl_longest_side = section.get('vl_longest_side', None)
         if self.vl_longest_side is not None:
             self.vl_longest_side = int(self.vl_longest_side)
+        # [min, max]: per-sample grounding-resolution jitter (conradlocke v1.1
+        # trained with 384-768). Text embeddings are cached, so the jitter is
+        # sampled ONCE per file (deterministic hash of the path), giving the
+        # dataset a spread of grounding resolutions rather than per-step noise.
+        self.vl_grounding_jitter = section.get('vl_grounding_jitter', None)
+        if self.vl_grounding_jitter is not None:
+            lo, hi = (int(v) for v in self.vl_grounding_jitter)
+            if not 28 <= lo <= hi:
+                raise ValueError('vl_grounding_jitter must be [min, max] with 28 <= min <= max')
+            self.vl_grounding_jitter = (lo, hi)
+        # Fraction of samples trained with an EMPTY caption while keeping the
+        # reference grounded in BOTH branches (vision block + VAE tokens) —
+        # exactly the unconditional used by CFG at inference. Distinct from
+        # condition_dropout (which would drop the reference itself and stays
+        # forbidden).
+        self.caption_dropout = float(section.get('caption_dropout', 0.0))
+        if not 0.0 <= self.caption_dropout <= 0.5:
+            raise ValueError('caption_dropout must be between 0.0 and 0.5')
         if self.condition_token_stride != 1:
             raise ValueError(
                 'krea2_edit follows the canonical Krea Edit contract; condition_token_stride must be 1'
@@ -198,6 +216,12 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
             if parameter.requires_grad:
                 parameter.data = parameter.data.to(adapter_config['dtype'])
 
+    def _jittered_grounding_side(self, file):
+        import hashlib
+        lo, hi = self.vl_grounding_jitter
+        digest = int(hashlib.sha256(str(file).encode()).hexdigest(), 16)
+        return lo + digest % (hi - lo + 1)
+
     def get_call_text_encoder_fn(self, text_encoder):
         te_idx = None
         for i, te in enumerate(self.text_encoders):
@@ -224,7 +248,14 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
                 text = caption
                 if control_file is not None:
                     files = control_file if isinstance(control_file, (list, tuple)) else [control_file]
-                    if self.vl_longest_side:
+                    if self.vl_grounding_jitter:
+                        images = [
+                            prepare_vl_image_longest_side(
+                                file, self._jittered_grounding_side(file)
+                            )
+                            for file in files
+                        ]
+                    elif self.vl_longest_side:
                         images = [
                             prepare_vl_image_longest_side(file, self.vl_longest_side)
                             for file in files
@@ -297,6 +328,11 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
                 else 'picture_n_vision_blocks'
             ),
             'vl_longest_side': str(self.vl_longest_side or 0),
+            'vl_grounding_jitter': (
+                f'{self.vl_grounding_jitter[0]}-{self.vl_grounding_jitter[1]}'
+                if self.vl_grounding_jitter else 'none'
+            ),
+            'caption_dropout': str(self.caption_dropout),
             'vl_reference_in_uncond': 'true',
             'lora_targets': 'blocks+txtfusion',
         }
