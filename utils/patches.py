@@ -405,7 +405,28 @@ def single_stream_forward(self, x: Tensor, vec: Tensor, pe: Tensor, attn_mask=No
     return x
 
 
+def _patch_quantized_partial_load():
+    # DeepSpeed resume loads each pipeline layer with a state dict saved with
+    # exclude_frozen_parameters=True (only LoRA keys). ComfyUI's quantized-Linear
+    # loader treats a missing weight key as "no weight" and sets module.weight =
+    # None, destroying the already-loaded fp8 base on resume. For partial loads,
+    # keep the existing weight instead.
+    import comfy.ops
+    original = comfy.ops._load_quantized_module
+
+    def partial_safe_load(module, super_load, state_dict, prefix, *args, **kwargs):
+        if f'{prefix}weight' not in state_dict and getattr(module, 'weight', None) is not None:
+            # super_load is nn.Module._load_from_state_dict; it does not take
+            # the quantized loader's extra kwargs (e.g. load_extra_params).
+            return super_load(state_dict, prefix, *args)
+        return original(module, super_load, state_dict, prefix, *args, **kwargs)
+
+    comfy.ops._load_quantized_module = partial_safe_load
+
+
 def apply_patches():
+    _patch_quantized_partial_load()
+
     # Prevent PEFT from downcasting LoRA weights to fp8 only for this script to upcast them again.
     # TODO: probably should send a PR to PEFT. Default behavior looks like a mistake to me.
     peft.tuners.tuners_utils.BaseTunerLayer._move_adapter_to_device_of_base_layer = _move_adapter_to_device_of_base_layer
