@@ -143,6 +143,18 @@ def _crop_fit(image, width, height):
     return samples[:, :, top : top + height, left : left + width].movedim(1, -1)
 
 
+def _fit_vl_longest(image, longest_side):
+    """conradlocke grounding_px semantics: cap the LONGEST side, area resample."""
+    samples = image.movedim(-1, 1)
+    height, width = samples.shape[-2:]
+    if longest_side and max(height, width) > longest_side:
+        scale = longest_side / max(height, width)
+        new_h = max(round(height * scale), 28)
+        new_w = max(round(width * scale), 28)
+        samples = comfy.utils.common_upscale(samples, new_w, new_h, "area", "disabled")
+    return samples.movedim(1, -1)
+
+
 def _build_reference(
     vae,
     image,
@@ -150,12 +162,16 @@ def _build_reference(
     height,
     fit_mode="training_crop",
     vl_image_max_pixels=DEFAULT_VL_MAX_PIXELS,
+    vl_longest_side=0,
 ):
     image = _require_single_image(image)
     if width % REFERENCE_SNAP or height % REFERENCE_SNAP:
         raise ValueError("Target width and height must be multiples of 16.")
 
-    vl_image = _fit_vl(image, vl_image_max_pixels)
+    if vl_longest_side:
+        vl_image = _fit_vl_longest(image, vl_longest_side)
+    else:
+        vl_image = _fit_vl(image, vl_image_max_pixels)
     if fit_mode == "training_crop":
         vae_image = _crop_fit(image, width, height)
     elif fit_mode == "preserve_aspect_1mp":
@@ -175,8 +191,12 @@ def _build_reference(
     )
 
 
-def _encode_conditioning(clip, prompt, reference):
-    text = f"Picture 1: {VISION_BLOCK}{prompt}"
+def _encode_conditioning(clip, prompt, reference, vl_prompt_style="picture_n"):
+    if vl_prompt_style == "plain":
+        # conradlocke layout: bare vision block, no "Picture 1:" prefix.
+        text = f"{VISION_BLOCK}{prompt}"
+    else:
+        text = f"Picture 1: {VISION_BLOCK}{prompt}"
     try:
         tokens = clip.tokenize(
             text,
@@ -309,6 +329,7 @@ def _forward_with_reference(
     context,
     reference_latents,
     transformer_options,
+    reference_timestep="zero",
 ):
     if len(reference_latents) != 1:
         raise ValueError(
@@ -345,13 +366,18 @@ def _forward_with_reference(
     target_features = dit.tmlp(
         timestep_embedding(timesteps, dit.tdim).unsqueeze(1).to(image_tokens.dtype)
     )
-    clean_features = dit.tmlp(
-        timestep_embedding(torch.zeros_like(timesteps), dit.tdim)
-        .unsqueeze(1)
-        .to(image_tokens.dtype)
-    )
     target_timestep = dit.tproj(target_features)
-    clean_timestep = dit.tproj(clean_features)
+    if reference_timestep == "target":
+        # conradlocke convention: one modulation timestep for the whole
+        # sequence (adapters trained with reference_timestep='target').
+        clean_timestep = target_timestep
+    else:
+        clean_features = dit.tmlp(
+            timestep_embedding(torch.zeros_like(timesteps), dit.tdim)
+            .unsqueeze(1)
+            .to(image_tokens.dtype)
+        )
+        clean_timestep = dit.tproj(clean_features)
 
     context = dit.txtfusion(
         context, mask=None, transformer_options=transformer_options
@@ -419,7 +445,7 @@ def _forward_with_reference(
     return output
 
 
-def _patch_model(model):
+def _patch_model(model, reference_timestep="zero", lora_path=None, lora_strength=1.0):
     patched = model.clone()
     base_model = patched.model
     dit = patched.get_model_object("diffusion_model")
@@ -439,6 +465,21 @@ def _patch_model(model):
             "CtxRush Krea 2 Edit Model Patch requires the ComfyUI Krea 2 "
             f"SingleStreamDiT, got {dit.__class__.__name__}{detail}."
         )
+
+    lora_entries = []
+    if lora_path:
+        pairs = _load_omini_lora(lora_path)
+        named = dict(dit.named_modules())
+        missing = []
+        for path, (a, b) in pairs.items():
+            module = named.get(path)
+            if module is None:
+                missing.append(path)
+                continue
+            lora_entries.append((module, a.cuda(), b.cuda()))
+        if missing:
+            print(f'[ctxrush_edit] WARNING: {len(missing)} LoRA keys not matched (e.g. {missing[:3]})')
+        print(f'[ctxrush_edit] runtime LoRA: {len(lora_entries)} linears @ strength {lora_strength}')
 
     original_extra_conds = base_model.extra_conds
     original_extra_conds_shapes = base_model.extra_conds_shapes
@@ -480,6 +521,12 @@ def _patch_model(model):
                 transformer_options=options,
                 **kwargs,
             )
+        if lora_entries:
+            with _FullLoraScope(lora_entries, lora_strength):
+                return _forward_with_reference(
+                    dit, x, timesteps, context, ctxrush_reference_latents,
+                    options, reference_timestep=reference_timestep,
+                )
         return _forward_with_reference(
             dit,
             x,
@@ -487,6 +534,7 @@ def _patch_model(model):
             context,
             ctxrush_reference_latents,
             options,
+            reference_timestep=reference_timestep,
         )
 
     patched.add_object_patch("extra_conds", extra_conds)
@@ -760,6 +808,34 @@ class CtxRushKrea2EditSetup:
                         ),
                     },
                 ),
+                "adapter_contract": (
+                    ["ostris_t0_picture", "conrad_target_plain"],
+                    {
+                        "default": "ostris_t0_picture",
+                        "tooltip": (
+                            "Contrato com que o adapter foi TREINADO. "
+                            "ostris_t0_picture: refs a t=0, template 'Picture 1:', grounding área 384² "
+                            "(adapters v1/v2 ostris-style). "
+                            "conrad_target_plain: refs no timestep do target, vision block sem prefixo, "
+                            "grounding maior-lado 768 (adapters conrad-style, ex. ctxrush_conrad750)."
+                        ),
+                    },
+                ),
+            },
+            "optional": {
+                "lora_name": (
+                    ["none"] + folder_paths.get_filename_list("loras"),
+                    {
+                        "default": "none",
+                        "tooltip": (
+                            "APLICAÇÃO RUNTIME (recomendado p/ base fp8): o delta do LoRA é "
+                            "somado em bf16 a cada forward, sem fundir nos pesos — o merge do "
+                            "Load LoRA padrão requantiza W+ΔW para fp8 e afoga o delta de "
+                            "adapters jovens. Se usar isto, NÃO use Load LoRA no model."
+                        ),
+                    },
+                ),
+                "lora_strength": ("FLOAT", {"default": 1.0, "min": 0.0, "max": 4.0, "step": 0.05}),
             }
         }
 
@@ -793,7 +869,11 @@ class CtxRushKrea2EditSetup:
         negative_prompt,
         batch_size,
         model_variant,
+        adapter_contract="ostris_t0_picture",
+        lora_name="none",
+        lora_strength=1.0,
     ):
+        conrad = adapter_contract == "conrad_target_plain"
         encoded_reference = _build_reference(
             vae,
             reference,
@@ -801,16 +881,29 @@ class CtxRushKrea2EditSetup:
             height,
             reference_fit,
             vl_image_max_pixels,
+            vl_longest_side=768 if conrad else 0,
         )
+        style = "plain" if conrad else "picture_n"
         positive = _encode_conditioning(
-            clip, positive_prompt, encoded_reference
+            clip, positive_prompt, encoded_reference, vl_prompt_style=style
         )
         negative = _encode_conditioning(
-            clip, negative_prompt, encoded_reference
+            clip, negative_prompt, encoded_reference, vl_prompt_style=style
         )
         steps, cfg = (28, 5.5) if model_variant == "raw" else (8, 1.0)
         mu = _krea2_raw_mu(width, height) if model_variant == "raw" else KREA2_TURBO_MU
-        patched_model = _apply_krea2_sampling(_patch_model(model), mu)
+        lora_path = None
+        if lora_name and lora_name != "none":
+            lora_path = folder_paths.get_full_path("loras", lora_name)
+        patched_model = _apply_krea2_sampling(
+            _patch_model(
+                model,
+                reference_timestep="target" if conrad else "zero",
+                lora_path=lora_path,
+                lora_strength=lora_strength,
+            ),
+            mu,
+        )
         return (
             patched_model,
             positive,
@@ -838,6 +931,40 @@ def _load_omini_lora(lora_path):
     if not out:
         raise ValueError(f'No fork-format LoRA pairs found in {lora_path}')
     return out
+
+
+class _FullLoraScope:
+    """Runtime bf16 LoRA delta on every call of the targeted Linears (exact
+    PEFT semantics), instead of merging into the weights. Merging into
+    fp8-SCALED checkpoints requantizes W+ΔW to e4m3, drowning the small delta
+    of young adapters — runtime application preserves it."""
+
+    def __init__(self, entries, scale):
+        self.entries = entries
+        self.scale = scale
+        self._originals = []
+
+    def __enter__(self):
+        scale = self.scale
+        for module, lora_a, lora_b in self.entries:
+            orig = module.forward
+
+            def wrapped(x, *args, _orig=orig, _a=lora_a, _b=lora_b, **kwargs):
+                out = _orig(x, *args, **kwargs)
+                delta = torch.nn.functional.linear(
+                    torch.nn.functional.linear(x.to(_a.dtype), _a), _b
+                )
+                return out + (delta * scale).to(out.dtype)
+
+            self._originals.append((module, orig))
+            module.forward = wrapped
+        return self
+
+    def __exit__(self, *exc):
+        for module, orig in self._originals:
+            module.forward = orig
+        self._originals.clear()
+        return False
 
 
 class _MaskedLoraScope:
