@@ -234,7 +234,9 @@ def expected_contract(config: dict) -> dict[str, str]:
         section_name = 'krea2_ic_lora' if model_type == 'krea2_ic_lora' else 'ominicontrol'
         section = config.get(section_name, {})
         expected.update({
-            'reference_model_timestep': '0.0',
+            'reference_model_timestep': (
+                'target' if section.get('reference_timestep', 'zero') == 'target' else '0.0'
+            ),
             'position_mode': str(section.get('position_mode', 'subject')),
             'condition_token_stride': str(int(section.get('condition_token_stride', 1))),
         })
