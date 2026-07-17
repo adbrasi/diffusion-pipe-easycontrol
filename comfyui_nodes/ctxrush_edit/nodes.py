@@ -1163,7 +1163,8 @@ class CtxRushKrea2OminiApply:
 
 
 def _krea2_omini_grounded_forward(m, x, timesteps, context, src_latent, blocks_state,
-                                  fusion_entries, strength, transformer_options):
+                                  fusion_entries, strength, transformer_options,
+                                  fusion_strength=None):
     """Omini-Grounded forward: identical geometry/timestep to the omini node
     (width-shift, refs at t=0 per-token, masked block deltas) but the context
     is GROUNDED (encoded with the reference through Qwen3-VL) and the
@@ -1195,7 +1196,9 @@ def _krea2_omini_grounded_forward(m, x, timesteps, context, src_latent, blocks_s
     t = m.tmlp(timestep_embedding(timesteps, m.tdim).unsqueeze(1).to(tgt.dtype))
     tvec_t = m.tproj(t)
 
-    with _FullLoraScope(fusion_entries, strength) if fusion_entries else _NullScope():
+    fusion_scale = strength if fusion_strength is None else fusion_strength
+    use_fusion = bool(fusion_entries) and fusion_scale > 0
+    with _FullLoraScope(fusion_entries, fusion_scale) if use_fusion else _NullScope():
         context = m.txtfusion(context, mask=None, transformer_options=transformer_options)
     context = m.txtmlp(context)
 
@@ -1263,7 +1266,10 @@ class CtxRushKrea2OminiGroundedApply:
                 'positive_prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
                 'negative_prompt': ('STRING', {'default': '', 'multiline': True, 'dynamicPrompts': True}),
                 'lora_name': (folder_paths.get_filename_list('loras'),),
-                'strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05}),
+                'block_strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05,
+                                             'tooltip': 'Escala dos deltas ROUTADOS nos blocks (fidelidade à referência).'}),
+                'fusion_strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05,
+                                              'tooltip': 'Escala do LoRA GLOBAL do txtfusion (semântica do grounding). 0 = txtfusion do adapter desligado (mede quanto vem do built-in).'}),
                 'model_variant': (['raw', 'turbo'], {'default': 'raw'}),
                 'width': ('INT', {'default': 672, 'min': 64, 'max': 4096, 'step': 16}),
                 'height': ('INT', {'default': 384, 'min': 64, 'max': 4096, 'step': 16}),
@@ -1282,7 +1288,8 @@ class CtxRushKrea2OminiGroundedApply:
     )
 
     def apply(self, model, clip, vae, image, positive_prompt, negative_prompt,
-              lora_name, strength, model_variant='raw', width=672, height=384, batch_size=1):
+              lora_name, block_strength=1.0, fusion_strength=1.0,
+              model_variant='raw', width=672, height=384, batch_size=1):
         reference = _build_reference(
             vae, image, width, height, 'training_crop',
             vl_longest_side=768,
@@ -1314,8 +1321,9 @@ class CtxRushKrea2OminiGroundedApply:
             raise ValueError('No block LoRA modules matched the diffusion model')
         if missing:
             print(f'[OminiGrounded] WARNING: {len(missing)} LoRA keys not matched (e.g. {missing[:3]})')
-        print(f'[OminiGrounded] runtime LoRA: {len(block_entries)} block linears (masked) + '
-              f'{len(fusion_entries)} txtfusion linears (global) @ strength {strength}')
+        print(f'[OminiGrounded] runtime LoRA: {len(block_entries)} block linears (masked, '
+              f'strength {block_strength}) + {len(fusion_entries)} txtfusion linears '
+              f'(global, strength {fusion_strength})')
 
         src = patched.model.process_latent_in(reference.latent)
         blocks_state = {'entries': block_entries, 'device': None}
@@ -1323,7 +1331,8 @@ class CtxRushKrea2OminiGroundedApply:
         def wrapper(executor, x, timesteps, context, attention_mask=None, transformer_options=None, **kwargs):
             return _krea2_omini_grounded_forward(
                 executor.class_obj, x, timesteps, context, src, blocks_state, fusion_entries,
-                strength, transformer_options if transformer_options is not None else {},
+                block_strength, transformer_options if transformer_options is not None else {},
+                fusion_strength=fusion_strength,
             )
 
         to = patched.model_options.setdefault('transformer_options', {})
