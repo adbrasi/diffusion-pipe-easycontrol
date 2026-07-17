@@ -1,0 +1,42 @@
+# IC-LoRA VERDADEIRO (ali-vilab): canvas único [ref|target], LoRA t2i plain no
+# Krea 2 (sem maquinário de referência), loss no canvas inteiro como o paper
+# original, caption combinado descrevendo os dois painéis. 250 steps, lr 1e-4.
+output_dir = '/workspace/krea2_iclora_stitched_output'
+dataset = '/workspace/configs/contexto_rush_stitched_dataset.toml'
+epochs = 1000
+max_steps = 250
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1
+blocks_to_swap = 8
+
+[model]
+type = 'krea2'
+diffusion_model = '/workspace/models/krea2_raw_fp8_scaled.safetensors'
+vae = '/workspace/models/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

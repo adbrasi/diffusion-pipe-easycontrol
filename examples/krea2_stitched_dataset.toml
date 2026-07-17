@@ -1,0 +1,12 @@
+# Dataset DERIVADO stitched (ref|target lado a lado). Área 720² ≈ 2×512² para
+# cada metade ficar com ~512² de área. ARs dobram (16:9 vira ~3.55).
+resolutions = [720]
+enable_ar_bucket = true
+min_ar = 2.0
+max_ar = 4.0
+num_ar_buckets = 5
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/datasets/contexto_rush_stitched/images'
+num_repeats = 1

@@ -1,0 +1,54 @@
+# Braço MÉTODO CONRAD: krea2_edit dual com o contrato do conradlocke —
+# referência modulada com o timestep do TARGET (não t=0), vision block sem
+# "Picture 1:", grounding pelo maior lado 768px (jitter 384-768 dele -> fixo 768).
+# lr 1e-4 (padrão novo), 250 steps. Cache de embeddings NOVO (template mudou):
+# rodar com --regenerate_cache (destrói o cache do krea2_edit ostris-style;
+# reconstruível depois com outro --regenerate_cache, ~20 min).
+output_dir = '/workspace/krea2_edit_conrad750_output'
+dataset = '/workspace/configs/contexto_rush_dataset.toml'
+epochs = 1000
+max_steps = 750
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1
+blocks_to_swap = 8
+
+[model]
+type = 'krea2_edit'
+diffusion_model = '/workspace/models/krea2_raw_fp8_scaled.safetensors'
+vae = '/workspace/models/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[krea2_edit]
+position_mode = 'subject'
+reference_position_offset = 1.0
+condition_dropout = 0.0
+reference_timestep = 'target'
+vl_prompt_style = 'plain'
+vl_grounding_jitter = [384, 768]
+caption_dropout = 0.1
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false
