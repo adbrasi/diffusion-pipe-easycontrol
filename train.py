@@ -414,6 +414,9 @@ if __name__ == '__main__':
     elif model_type == 'krea2_ominicontrol2':
         from models import krea2_ominicontrol2
         model = krea2_ominicontrol2.Krea2OminiControl2Pipeline(config)
+    elif model_type == 'krea2_omini_grounded':
+        from models import krea2_omini_grounded
+        model = krea2_omini_grounded.Krea2OminiGroundedPipeline(config)
     else:
         raise NotImplementedError(f'Model type {model_type} is not implemented')
 

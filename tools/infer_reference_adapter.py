@@ -61,6 +61,7 @@ MODEL_CLASSES = {
     'krea2_edit': ('models.krea2_edit', 'Krea2EditPipeline'),
     'krea2_ominicontrol': ('models.krea2_ominicontrol', 'Krea2OminiControlPipeline'),
     'krea2_ominicontrol2': ('models.krea2_ominicontrol2', 'Krea2OminiControl2Pipeline'),
+    'krea2_omini_grounded': ('models.krea2_omini_grounded', 'Krea2OminiGroundedPipeline'),
 }
 
 
@@ -217,19 +218,24 @@ def expected_contract(config: dict) -> dict[str, str]:
         })
         if 'ominicontrol' in model_type:
             expected['condition_only_lora'] = str(bool(control.get('condition_only_lora', True))).lower()
-    elif model_type == 'krea2_edit':
-        section = config.get('krea2_edit', {})
+    elif model_type in ('krea2_edit', 'krea2_omini_grounded'):
+        section = config.get(model_type, {})
         expected.update({
             'reference_model_timestep': (
                 'target' if section.get('reference_timestep', 'zero') == 'target' else '0.0'
             ),
             'position_mode': str(section.get('position_mode', 'subject')),
             'condition_token_stride': '1',
-            'control_family': 'krea2_edit_dual',
+            'control_family': (
+                'krea2_omini_grounded' if model_type == 'krea2_omini_grounded'
+                else 'krea2_edit_dual'
+            ),
             'vl_conditioning': 'qwen3vl_image_grounded',
             'vl_image_max_pixels': str(int(section.get('vl_image_max_pixels', 384 * 384))),
             'lora_targets': 'blocks+txtfusion',
         })
+        if model_type == 'krea2_omini_grounded':
+            expected['condition_only_lora'] = str(bool(section.get('condition_only_lora', True))).lower()
     else:
         section_name = 'krea2_ic_lora' if model_type == 'krea2_ic_lora' else 'ominicontrol'
         section = config.get(section_name, {})
@@ -566,7 +572,7 @@ def main():
         )
     need_unconditional = args.text_guidance != 1.0
     sample_kwargs = {}
-    if config['model']['type'] == 'krea2_edit' and not args.disable_vl_reference:
+    if config['model']['type'] in ('krea2_edit', 'krea2_omini_grounded') and not args.disable_vl_reference:
         # Dual conditioning: the reference grounds the Qwen3-VL embeddings of
         # both the conditional and the unconditional prompt.
         sample_kwargs['control_files'] = [str(args.reference)]

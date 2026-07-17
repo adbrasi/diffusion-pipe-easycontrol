@@ -41,7 +41,9 @@ def test_reference_travels_with_conditioning_and_object_patch():
     assert '{"reference_latents": [reference.latent]}' in source
     assert 'patched.add_object_patch("extra_conds", extra_conds)' in source
     assert 'patched.add_object_patch("diffusion_model.forward", forward)' in source
-    assert "add_wrapper_with_key" not in source
+    # The EDIT path must keep using object patches; the OMINI node is the one
+    # legitimate wrapper user (Conrad-style DIFFUSION_MODEL wrapper).
+    assert source.count('add_wrapper_with_key') == source.count('ctxrush_omini')
 
 
 def test_contract_has_fixed_clean_timestep_and_reference_frame():

@@ -1147,9 +1147,10 @@ class CtxRushKrea2OminiApply:
         print(f'[CtxRushKrea2OminiApply] reference encoded at {width}x{height}, latent {tuple(latent.shape)}')
         lora_state = {'entries': entries, 'device': None}
 
-        def wrapper(executor, x, timesteps, context, attention_mask=None, transformer_options={}, **kwargs):
+        def wrapper(executor, x, timesteps, context, attention_mask=None, transformer_options=None, **kwargs):
             return _krea2_omini_forward(
-                executor.class_obj, x, timesteps, context, src, lora_state, strength, transformer_options,
+                executor.class_obj, x, timesteps, context, src, lora_state, strength,
+                transformer_options if transformer_options is not None else {},
                 reference_timestep=reference_timestep,
             )
 
