@@ -1162,7 +1162,182 @@ class CtxRushKrea2OminiApply:
         return (_apply_krea2_sampling(patched, mu),)
 
 
+def _krea2_omini_grounded_forward(m, x, timesteps, context, src_latent, blocks_state,
+                                  fusion_entries, strength, transformer_options):
+    """Omini-Grounded forward: identical geometry/timestep to the omini node
+    (width-shift, refs at t=0 per-token, masked block deltas) but the context
+    is GROUNDED (encoded with the reference through Qwen3-VL) and the
+    txtfusion LoRA applies globally on the text stream."""
+    temporal = x.ndim == 5
+    if temporal:
+        b5, c5, t5, h5, w5 = x.shape
+        x = x.reshape(b5 * t5, c5, h5, w5)
+    bs, c, H_orig, W_orig = x.shape
+    patch = m.patch
+    x = comfy.ldm.common_dit.pad_to_patch_size(x, (patch, patch))
+    H, W = x.shape[-2:]
+    h_, w_ = H // patch, W // patch
+
+    src = src_latent
+    if src.ndim == 5:
+        src = src.reshape(src.shape[0] * src.shape[2], src.shape[1], *src.shape[-2:])
+    src = src.to(x.device, x.dtype)
+    if src.shape[0] != bs:
+        src = src[:1].expand(bs, *src.shape[1:])
+    if src.shape[-2:] != (H, W):
+        src = torch.nn.functional.interpolate(src.float(), size=(H, W), mode='bilinear').to(x.dtype)
+    src = comfy.ldm.common_dit.pad_to_patch_size(src, (patch, patch))
+
+    context = m._unpack_context(context)
+    tgt = m.first(rearrange(x, 'b c (h ph) (w pw) -> b (h w) (c ph pw)', ph=patch, pw=patch))
+    ref = m.first(rearrange(src, 'b c (h ph) (w pw) -> b (h w) (c ph pw)', ph=patch, pw=patch))
+
+    t = m.tmlp(timestep_embedding(timesteps, m.tdim).unsqueeze(1).to(tgt.dtype))
+    tvec_t = m.tproj(t)
+
+    with _FullLoraScope(fusion_entries, strength) if fusion_entries else _NullScope():
+        context = m.txtfusion(context, mask=None, transformer_options=transformer_options)
+    context = m.txtmlp(context)
+
+    txtlen, tgtlen, reflen = context.shape[1], tgt.shape[1], ref.shape[1]
+    combined = torch.cat([context, tgt, ref], dim=1)
+
+    t0 = m.tmlp(timestep_embedding(torch.zeros_like(timesteps), m.tdim).unsqueeze(1).to(tgt.dtype))
+    tv0 = m.tproj(t0)
+    tvec = torch.cat([
+        tvec_t.expand(-1, txtlen + tgtlen, -1),
+        tv0.expand(-1, reflen, -1),
+    ], dim=1)
+
+    device = combined.device
+    txtpos = torch.zeros(bs, txtlen, 3, device=device, dtype=torch.float32)
+    grid = torch.zeros(h_, w_, 3, device=device, dtype=torch.float32)
+    grid[..., 1] = torch.arange(h_, device=device, dtype=torch.float32)[:, None]
+    grid[..., 2] = torch.arange(w_, device=device, dtype=torch.float32)[None, :]
+    tgtpos = grid.reshape(1, h_ * w_, 3).repeat(bs, 1, 1)
+    refpos = tgtpos.clone()
+    refpos[..., 2] = refpos[..., 2] + float(w_)
+    freqs = m.pe_embedder(torch.cat([txtpos, tgtpos, refpos], dim=1))
+
+    entries = blocks_state['entries']
+    if blocks_state.get('device') != device:
+        entries = [(mod, a.to(device), b.to(device)) for mod, a, b in entries]
+        blocks_state['entries'] = entries
+        blocks_state['device'] = device
+
+    seq_len = txtlen + tgtlen + reflen
+    with _MaskedLoraScope(entries, txtlen + tgtlen, seq_len, seq_len, strength):
+        for block in m.blocks:
+            combined = block(combined, tvec, freqs, None, transformer_options=transformer_options)
+
+    final = m.last(combined, t)
+    out = final[:, txtlen:txtlen + tgtlen, :]
+    out = rearrange(out, 'b (h w) (c ph pw) -> b c (h ph) (w pw)', h=h_, w=w_, ph=patch, pw=patch, c=m.channels)
+    out = out[:, :, :H_orig, :W_orig]
+    if temporal:
+        out = out.reshape(b5, t5, m.channels, H_orig, W_orig).movedim(1, 2)
+    return out
+
+
+class _NullScope:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class CtxRushKrea2OminiGroundedApply:
+    """All-in-one for adapters trained with type=krea2_omini_grounded: omini
+    core (width-shift, refs t=0, condition-only block LoRA) + Qwen3-VL
+    grounded conditioning + global txtfusion LoRA, applied at runtime in bf16."""
+
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            'required': {
+                'model': ('MODEL', {'tooltip': 'Krea 2 model SEM Load LoRA (o node aplica o adapter em runtime).'}),
+                'clip': ('CLIP', {'tooltip': 'Krea 2 Qwen3-VL com torre visual.'}),
+                'vae': ('VAE',),
+                'image': ('IMAGE', {'tooltip': 'Referência (painel anterior).'}),
+                'positive_prompt': ('STRING', {'multiline': True, 'dynamicPrompts': True}),
+                'negative_prompt': ('STRING', {'default': '', 'multiline': True, 'dynamicPrompts': True}),
+                'lora_name': (folder_paths.get_filename_list('loras'),),
+                'strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05}),
+                'model_variant': (['raw', 'turbo'], {'default': 'raw'}),
+                'width': ('INT', {'default': 672, 'min': 64, 'max': 4096, 'step': 16}),
+                'height': ('INT', {'default': 384, 'min': 64, 'max': 4096, 'step': 16}),
+                'batch_size': ('INT', {'default': 1, 'min': 1, 'max': 16}),
+            }
+        }
+
+    RETURN_TYPES = ('MODEL', 'CONDITIONING', 'CONDITIONING', 'LATENT', 'INT', 'FLOAT')
+    RETURN_NAMES = ('model', 'positive', 'negative', 'latent', 'steps', 'cfg')
+    FUNCTION = 'apply'
+    CATEGORY = 'CtxRush/Krea 2 Edit'
+    DESCRIPTION = (
+        'Omini-Grounded: conditioning grounded (vision block plain + grounding '
+        '768) + LoRA condition-only nos blocks e global no txtfusion, tudo em '
+        'runtime bf16. Contrato: width-shift, refs a t=0.'
+    )
+
+    def apply(self, model, clip, vae, image, positive_prompt, negative_prompt,
+              lora_name, strength, model_variant='raw', width=672, height=384, batch_size=1):
+        reference = _build_reference(
+            vae, image, width, height, 'training_crop',
+            vl_longest_side=768,
+        )
+
+        def encode(prompt):
+            text = f'{VISION_BLOCK}{prompt}'
+            tokens = clip.tokenize(text, images=[reference.vl_image], llama_template=KREA2_TEMPLATE)
+            return clip.encode_from_tokens_scheduled(tokens)
+
+        positive = encode(positive_prompt)
+        negative = encode(negative_prompt)
+
+        lora_path = folder_paths.get_full_path('loras', lora_name)
+        pairs = _load_omini_lora(lora_path)
+        patched = model.clone()
+        dit = patched.get_model_object('diffusion_model')
+        named = dict(dit.named_modules())
+        block_entries, fusion_entries, missing = [], [], []
+        for path, (a, b) in pairs.items():
+            module = named.get(path)
+            if module is None:
+                missing.append(path)
+            elif path.startswith('txtfusion'):
+                fusion_entries.append((module, a.cuda(), b.cuda()))
+            else:
+                block_entries.append((module, a.cuda(), b.cuda()))
+        if not block_entries:
+            raise ValueError('No block LoRA modules matched the diffusion model')
+        if missing:
+            print(f'[OminiGrounded] WARNING: {len(missing)} LoRA keys not matched (e.g. {missing[:3]})')
+        print(f'[OminiGrounded] runtime LoRA: {len(block_entries)} block linears (masked) + '
+              f'{len(fusion_entries)} txtfusion linears (global) @ strength {strength}')
+
+        src = patched.model.process_latent_in(reference.latent)
+        blocks_state = {'entries': block_entries, 'device': None}
+
+        def wrapper(executor, x, timesteps, context, attention_mask=None, transformer_options=None, **kwargs):
+            return _krea2_omini_grounded_forward(
+                executor.class_obj, x, timesteps, context, src, blocks_state, fusion_entries,
+                strength, transformer_options if transformer_options is not None else {},
+            )
+
+        to = patched.model_options.setdefault('transformer_options', {})
+        comfy.patcher_extension.add_wrapper_with_key(
+            comfy.patcher_extension.WrappersMP.DIFFUSION_MODEL, 'ctxrush_omini_grounded', wrapper, to
+        )
+        mu = _krea2_raw_mu(width, height) if model_variant == 'raw' else KREA2_TURBO_MU
+        patched = _apply_krea2_sampling(patched, mu)
+        steps, cfg = (28, 5.5) if model_variant == 'raw' else (8, 1.0)
+        return (patched, positive, negative, _empty_krea_latent(width, height, batch_size), steps, cfg)
+
+
 NODE_CLASS_MAPPINGS = {
+    'CtxRushKrea2OminiGroundedApply': CtxRushKrea2OminiGroundedApply,
     'CtxRushKrea2OminiApply': CtxRushKrea2OminiApply,
     "CtxRushKrea2EditSetup": CtxRushKrea2EditSetup,
     "CtxRushKrea2ReferenceEncode": CtxRushKrea2ReferenceEncode,
@@ -1171,6 +1346,7 @@ NODE_CLASS_MAPPINGS = {
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
+    "CtxRushKrea2OminiGroundedApply": "CtxRush - Krea 2 Omini-Grounded (setup completo)",
     "CtxRushKrea2OminiApply": "CtxRush - Krea 2 Omini Apply (condition-only LoRA)",
     "CtxRushKrea2EditSetup": "CtxRush - Krea 2 Edit Setup",
     "CtxRushKrea2ReferenceEncode": "CtxRush - Krea 2 Reference Encode",
