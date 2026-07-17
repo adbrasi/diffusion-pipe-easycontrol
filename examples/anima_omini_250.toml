@@ -1,0 +1,47 @@
+# ANIMA OMINI-CONTROL — probe 250 steps, dataset contexto_rush (next-scene).
+# Base: anima-base-v1.0. Código em HEAD (fix 97fc94c + c650296): LoRA só em
+# self_attn+mlp (adaln_modulation/cross_attn/llm_adapter EXCLUÍDOS — causa do
+# "derretimento" antigo). position_mode=subject: tarefa não-alinhada (cena
+# seguinte), condição em T=1 separado — o modo que já funcionou no passado.
+output_dir = '/workspace/checkpoints/anima_omini_250'
+dataset = '/workspace/configs/contexto_rush_dataset.toml'
+epochs = 1000
+max_steps = 250
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 4
+partition_method = 'parameters'
+
+[model]
+type = 'ominicontrol'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors'
+vae_path = '/workspace/models/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+sigmoid_scale = 1.3
+llm_adapter_lr = 0
+
+[ominicontrol]
+position_mode = 'subject'
+condition_dropout = 0.1
+condition_timestep = 0.0
+
+# subject mode → rank 32 (nota da config de referência do fork)
+[adapter]
+type = 'lora'
+rank = 32
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

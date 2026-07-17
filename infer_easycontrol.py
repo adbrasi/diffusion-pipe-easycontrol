@@ -78,6 +78,8 @@ def parse_args():
     p.add_argument("--cfg", type=float, default=3.5, help="CFG scale (Anima official: 3.5)")
     p.add_argument("--flow_shift", type=float, default=5.0, help="Flow shift (Anima official: 5.0, community: 2.5-3.0)")
     p.add_argument("--control_strength", type=float, default=1.0, help="Control strength (0.0 = no control, 1.0 = full)")
+    p.add_argument("--lora_strength", type=float, default=1.0,
+                   help="PEFT LoRA merge scale for ic_lora/ominicontrol modes (0.0 = base model + ref, honest baseline)")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--save_path", default="./outputs", help="Output directory")
     p.add_argument("--vae_chunk_size", type=int, default=None)
@@ -530,7 +532,7 @@ def sample_levzzz(
     return latents
 
 
-def load_peft_lora(dit, lora_path, device, dtype, skip_adaln=False):
+def load_peft_lora(dit, lora_path, device, dtype, skip_adaln=False, lora_strength=1.0):
     """Load a PEFT LoRA into the DiT and merge weights.
 
     Handles both:
@@ -600,10 +602,11 @@ def load_peft_lora(dit, lora_path, device, dtype, skip_adaln=False):
                 lora_a, lora_b = lora_pairs[base_name]
                 lora_a = lora_a.to(device, dtype)
                 lora_b = lora_b.to(device, dtype)
-                # Apply scaling: delta_W = (alpha / rank) * B @ A
+                # Apply scaling: delta_W = strength * (alpha / rank) * B @ A
                 scale = 1.0
                 if lora_alpha is not None and lora_rank is not None and lora_rank > 0:
                     scale = lora_alpha / lora_rank
+                scale *= lora_strength
                 param.data += (scale * (lora_b @ lora_a)).to(param.dtype)
                 merged += 1
         print(f"  LoRA manually merged ({merged} weight matrices, scale={scale:.2f})")
@@ -786,7 +789,8 @@ def main():
         if mode == "easycontrol":
             control_processors = load_control_lora(dit, args.lora, device, dtype)
         elif mode in ("levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject"):
-            dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln)
+            dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln,
+                                 lora_strength=args.lora_strength)
     else:
         mode = "normal"
         print("No LoRA specified — running normal Anima generation (no control)")
