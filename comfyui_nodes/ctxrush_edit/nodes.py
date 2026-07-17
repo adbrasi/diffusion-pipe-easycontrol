@@ -880,7 +880,8 @@ class _MaskedLoraScope:
         return False
 
 
-def _krea2_omini_forward(m, x, timesteps, context, src_latent, lora_state, strength, transformer_options):
+def _krea2_omini_forward(m, x, timesteps, context, src_latent, lora_state, strength, transformer_options,
+                         reference_timestep='zero'):
     """OminiControl-true forward: [text | noisy target | clean ref], UNIFORM
     timestep modulation (training reference_timestep='target'), reference on
     width-shifted RoPE positions (frame axis 0, w += target grid width), LoRA
@@ -917,6 +918,16 @@ def _krea2_omini_forward(m, x, timesteps, context, src_latent, lora_state, stren
 
     txtlen, tgtlen, reflen = context.shape[1], tgt.shape[1], ref.shape[1]
     combined = torch.cat([context, tgt, ref], dim=1)
+
+    if reference_timestep == 'zero':
+        # Per-token modulation: text+target at the sampled t, reference at 0
+        # (the fork's clean-reference convention).
+        t0 = m.tmlp(timestep_embedding(torch.zeros_like(timesteps), m.tdim).unsqueeze(1).to(tgt.dtype))
+        tv0 = m.tproj(t0)
+        tvec = torch.cat([
+            tvec.expand(-1, txtlen + tgtlen, -1),
+            tv0.expand(-1, reflen, -1),
+        ], dim=1)
 
     device = combined.device
     txtpos = torch.zeros(bs, txtlen, 3, device=device, dtype=torch.float32)
@@ -957,10 +968,12 @@ class CtxRushKrea2OminiApply:
         return {
             'required': {
                 'model': ('MODEL', {'tooltip': 'Krea 2 model WITHOUT any LoRA loader (the node applies the adapter itself, masked to the condition span).'}),
-                'source_latent': ('LATENT', {'tooltip': 'VAE-encoded reference (previous panel).'}),
+                'image': ('IMAGE', {'tooltip': 'Reference image (previous panel). The node crop-fits it to width/height and VAE-encodes at native resolution — the training geometry. Do NOT pre-encode with VAEEncode: resizing in latent space washes out the reference signal.'}),
+                'vae': ('VAE',),
                 'lora_name': (folder_paths.get_filename_list('loras'),),
                 'strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05}),
                 'model_variant': (['raw', 'turbo'], {'default': 'raw', 'tooltip': 'Raw deriva o flow shift (mu) da resolução como o sampler oficial; Turbo usa mu fixo 1.15.'}),
+                'reference_timestep': (['zero', 'target'], {'default': 'zero', 'tooltip': "Modulação dos tokens da referência. Adapters krea2_ominicontrol treinados ANTES do fix do to_layers (2026-07-17) usaram t=0 na prática, independente da metadata — use 'zero' para eles."}),
                 'width': ('INT', {'default': 672, 'min': 64, 'max': 4096, 'step': 16}),
                 'height': ('INT', {'default': 384, 'min': 64, 'max': 4096, 'step': 16}),
             }
@@ -978,7 +991,8 @@ class CtxRushKrea2OminiApply:
         'Encode conditioning; recommended Raw 28 steps / CFG 5.5.'
     )
 
-    def apply(self, model, source_latent, lora_name, strength, model_variant='raw', width=672, height=384):
+    def apply(self, model, image, vae, lora_name, strength, model_variant='raw',
+              reference_timestep='zero', width=672, height=384):
         lora_path = folder_paths.get_full_path('loras', lora_name)
         pairs = _load_omini_lora(lora_path)
         patched = model.clone()
@@ -996,12 +1010,20 @@ class CtxRushKrea2OminiApply:
             raise ValueError('No LoRA target modules matched the diffusion model')
         if missing:
             print(f'[CtxRushKrea2OminiApply] WARNING: {len(missing)} LoRA keys not matched (e.g. {missing[:3]})')
-        src = patched.model.process_latent_in(source_latent['samples'])
+        # Train-matched reference geometry: pixel-space center-crop to the
+        # OUTPUT size, then a native VAE encode (the adapter was trained with
+        # bucket-cropped references; bilinear latent downsampling of a large
+        # source instead blurs the channels and weakens the conditioning).
+        pixels = _crop_fit(image, width, height)
+        latent = vae.encode(pixels[:, :, :, :3])
+        src = patched.model.process_latent_in(latent)
+        print(f'[CtxRushKrea2OminiApply] reference encoded at {width}x{height}, latent {tuple(latent.shape)}')
         lora_state = {'entries': entries, 'device': None}
 
         def wrapper(executor, x, timesteps, context, attention_mask=None, transformer_options={}, **kwargs):
             return _krea2_omini_forward(
-                executor.class_obj, x, timesteps, context, src, lora_state, strength, transformer_options
+                executor.class_obj, x, timesteps, context, src, lora_state, strength, transformer_options,
+                reference_timestep=reference_timestep,
             )
 
         to = patched.model_options.setdefault('transformer_options', {})

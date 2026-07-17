@@ -44,6 +44,12 @@ class Krea2OminiControlPipeline(Krea2ReferencePipeline):
                 reference_position_offset=self.reference_position_offset,
                 reference_position_scale=self.reference_position_scale,
                 independent_condition=self.independent_condition,
+                # BUG FIX: this override previously omitted the timestep mode,
+                # silently training/inferring refs at t=0 even when the config
+                # requested reference_timestep='target' (the parent's to_layers
+                # passes it; this one didn't). Adapters trained before the fix
+                # are t=0 adapters regardless of their recorded metadata.
+                reference_timestep_mode=self.reference_timestep_mode,
             )
         ]
         layers.extend(
