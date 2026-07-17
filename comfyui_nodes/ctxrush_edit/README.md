@@ -106,3 +106,21 @@ setup/model patch and use ordinary text conditioning without a reference.
 This node pack deliberately does not expose RoPE position or reference
 timestep knobs. The adapter was trained at fixed frame `1` and clean timestep
 `0`; changing them would silently leave the training distribution.
+
+## Omini-Grounded — dials do node (setup completo)
+
+`CtxRush - Krea 2 Omini-Grounded (setup completo)` expõe, além de
+`block_strength` (fidelidade à referência, deltas routados) e
+`fusion_strength` (semântica do grounding; 0 mede o built-in), os dials
+opcionais de contrato:
+
+| Dial | Default | O que faz |
+|---|---|---|
+| `vl_longest_side` | 768 | Maior lado visto pelo Qwen3-VL no grounding (adapters com jitter 384-768 aceitam a faixa toda; 0 = cap por área ~1MP) |
+| `vl_prompt_style` | plain | Layout do vision block (`plain` = contrato do grounded) |
+| `reference_fit` | training_crop | Geometria da referência no VAE (crop-fit do treino) |
+| `reference_timestep` | zero | Modulação dos tokens da referência (`zero` = contrato dos adapters atuais) |
+| `negative_grounding` | grounded | `grounded` = negativo também vê a referência — é o uncond treinado quando o adapter usou `caption_dropout`; `plain` = negativo só texto |
+
+Os defaults reproduzem exatamente o contrato validado; mude-os apenas para
+A/B ou para adapters treinados com outro contrato.

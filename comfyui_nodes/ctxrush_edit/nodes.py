@@ -1164,7 +1164,7 @@ class CtxRushKrea2OminiApply:
 
 def _krea2_omini_grounded_forward(m, x, timesteps, context, src_latent, blocks_state,
                                   fusion_entries, strength, transformer_options,
-                                  fusion_strength=None):
+                                  fusion_strength=None, reference_timestep='zero'):
     """Omini-Grounded forward: identical geometry/timestep to the omini node
     (width-shift, refs at t=0 per-token, masked block deltas) but the context
     is GROUNDED (encoded with the reference through Qwen3-VL) and the
@@ -1205,11 +1205,14 @@ def _krea2_omini_grounded_forward(m, x, timesteps, context, src_latent, blocks_s
     txtlen, tgtlen, reflen = context.shape[1], tgt.shape[1], ref.shape[1]
     combined = torch.cat([context, tgt, ref], dim=1)
 
-    t0 = m.tmlp(timestep_embedding(torch.zeros_like(timesteps), m.tdim).unsqueeze(1).to(tgt.dtype))
-    tv0 = m.tproj(t0)
+    if reference_timestep == 'target':
+        ref_tvec = tvec_t
+    else:
+        t0 = m.tmlp(timestep_embedding(torch.zeros_like(timesteps), m.tdim).unsqueeze(1).to(tgt.dtype))
+        ref_tvec = m.tproj(t0)
     tvec = torch.cat([
         tvec_t.expand(-1, txtlen + tgtlen, -1),
-        tv0.expand(-1, reflen, -1),
+        ref_tvec.expand(-1, reflen, -1),
     ], dim=1)
 
     device = combined.device
@@ -1274,6 +1277,20 @@ class CtxRushKrea2OminiGroundedApply:
                 'width': ('INT', {'default': 672, 'min': 64, 'max': 4096, 'step': 16}),
                 'height': ('INT', {'default': 384, 'min': 64, 'max': 4096, 'step': 16}),
                 'batch_size': ('INT', {'default': 1, 'min': 1, 'max': 16}),
+            },
+            'optional': {
+                'vl_longest_side': ('INT', {'default': 768, 'min': 0, 'max': 2048, 'step': 32,
+                                            'tooltip': 'Maior lado da imagem que o Qwen3-VL enxerga no grounding. '
+                                                       'Treino usou 768 (jitter 384-768 nos adapters novos). 0 = cap por area (~1MP).'}),
+                'vl_prompt_style': (['plain', 'picture_n'], {'default': 'plain',
+                                    'tooltip': 'Layout do vision block no prompt. plain = contrato do grounded (sem prefixo).'}),
+                'reference_fit': (['training_crop', 'preserve_aspect_1mp'], {'default': 'training_crop',
+                                  'tooltip': 'Geometria da referencia no VAE. training_crop = crop-fit do treino (recomendado).'}),
+                'reference_timestep': (['zero', 'target'], {'default': 'zero',
+                                       'tooltip': 'Modulacao dos tokens da referencia. zero = contrato dos adapters grounded atuais.'}),
+                'negative_grounding': (['grounded', 'plain'], {'default': 'grounded',
+                                       'tooltip': 'grounded = negativo tambem ve a referencia (uncond treinado com caption_dropout). '
+                                                  'plain = negativo so texto, sem vision block.'}),
             }
         }
 
@@ -1289,19 +1306,28 @@ class CtxRushKrea2OminiGroundedApply:
 
     def apply(self, model, clip, vae, image, positive_prompt, negative_prompt,
               lora_name, block_strength=1.0, fusion_strength=1.0,
-              model_variant='raw', width=672, height=384, batch_size=1):
+              model_variant='raw', width=672, height=384, batch_size=1,
+              vl_longest_side=768, vl_prompt_style='plain',
+              reference_fit='training_crop', reference_timestep='zero',
+              negative_grounding='grounded'):
         reference = _build_reference(
-            vae, image, width, height, 'training_crop',
-            vl_longest_side=768,
+            vae, image, width, height, reference_fit,
+            vl_longest_side=vl_longest_side,
         )
 
-        def encode(prompt):
-            text = f'{VISION_BLOCK}{prompt}'
+        def encode(prompt, grounded=True):
+            if not grounded:
+                tokens = clip.tokenize(prompt, llama_template=KREA2_TEMPLATE)
+                return clip.encode_from_tokens_scheduled(tokens)
+            if vl_prompt_style == 'picture_n':
+                text = f'Picture 1: {VISION_BLOCK}{prompt}'
+            else:
+                text = f'{VISION_BLOCK}{prompt}'
             tokens = clip.tokenize(text, images=[reference.vl_image], llama_template=KREA2_TEMPLATE)
             return clip.encode_from_tokens_scheduled(tokens)
 
         positive = encode(positive_prompt)
-        negative = encode(negative_prompt)
+        negative = encode(negative_prompt, grounded=(negative_grounding == 'grounded'))
 
         lora_path = folder_paths.get_full_path('loras', lora_name)
         pairs = _load_omini_lora(lora_path)
@@ -1332,7 +1358,7 @@ class CtxRushKrea2OminiGroundedApply:
             return _krea2_omini_grounded_forward(
                 executor.class_obj, x, timesteps, context, src, blocks_state, fusion_entries,
                 block_strength, transformer_options if transformer_options is not None else {},
-                fusion_strength=fusion_strength,
+                fusion_strength=fusion_strength, reference_timestep=reference_timestep,
             )
 
         to = patched.model_options.setdefault('transformer_options', {})
