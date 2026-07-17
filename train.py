@@ -351,6 +351,9 @@ if __name__ == '__main__':
     elif model_type == 'ic_lora_v2':
         from models import ic_lora_v2
         model = ic_lora_v2.ICLoraV2Pipeline(config)
+    elif model_type == 'ic_lora_routed':
+        from models import ic_lora_routed
+        model = ic_lora_routed.ICLoraRoutedPipeline(config)
     elif model_type == 'ic_lora_full':
         from models import ic_lora_full
         model = ic_lora_full.ICLoraFullPipeline(config)

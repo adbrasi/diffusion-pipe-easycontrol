@@ -66,7 +66,7 @@ def parse_args():
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
     p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
-    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject"],
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ic_lora_routed", "ominicontrol", "ominicontrol_subject"],
                    help="Control mode: easycontrol, levzzz, ic_lora, ic_lora_full (ref_first), ominicontrol (spatial), ominicontrol_subject, auto (detect)")
     p.add_argument("--skip_adaln", action="store_true", default=False,
                    help="Skip LoRA on adaln_modulation layers (smoother strength control, matches LTX-2)")
@@ -537,6 +537,94 @@ def sample_levzzz(
     return latents
 
 
+def load_routed_lora_entries(dit, lora_path, device, dtype):
+    """Map ic_lora_routed LoRA pairs onto live DiT modules WITHOUT merging.
+
+    Returns [(module, A, B, scale)] for _RoutedLoraScope. Reuses the PEFT key
+    parsing of load_peft_lora but keeps base weights untouched.
+    """
+    print(f"Loading ROUTED LoRA (masked runtime application): {lora_path}")
+    lora_dir = os.path.dirname(lora_path)
+    sd = load_safetensors(lora_path, device='cpu')
+    sd = {k.replace('diffusion_model.', ''): v for k, v in sd.items()}
+    lora_pairs = {}
+    for k in sd.keys():
+        if 'lora_A' in k:
+            base = k.replace('lora_A.default.weight', '').replace('lora_A.weight', '')
+            base = base.replace('base_model.model.', '').rstrip('.')
+            key_b = k.replace('lora_A', 'lora_B')
+            if key_b in sd:
+                lora_pairs[base] = (sd[k], sd[key_b])
+    scale = 1.0
+    cfg_path = os.path.join(lora_dir, 'adapter_config.json')
+    if os.path.exists(cfg_path):
+        import json
+        with open(cfg_path) as f:
+            cfg = json.load(f)
+        if cfg.get('lora_alpha') and cfg.get('r'):
+            scale = cfg['lora_alpha'] / cfg['r']
+    named = dict(dit.named_modules())
+    entries, missing = [], []
+    for path, (a, b) in lora_pairs.items():
+        module = named.get(path)
+        if module is None:
+            missing.append(path)
+        else:
+            entries.append((module, a.to(device, dtype), b.to(device, dtype), scale))
+    if not entries:
+        raise ValueError(f'No routed LoRA modules matched the DiT (examples: {list(lora_pairs)[:3]})')
+    if missing:
+        print(f"  WARNING: {len(missing)} keys not matched (e.g. {missing[:3]})")
+    print(f"  {len(entries)} linears wrapped (masked to the reference frame, scale={scale:.2f})")
+    return entries
+
+
+class _RoutedLoraScope:
+    """Wraps linears so the LoRA delta hits ONLY the reference-frame rows.
+
+    Inference layout is fixed: T=2, ref_first. Inside Anima blocks:
+    - (B, 2*HW, D) self_attn tokens -> mask first HW rows
+    - (B, 2, H, W, D) mlp tokens    -> mask frame 0
+    Anything else (e.g. a vanilla single-frame pass) gets no delta.
+    """
+
+    def __init__(self, entries, strength=1.0):
+        self.entries = entries
+        self.strength = strength
+        self._originals = []
+
+    def __enter__(self):
+        import torch.nn.functional as _F
+        for module, a, b, scale in self.entries:
+            orig = module.forward
+
+            def wrapped(x, *args, _orig=orig, _a=a, _b=b, _s=scale * self.strength, **kwargs):
+                result = _orig(x, *args, **kwargs)
+                if _s == 0:
+                    return result
+                if result.ndim == 3 and result.shape[1] % 2 == 0:
+                    hw = result.shape[1] // 2
+                    mask = result.new_zeros(1, result.shape[1], 1)
+                    mask[:, :hw] = 1
+                elif result.ndim == 5 and result.shape[1] == 2:
+                    mask = result.new_zeros(1, 2, 1, 1, 1)
+                    mask[:, 0] = 1
+                else:
+                    return result
+                delta = _F.linear(_F.linear(x.to(_a.dtype), _a), _b) * _s
+                return result + delta.to(result.dtype) * mask
+
+            module.forward = wrapped
+            self._originals.append((module, orig))
+        return self
+
+    def __exit__(self, *exc):
+        for module, orig in self._originals:
+            module.forward = orig
+        self._originals = []
+        return False
+
+
 def load_peft_lora(dit, lora_path, device, dtype, skip_adaln=False, lora_strength=1.0):
     """Load a PEFT LoRA into the DiT and merge weights.
 
@@ -793,6 +881,10 @@ def main():
 
         if mode == "easycontrol":
             control_processors = load_control_lora(dit, args.lora, device, dtype)
+        elif mode == "ic_lora_routed":
+            # Masked runtime application — merging would apply the delta to ALL
+            # rows, breaking the condition-only training contract.
+            routed_entries = load_routed_lora_entries(dit, args.lora, device, dtype)
         elif mode in ("levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject"):
             dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln,
                                  lora_strength=args.lora_strength)
@@ -869,6 +961,14 @@ def main():
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,
         )
+    elif mode == "ic_lora_routed" and control_latents is not None:
+        print(f"  Mode: IC-LoRA Routed (ref_first, masked runtime LoRA, strength={args.lora_strength})")
+        with _RoutedLoraScope(routed_entries, args.lora_strength):
+            latents = sample_ic_lora_full(
+                dit, pos_context, neg_context,
+                control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+                device, dtype,
+            )
     elif mode in ("ominicontrol", "ominicontrol_subject") and control_latents is not None:
         pos_mode = "subject" if mode == "ominicontrol_subject" else "spatial"
         print(f"  Mode: OminiControl ({pos_mode})")
