@@ -41,6 +41,12 @@ class Krea2ReferencePipeline(Krea2Pipeline):
         super().__init__(config)
         reference = config.get(self.config_section, {})
         self.condition_dropout = float(reference.get('condition_dropout', 0.1))
+        # 'zero' = ostris/fork convention (clean refs modulated at t=0).
+        # 'target' = conradlocke inference convention (single tvec for the whole
+        # sequence, refs modulated with the sampled target timestep).
+        self.reference_timestep_mode = reference.get('reference_timestep', 'zero')
+        if self.reference_timestep_mode not in ('zero', 'target'):
+            raise ValueError("reference_timestep must be 'zero' or 'target'")
         self.position_mode = reference.get('position_mode', 'subject')
         self.reference_position_offset = float(reference.get('reference_position_offset', 1.0))
         self.reference_position_scale = float(reference.get('reference_position_scale', 1.0))
@@ -183,6 +189,7 @@ class Krea2ReferencePipeline(Krea2Pipeline):
                 reference_position_offset=self.reference_position_offset,
                 reference_position_scale=self.reference_position_scale,
                 independent_condition=self.independent_condition,
+                reference_timestep_mode=self.reference_timestep_mode,
             )
         ]
         layers.extend(TransformerLayer(block, index, self.offloader) for index, block in enumerate(model.blocks))
@@ -211,7 +218,9 @@ class Krea2ReferencePipeline(Krea2Pipeline):
             'condition_dropout': str(self.condition_dropout),
             'independent_condition': str(self.independent_condition).lower(),
             'condition_token_stride': str(self.condition_token_stride),
-            'reference_model_timestep': '0.0',
+            'reference_model_timestep': (
+                'target' if self.reference_timestep_mode == 'target' else '0.0'
+            ),
             'condition_encode': 'pixel_bilinear' if self.condition_token_stride > 1 else 'native',
         }
         metadata.update(self.get_reference_metadata())
@@ -261,6 +270,7 @@ class Krea2ReferenceInitialLayer(nn.Module):
         reference_position_offset=1.0,
         reference_position_scale=1.0,
         independent_condition=False,
+        reference_timestep_mode='zero',
     ):
         super().__init__()
         self.first = model.first
@@ -272,6 +282,7 @@ class Krea2ReferenceInitialLayer(nn.Module):
         self.reference_position_offset = reference_position_offset
         self.reference_position_scale = reference_position_scale
         self.independent_condition = independent_condition
+        self.reference_timestep_mode = reference_timestep_mode
         self.model = [model]
 
     def __getattr__(self, name):
@@ -315,8 +326,14 @@ class Krea2ReferenceInitialLayer(nn.Module):
             timestep_embedding(timesteps, self.tdim).unsqueeze(1).to(combined.dtype)
         )
         target_t = timesteps[:, None].expand(batch, text_length + target_length)
-        clean_reference_t = timesteps.new_zeros(batch, reference_length)
-        per_token_timestep = torch.cat([target_t, clean_reference_t], dim=1)
+        if self.reference_timestep_mode == 'target':
+            # conradlocke convention: one modulation timestep for the whole
+            # sequence (his public node computes a single tvec from the target
+            # timestep; the reference latent itself stays clean either way).
+            reference_t = timesteps[:, None].expand(batch, reference_length)
+        else:
+            reference_t = timesteps.new_zeros(batch, reference_length)
+        per_token_timestep = torch.cat([target_t, reference_t], dim=1)
         embedded_timesteps = timestep_embedding(per_token_timestep.reshape(-1), self.tdim).reshape(
             batch, combined.shape[1], self.tdim
         )

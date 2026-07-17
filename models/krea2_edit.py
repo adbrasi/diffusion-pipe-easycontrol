@@ -76,6 +76,31 @@ def prepare_vl_image(image_path, max_pixels):
     return pixels.unsqueeze(0)
 
 
+def prepare_vl_image_longest_side(image_path, longest_side):
+    """conradlocke grounding_px semantics: cap the LONGEST side (area
+    resample, downscale-only), instead of the ostris area budget."""
+    image = Image.open(image_path)
+    if image.mode == 'RGBA' or ('transparency' in image.info and image.mode != 'RGB'):
+        rgba = image.convert('RGBA')
+        canvas = Image.new('RGBA', rgba.size, (255, 255, 255, 255))
+        canvas.alpha_composite(rgba)
+        image = canvas.convert('RGB')
+    else:
+        image = image.convert('RGB')
+    pixels = torch.frombuffer(bytearray(image.tobytes()), dtype=torch.uint8)
+    pixels = pixels.reshape(image.height, image.width, 3).to(torch.float32) / 255.0
+    if longest_side and max(image.height, image.width) > longest_side:
+        scale = longest_side / max(image.height, image.width)
+        new_h = max(round(image.height * scale), 28)
+        new_w = max(round(image.width * scale), 28)
+        pixels = F.interpolate(
+            pixels.permute(2, 0, 1).unsqueeze(0),
+            size=(new_h, new_w),
+            mode='area',
+        ).squeeze(0).permute(1, 2, 0).clamp(0.0, 1.0)
+    return pixels.unsqueeze(0)
+
+
 class Krea2EditPipeline(Krea2ReferencePipeline):
     name = 'krea2_edit'
     config_section = 'krea2_edit'
@@ -87,6 +112,17 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
         self.vl_image_max_pixels = int(section.get('vl_image_max_pixels', 384 * 384))
         if self.vl_image_max_pixels < 28 * 28:
             raise ValueError('vl_image_max_pixels must be at least 28*28')
+        # 'picture_n' = ostris layout ("Picture 1: <vision>"); 'plain' =
+        # conradlocke layout (bare vision block before the caption).
+        self.vl_prompt_style = section.get('vl_prompt_style', 'picture_n')
+        if self.vl_prompt_style not in ('picture_n', 'plain'):
+            raise ValueError("vl_prompt_style must be 'picture_n' or 'plain'")
+        # When set, the VL copy is capped by LONGEST SIDE (area resample),
+        # conradlocke's grounding_px semantics, instead of the ostris area
+        # budget above.
+        self.vl_longest_side = section.get('vl_longest_side', None)
+        if self.vl_longest_side is not None:
+            self.vl_longest_side = int(self.vl_longest_side)
         if self.condition_token_stride != 1:
             raise ValueError(
                 'krea2_edit follows the canonical Krea Edit contract; condition_token_stride must be 1'
@@ -188,8 +224,17 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
                 text = caption
                 if control_file is not None:
                     files = control_file if isinstance(control_file, (list, tuple)) else [control_file]
-                    images = [prepare_vl_image(file, self.vl_image_max_pixels) for file in files]
-                    text = build_vl_image_prompt(len(images)) + caption
+                    if self.vl_longest_side:
+                        images = [
+                            prepare_vl_image_longest_side(file, self.vl_longest_side)
+                            for file in files
+                        ]
+                    else:
+                        images = [prepare_vl_image(file, self.vl_image_max_pixels) for file in files]
+                    if self.vl_prompt_style == 'plain':
+                        text = VISION_BLOCK * len(images) + caption
+                    else:
+                        text = build_vl_image_prompt(len(images)) + caption
 
                 # llama_template must be passed explicitly: with images present
                 # the Qwen3-VL tokenizer would otherwise switch to its
@@ -247,7 +292,11 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
             'control_family': 'krea2_edit_dual',
             'vl_conditioning': 'qwen3vl_image_grounded',
             'vl_image_max_pixels': str(self.vl_image_max_pixels),
-            'vl_prompt_layout': 'picture_n_vision_blocks',
+            'vl_prompt_layout': (
+                'plain_vision_blocks' if self.vl_prompt_style == 'plain'
+                else 'picture_n_vision_blocks'
+            ),
+            'vl_longest_side': str(self.vl_longest_side or 0),
             'vl_reference_in_uncond': 'true',
             'lora_targets': 'blocks+txtfusion',
         }

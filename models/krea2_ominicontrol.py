@@ -13,6 +13,13 @@ from models.krea2_reference import (
 class Krea2OminiControlPipeline(Krea2ReferencePipeline):
     name = 'krea2_ominicontrol'
     config_section = 'ominicontrol'
+    # to_layers() wraps blocks in Krea2OminiTransformerLayer; DeepSpeed matches
+    # checkpointable layers by exact class name, so without this entry
+    # activation checkpointing is silently disabled for every block (same bug
+    # class fixed for Ideogram4OminiTransformerLayer).
+    checkpointable_layers = [
+        'Krea2ReferenceInitialLayer', 'TransformerLayer', 'Krea2OminiTransformerLayer'
+    ]
 
     def __init__(self, config):
         super().__init__(config)

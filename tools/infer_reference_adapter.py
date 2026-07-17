@@ -91,6 +91,20 @@ def parse_args():
     parser.add_argument('--reference-guidance', type=float, default=1.0)
     parser.add_argument('--adapter-scale', type=float, default=1.0)
     parser.add_argument(
+        '--conrad-contract', action='store_true',
+        help=(
+            'Infer under the conradlocke identity-edit contract instead of the '
+            'ostris/fork one: reference tokens modulated with the TARGET '
+            'timestep, bare vision block (no "Picture 1:" prefix), grounding '
+            'capped by longest side 768 (area resample), and reference encoded '
+            'at native resolution with the latent resized to the target grid.'
+        ),
+    )
+    parser.add_argument(
+        '--vl-longest-side', type=int, default=None,
+        help='Cap the Qwen3-VL copy by longest side (conradlocke grounding_px).',
+    )
+    parser.add_argument(
         '--disable-vl-reference', action='store_true',
         help=(
             'Ablation: do not show the reference to Qwen3-VL. The clean VAE '
@@ -125,7 +139,7 @@ def parse_args():
     )
     parser.add_argument('--blocks-to-swap', type=int, default=None, help='Override block swapping from the TOML.')
     parser.add_argument(
-        '--reference-fit', choices=('crop', 'stretch', 'exact'), default='crop',
+        '--reference-fit', choices=('crop', 'stretch', 'exact', 'native_latent'), default='crop',
         help='How to map the reference to the requested output size.',
     )
     parser.add_argument('--allow-contract-mismatch', action='store_true')
@@ -206,7 +220,9 @@ def expected_contract(config: dict) -> dict[str, str]:
     elif model_type == 'krea2_edit':
         section = config.get('krea2_edit', {})
         expected.update({
-            'reference_model_timestep': '0.0',
+            'reference_model_timestep': (
+                'target' if section.get('reference_timestep', 'zero') == 'target' else '0.0'
+            ),
             'position_mode': str(section.get('position_mode', 'subject')),
             'condition_token_stride': '1',
             'control_family': 'krea2_edit_dual',
@@ -318,6 +334,15 @@ def load_reference_pixels(path: Path, width: int, height: int, fit: str) -> torc
             raise ValueError(f'Reference is {image.size}, expected exactly {requested}')
     elif fit == 'stretch':
         image = image.resize(requested, Image.Resampling.LANCZOS)
+    elif fit == 'native_latent':
+        # conradlocke node semantics: the source is VAE-encoded at its own
+        # resolution and the LATENT is bilinear-resized to the target grid.
+        # Here we only snap the pixels to /16; encode_reference resizes the
+        # latent afterwards.
+        new_w = max(round(image.width / 16) * 16, 16)
+        new_h = max(round(image.height / 16) * 16, 16)
+        if (new_w, new_h) != image.size:
+            image = image.resize((new_w, new_h), Image.Resampling.LANCZOS)
     else:
         image = ImageOps.fit(image, requested, method=Image.Resampling.LANCZOS)
 
@@ -337,6 +362,16 @@ def encode_reference(pipeline, path: Path, width: int, height: int, fit: str) ->
     vae = pipeline.get_vae()
     vae.load_model_if_needed()
     latents = pipeline.vae_encode(pixels.to('cuda', pipeline.dtype)).float().cpu()
+    if fit == 'native_latent':
+        target_h = height // pipeline.spatial_compression
+        target_w = width // pipeline.spatial_compression
+        if latents.shape[-2:] != (target_h, target_w):
+            squeeze_frames = latents.ndim == 5
+            work = latents[:, :, 0] if squeeze_frames else latents
+            work = torch.nn.functional.interpolate(
+                work, size=(target_h, target_w), mode='bilinear'
+            )
+            latents = work.unsqueeze(2) if squeeze_frames else work
     model_management.unload_all_models()
     torch.cuda.empty_cache()
     return latents
@@ -510,6 +545,19 @@ def main():
 
     normalize_runtime_config(config)
     pipeline = create_pipeline(config)
+    if args.conrad_contract:
+        if config['model']['type'] != 'krea2_edit':
+            raise ValueError('--conrad-contract requires model type krea2_edit')
+        pipeline.reference_timestep_mode = 'target'
+        pipeline.vl_prompt_style = 'plain'
+        pipeline.vl_longest_side = args.vl_longest_side or 768
+        args.reference_fit = 'native_latent'
+        print(
+            'Conrad contract: reference_timestep=target, vl_prompt_style=plain, '
+            f'vl_longest_side={pipeline.vl_longest_side}, reference_fit=native_latent'
+        )
+    elif args.vl_longest_side:
+        pipeline.vl_longest_side = args.vl_longest_side
     if args.width % pipeline.pixels_round_to_multiple or args.height % pipeline.pixels_round_to_multiple:
         raise ValueError(
             f'width/height must be multiples of {pipeline.pixels_round_to_multiple} for {pipeline.name}'
