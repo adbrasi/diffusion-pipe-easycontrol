@@ -51,11 +51,15 @@ class AnimaConditionRouter:
         self.t = int(t)
         self.hw = int(h) * int(w)
 
-    def install(self, blocks):
+    def install(self, blocks, exclude_name_parts=()):
+        """exclude_name_parts: submódulos que NÃO recebem routing (o delta deles
+        fica global) — ex. ('cross_attn',) no dual-channel."""
         if not self.enabled:
             return 0
-        for module in blocks.modules():
-            if not all(hasattr(module, name) for name in ('base_layer', 'lora_A', 'lora_B', 'lora_dropout', 'scaling')):
+        for name, module in blocks.named_modules():
+            if not all(hasattr(module, attr) for attr in ('base_layer', 'lora_A', 'lora_B', 'lora_dropout', 'scaling')):
+                continue
+            if exclude_name_parts and any(part in name.split('.') for part in exclude_name_parts):
                 continue
             if getattr(module, '_anima_condition_router', None) is self:
                 continue

@@ -354,6 +354,15 @@ if __name__ == '__main__':
     elif model_type == 'ic_lora_routed':
         from models import ic_lora_routed
         model = ic_lora_routed.ICLoraRoutedPipeline(config)
+    elif model_type == 'ic_lora_v3':
+        from models import ic_lora_dual
+        model = ic_lora_dual.ICLoraV3Pipeline(config)
+    elif model_type == 'ominicontrol_broad':
+        from models import ic_lora_dual
+        model = ic_lora_dual.OminiControlBroadPipeline(config)
+    elif model_type == 'ic_lora_dual':
+        from models import ic_lora_dual
+        model = ic_lora_dual.ICLoraDualPipeline(config)
     elif model_type == 'ic_lora_full':
         from models import ic_lora_full
         model = ic_lora_full.ICLoraFullPipeline(config)

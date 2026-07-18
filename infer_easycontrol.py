@@ -66,7 +66,7 @@ def parse_args():
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
     p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
-    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ic_lora_routed", "routed_targetfirst", "ominicontrol", "ominicontrol_subject"],
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ic_lora_routed", "ic_lora_dual", "routed_targetfirst", "ominicontrol", "ominicontrol_subject"],
                    help="Control mode: easycontrol, levzzz, ic_lora, ic_lora_full (ref_first), ominicontrol (spatial), ominicontrol_subject, auto (detect)")
     p.add_argument("--skip_adaln", action="store_true", default=False,
                    help="Skip LoRA on adaln_modulation layers (smoother strength control, matches LTX-2)")
@@ -557,7 +557,7 @@ def sample_levzzz(
     return latents
 
 
-def load_routed_lora_entries(dit, lora_path, device, dtype):
+def load_routed_lora_entries(dit, lora_path, device, dtype, with_paths=False):
     """Map ic_lora_routed LoRA pairs onto live DiT modules WITHOUT merging.
 
     Returns [(module, A, B, scale)] for _RoutedLoraScope. Reuses the PEFT key
@@ -590,13 +590,46 @@ def load_routed_lora_entries(dit, lora_path, device, dtype):
         if module is None:
             missing.append(path)
         else:
-            entries.append((module, a.to(device, dtype), b.to(device, dtype), scale))
+            entries.append((path, module, a.to(device, dtype), b.to(device, dtype), scale))
     if not entries:
         raise ValueError(f'No routed LoRA modules matched the DiT (examples: {list(lora_pairs)[:3]})')
     if missing:
         print(f"  WARNING: {len(missing)} keys not matched (e.g. {missing[:3]})")
-    print(f"  {len(entries)} linears wrapped (masked to the reference frame, scale={scale:.2f})")
-    return entries
+    print(f"  {len(entries)} linears wrapped (runtime, scale={scale:.2f})")
+    if with_paths:
+        return entries
+    return [e[1:] for e in entries]
+
+
+class _FullGlobalLoraScope:
+    """Delta em TODAS as rows (canal semântico do dual / adapters globais)."""
+
+    def __init__(self, entries, strength=1.0):
+        self.entries = entries
+        self.strength = strength
+        self._originals = []
+
+    def __enter__(self):
+        import torch.nn.functional as _F
+        for module, a, b, scale in self.entries:
+            orig = module.forward
+
+            def wrapped(x, *args, _orig=orig, _a=a, _b=b, _s=scale * self.strength, **kwargs):
+                result = _orig(x, *args, **kwargs)
+                if _s == 0:
+                    return result
+                delta = _F.linear(_F.linear(x.to(_a.dtype), _a), _b) * _s
+                return result + delta.to(result.dtype)
+
+            module.forward = wrapped
+            self._originals.append((module, orig))
+        return self
+
+    def __exit__(self, *exc):
+        for module, orig in self._originals:
+            module.forward = orig
+        self._originals = []
+        return False
 
 
 class _RoutedLoraScope:
@@ -911,6 +944,8 @@ def main():
             # Masked runtime application — merging would apply the delta to ALL
             # rows, breaking the condition-only training contract.
             routed_entries = load_routed_lora_entries(dit, args.lora, device, dtype)
+        elif mode == "ic_lora_dual":
+            routed_entries = load_routed_lora_entries(dit, args.lora, device, dtype, with_paths=True)
         elif mode in ("levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject"):
             dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln,
                                  lora_strength=args.lora_strength)
@@ -994,6 +1029,22 @@ def main():
                 dit, pos_context, neg_context,
                 control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
                 device, dtype, ref_cfg=args.ref_cfg,
+            )
+    elif mode == "ic_lora_dual" and control_latents is not None:
+        # Dual-channel: aparência mascarada (último frame = ref no target-first)
+        # + canal semântico (cross_attn/llm_adapter) global.
+        sem = [e[1:] for e in routed_entries
+               if 'cross_attn' in e[0] or e[0].startswith('llm_adapter')]
+        app = [e[1:] for e in routed_entries
+               if not ('cross_attn' in e[0] or e[0].startswith('llm_adapter'))]
+        print(f"  Mode: IC-LoRA DUAL (aparencia {len(app)} mascarada + semantica {len(sem)} global, "
+              f"strength={args.lora_strength}, ref_cfg={args.ref_cfg})")
+        with _RoutedLoraScope(app, args.lora_strength, masked='last'), \
+             _FullGlobalLoraScope(sem, args.lora_strength):
+            latents = sample_ominicontrol(
+                dit, pos_context, neg_context,
+                control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+                device, dtype, position_mode='subject', ref_cfg=args.ref_cfg,
             )
     elif mode == "routed_targetfirst" and control_latents is not None:
         print(f"  Mode: Routed TARGET-FIRST (alvo T=0, ref T=1, LoRA mascarado, strength={args.lora_strength}, ref_cfg={args.ref_cfg})")
