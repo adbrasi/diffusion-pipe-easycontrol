@@ -10,7 +10,7 @@ Um node all-in-one por adapter treinado no fork (dataset contexto_rush):
 Lições dos audits embutidas:
 - referência entra como IMAGE + VAE com crop-fit em PIXEL para o tamanho da
   geração e encode nativo (nunca redimensionar latente — borra o sinal);
-- referência NUNCA é escalada em latente (nada de ref_weight != 1);
+- referência NUNCA é escalada em latente (sem peso reduzido no frame limpo);
 - CFG: o uncond treinado (condition_dropout) tem a condição ZERADA — o node
   zera o frame de referência nos chunks uncond via cond_or_uncond;
 - LoRA aplicado em runtime (delta bf16 por forward), com escala ajustável.
