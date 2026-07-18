@@ -2,20 +2,36 @@
 
 Um node all-in-one para testar os adapters Anima do projeto CONTEXTO.
 
-## Fiação
+## Fiação recomendada: Dual Guider
 
 ```text
-Load Diffusion Model (anima-base-v1.0)   ──► Next-Scene : model   (SEM Load LoRA!)
-Load VAE (qwen_image_vae)                ──► Next-Scene : vae
-Load Image (cena anterior)               ──► Next-Scene : image
-CLIP Text Encode (prompt da cena nova)   ──► KSampler : positive
-CLIP Text Encode (negativo)              ──► KSampler : negative
-Next-Scene : model                       ──► KSampler : model
-Next-Scene : latent                      ──► KSampler : latent
-KSampler : LATENT ──► VAE Decode (mesmo VAE)
+Load Diffusion Model (anima-base-v1.0) ──► Next-Scene : model   (SEM Load LoRA!)
+Load VAE (qwen_image_vae)              ──► Next-Scene : vae
+Load Image (cena anterior)             ──► Next-Scene : image
+
+Next-Scene : model                     ──► Anima Dual Guider : model
+CLIP Text Encode (prompt da cena nova) ──► Anima Dual Guider : positive
+CLIP Text Encode (negativo)            ──► Anima Dual Guider : negative
+Anima Dual Guider : GUIDER             ──► SamplerCustomAdvanced : guider
+Next-Scene : latent                    ──► SamplerCustomAdvanced : latent_image
+SamplerCustomAdvanced : output        ──► VAE Decode (mesmo VAE)
 ```
 
 CLIP = `Load CLIP` com `qwen_3_06b_base.safetensors`, type **anima**.
+
+Complete o `SamplerCustomAdvanced` com `RandomNoise`, `KSamplerSelect` e
+`BasicScheduler`. O novo guider faz três previsões reais por step:
+
+```text
+u = negativo sem referência
+t = positivo sem referência
+c = positivo com referência
+resultado = u + text_cfg * (t - u) + ref_cfg * (c - t)
+```
+
+Assim `ref_cfg` não é multiplicado pelo CFG textual. O fluxo antigo com
+`KSampler` continua funcionando, mas exige duplicar manualmente seu CFG no
+`expected_cfg` do Next-Scene e é mais fácil de configurar errado.
 
 ## Parâmetros
 
@@ -24,12 +40,11 @@ CLIP = `Load CLIP` com `qwen_3_06b_base.safetensors`, type **anima**.
 | `mode` | contrato do adapter | `ic_lora_v2`/`ic_lora_routed` (ref_first), `omini_subject` ou `routed_targetfirst` — TEM que casar com o adapter carregado |
 | `lora_strength` | 1.0 | 0 = baseline honesto (base + ref sem adapter) |
 | `width/height` | bucket do treino | gere no mesmo tamanho configurado aqui (a ref é crop-fit para esse tamanho) |
-| `ref_cfg` | 1.0 | guidance da REFERÊNCIA, independente do CFG do texto (3 branches IP2P-style). Sweep sugerido: {0, 0.5, 1, 1.5} |
-| `expected_cfg` | 4.0 | DEVE ser igual ao CFG do KSampler (desacopla ref_cfg do texto) |
+| `text_cfg` (Dual Guider) | 4.0 | guidance textual |
+| `ref_cfg` (Dual Guider) | 1.0 | guidance da referência; sweep sugerido: {0, 0.5, 1, 1.5} |
+| `ref_cfg` / `expected_cfg` (Next-Scene) | ignorados com Dual Guider | usados somente na compatibilidade com o KSampler clássico |
 
-Nota: com `ref_cfg == expected_cfg` o node roda 1 forward por chunk (equivale ao
-CFG clássico com uncond de ref zerada — `zero_ref_in_uncond` implícito); com
-qualquer outro valor ele roda o segundo forward para separar as branches.
+No caminho clássico, `expected_cfg` precisa ser idêntico ao CFG do `KSampler`.
 
 ## Sampling recomendado (report Anima)
 
@@ -48,4 +63,4 @@ base v1.0, lr 1e-4. O `mode` do node deve casar com o braço do arquivo.
 - nenhum scaling de latente da ref (`ref_weight` não existe aqui de propósito);
 - ic_lora_routed aplica o delta SÓ nas rows da referência em runtime (fundir o
   LoRA quebraria o contrato zero-drift);
-- CFG negativo com a referência zerada (= uncond treinado).
+- guidance de texto e referência desacoplados, sem multiplicar o controle pelo CFG.

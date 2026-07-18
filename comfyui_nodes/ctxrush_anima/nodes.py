@@ -11,8 +11,8 @@ Lições dos audits embutidas:
 - referência entra como IMAGE + VAE com crop-fit em PIXEL para o tamanho da
   geração e encode nativo (nunca redimensionar latente — borra o sinal);
 - referência NUNCA é escalada em latente (sem peso reduzido no frame limpo);
-- CFG: o uncond treinado (condition_dropout) tem a condição ZERADA — o node
-  zera o frame de referência nos chunks uncond via cond_or_uncond;
+- guidance de texto e referência são independentes: o Dual Guider calcula
+  explicitamente negativo/sem-ref, positivo/sem-ref e positivo/com-ref;
 - LoRA aplicado em runtime (delta bf16 por forward), com escala ajustável.
 
 Recomendações de sampling (report Anima): sampler er_sde/res_multistep,
@@ -23,7 +23,9 @@ import torch
 import torch.nn.functional as F
 
 import comfy.model_management
+import comfy.model_patcher
 import comfy.patcher_extension
+import comfy.samplers
 import comfy.utils
 import folder_paths
 from safetensors import safe_open
@@ -54,6 +56,17 @@ def _crop_fit(image, width, height):
     top = (resized_height - height) // 2
     left = (resized_width - width) // 2
     return samples[:, :, top: top + height, left: left + width].movedim(1, -1)
+
+
+def _mix_reference_guidance(out_no_ref, out_with_ref, cond_mask, ref_ratio):
+    """Mistura somente os chunks positivos antes do CFG do KSampler."""
+    mixed = out_no_ref + ref_ratio * (out_with_ref - out_no_ref)
+    mask_shape = (cond_mask.shape[0],) + (1,) * (out_no_ref.ndim - 1)
+    return torch.where(cond_mask.reshape(mask_shape), mixed, out_no_ref)
+
+
+def _add_reference_guidance(text_prediction, text_no_ref, text_with_ref, ref_cfg):
+    return text_prediction + ref_cfg * (text_with_ref - text_no_ref)
 
 
 def _load_lora_pairs(lora_path):
@@ -149,6 +162,9 @@ MODE_INFO = {
     'routed_targetfirst': (False, 'last'),
 }
 
+_GUIDER_REF_BRANCHES = (False, False, True)
+_GUIDER_BRANCH_OPTION = 'ctxrush_anima_ref_branches'
+
 
 # ---------------------------------------------------------------------------
 # node
@@ -156,7 +172,7 @@ MODE_INFO = {
 
 class CtxRushAnimaNextScene:
     """All-in-one: liga a referência (frame limpo a t=0), aplica o adapter no
-    contrato certo e devolve model+latent prontos para o KSampler."""
+    contrato certo e devolve model+latent para o sampler."""
 
     @classmethod
     def INPUT_TYPES(cls):
@@ -177,9 +193,9 @@ class CtxRushAnimaNextScene:
             'optional': {
                 'ref_cfg': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.1,
                     'tooltip': 'Guidance da REFERÊNCIA (3 branches, independente do CFG do texto). '
-                               '0 = sem guidance de ref. Requer expected_cfg = CFG do KSampler.'}),
+                               '0 = sem guidance de ref. Ignorado ao usar o CtxRush Anima Dual Guider.'}),
                 'expected_cfg': ('FLOAT', {'default': 4.0, 'min': 1.0, 'max': 12.0, 'step': 0.5,
-                    'tooltip': 'DEVE ser igual ao CFG do KSampler — usado para desacoplar ref_cfg do CFG do texto.'}),
+                    'tooltip': 'KSampler clássico: DEVE ser igual ao CFG. Ignorado pelo CtxRush Anima Dual Guider.'}),
             },
         }
 
@@ -188,12 +204,16 @@ class CtxRushAnimaNextScene:
     FUNCTION = 'apply'
     CATEGORY = 'CtxRush/Anima'
     DESCRIPTION = ('Next-scene Anima: referência como frame temporal limpo (t=0), '
-                   'LoRA em runtime no contrato do treino, CFG com uncond zerado. '
+                   'LoRA em runtime no contrato do treino, guidance independente da referência. '
                    'Use CFG 4, shift 3, sampler er_sde/res_multistep + scheduler simple.')
 
     def apply(self, model, vae, image, lora_name, mode='ic_lora_routed',
               lora_strength=1.0, width=672, height=400, batch_size=1,
               ref_cfg=1.0, expected_cfg=4.0):
+        if expected_cfg <= 0:
+            raise ValueError('expected_cfg must be greater than zero')
+        if ref_cfg < 0:
+            raise ValueError('ref_cfg must be non-negative')
         ref_first, masked = MODE_INFO[mode]
 
         image = _require_single_image(image)
@@ -210,7 +230,8 @@ class CtxRushAnimaNextScene:
         device = comfy.model_management.get_torch_device()
         entries = _match_entries(dit, pairs, device, torch.bfloat16)
         print(f'[CtxRushAnima] mode={mode} ref_first={ref_first} masked={masked} '
-              f'linears={len(entries)} strength={lora_strength}')
+              f'linears={len(entries)} strength={lora_strength} '
+              f'expected_cfg={expected_cfg} ref_cfg={ref_cfg}')
 
         src = patched.model.process_latent_in(ref_latent)
 
@@ -234,18 +255,19 @@ class CtxRushAnimaNextScene:
                     f'Reference latent {tuple(ref.shape[-2:])} != generation {tuple(x.shape[-2:])}. '
                     'Gere no mesmo width/height configurado no node.'
                 )
-            ref = ref.clone()
+            ref_with = ref.clone()
             ref_zero = torch.zeros_like(ref)
 
             to = kwargs.get('transformer_options') or {}
             c_or_u = to.get('cond_or_uncond')
-            cond_mask = torch.ones(bs, dtype=torch.bool, device=x.device)
-            if c_or_u and bs % len(c_or_u) == 0:
-                chunk = bs // len(c_or_u)
-                for i, flag in enumerate(c_or_u):
-                    if flag == 1:  # uncond chunk: ref sempre zerada (branch u)
-                        ref[i * chunk:(i + 1) * chunk] = 0
-                        cond_mask[i * chunk:(i + 1) * chunk] = False
+            guider_ref_branches = to.get(_GUIDER_BRANCH_OPTION)
+            if c_or_u:
+                if bs % len(c_or_u) != 0:
+                    raise RuntimeError(
+                        f'Batch {bs} is not divisible by cond_or_uncond branches {len(c_or_u)}'
+                    )
+            elif guider_ref_branches is not None:
+                raise RuntimeError('CtxRush Anima Dual Guider requires cond_or_uncond branch metadata')
 
             t = timesteps if timesteps.ndim == 1 else timesteps[:, 0]
             t_zero = torch.zeros_like(t)
@@ -261,11 +283,37 @@ class CtxRushAnimaNextScene:
                     out = executor(x_cat, t_cat, context, fps, padding_mask, **kwargs)
                 return out[:, :, -1:, :, :] if ref_first else out[:, :, :1, :, :]
 
-            out = run(ref)  # c nos chunks cond, u nos chunks uncond
-            if abs(ref_ratio - 1.0) > 1e-6 and cond_mask.any():
-                out_no_ref = run(ref_zero)  # t nos chunks cond
-                mixed = out_no_ref + ref_ratio * (out - out_no_ref)
-                out = torch.where(cond_mask.view(-1, 1, 1, 1, 1), mixed, out)
+            if guider_ref_branches is not None:
+                ref_for_branches = ref.clone()
+                chunk = bs // len(c_or_u)
+                for i, flag in enumerate(c_or_u):
+                    if flag < 0 or flag >= len(guider_ref_branches):
+                        raise RuntimeError(f'Unexpected dual-guider branch index: {flag}')
+                    if not guider_ref_branches[flag]:
+                        ref_for_branches[i * chunk:(i + 1) * chunk] = 0
+                out = run(ref_for_branches)
+            else:
+                cond_mask = torch.ones(bs, dtype=torch.bool, device=x.device)
+                if c_or_u:
+                    chunk = bs // len(c_or_u)
+                    for i, flag in enumerate(c_or_u):
+                        if flag not in (0, 1):
+                            raise RuntimeError(f'Unexpected cond_or_uncond flag: {flag}')
+                        if flag == 1:  # uncond chunk: ref sempre zerada (branch u)
+                            ref_with[i * chunk:(i + 1) * chunk] = 0
+                            cond_mask[i * chunk:(i + 1) * chunk] = False
+
+                if ref_cfg == 0 or not cond_mask.any():
+                    out = run(ref_zero)
+                else:
+                    out_with_ref = run(ref_with)  # c nos chunks cond, u nos chunks uncond
+                    if abs(ref_ratio - 1.0) <= 1e-6:
+                        out = out_with_ref
+                    else:
+                        out_no_ref = run(ref_zero)  # t nos chunks cond, u nos chunks uncond
+                        out = _mix_reference_guidance(
+                            out_no_ref, out_with_ref, cond_mask, ref_ratio,
+                        )
 
             if orig_4d:
                 out = out.squeeze(2)
@@ -283,10 +331,83 @@ class CtxRushAnimaNextScene:
         return (patched, {'samples': latent})
 
 
+class _CtxRushAnimaDualGuider(comfy.samplers.CFGGuider):
+    def set_conds(self, positive, negative):
+        self.inner_set_conds({'positive': positive, 'negative': negative})
+
+    def set_cfg(self, text_cfg, ref_cfg):
+        if text_cfg < 0:
+            raise ValueError('text_cfg must be non-negative')
+        if ref_cfg < 0:
+            raise ValueError('ref_cfg must be non-negative')
+        self.cfg = text_cfg
+        self.ref_cfg = ref_cfg
+
+    def predict_noise(self, x, timestep, model_options=None, seed=None):
+        model_options = {} if model_options is None else model_options
+        positive = self.conds.get('positive')
+        negative = self.conds.get('negative')
+        local_options = comfy.model_patcher.create_model_options_clone(model_options)
+        local_options.setdefault('transformer_options', {})[_GUIDER_BRANCH_OPTION] = _GUIDER_REF_BRANCHES
+
+        # Branch order: u = negative/no-ref, t = positive/no-ref,
+        # c = positive/with-ref. The model wrapper selects the reference using
+        # cond_or_uncond indices, even when Comfy evaluates branches separately.
+        uncond, text_no_ref, text_with_ref = comfy.samplers.calc_cond_batch(
+            self.inner_model,
+            [negative, positive, positive],
+            x,
+            timestep,
+            local_options,
+        )
+        text_prediction = comfy.samplers.cfg_function(
+            self.inner_model,
+            text_no_ref,
+            uncond,
+            self.cfg,
+            x,
+            timestep,
+            model_options=local_options,
+            cond=positive,
+            uncond=negative,
+        )
+        return _add_reference_guidance(
+            text_prediction, text_no_ref, text_with_ref, self.ref_cfg,
+        )
+
+
+class CtxRushAnimaDualGuider:
+    @classmethod
+    def INPUT_TYPES(cls):
+        return {
+            'required': {
+                'model': ('MODEL',),
+                'positive': ('CONDITIONING',),
+                'negative': ('CONDITIONING',),
+                'text_cfg': ('FLOAT', {'default': 4.0, 'min': 0.0, 'max': 30.0, 'step': 0.1}),
+                'ref_cfg': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05}),
+            },
+        }
+
+    RETURN_TYPES = ('GUIDER',)
+    FUNCTION = 'get_guider'
+    CATEGORY = 'CtxRush/Anima'
+    DESCRIPTION = ('Guidance de 3 branches: texto negativo sem referência, texto positivo '
+                   'sem referência e texto positivo com referência.')
+
+    def get_guider(self, model, positive, negative, text_cfg=4.0, ref_cfg=1.0):
+        guider = _CtxRushAnimaDualGuider(model)
+        guider.set_conds(positive, negative)
+        guider.set_cfg(text_cfg, ref_cfg)
+        return (guider,)
+
+
 NODE_CLASS_MAPPINGS = {
     'CtxRushAnimaNextScene': CtxRushAnimaNextScene,
+    'CtxRushAnimaDualGuider': CtxRushAnimaDualGuider,
 }
 
 NODE_DISPLAY_NAME_MAPPINGS = {
     'CtxRushAnimaNextScene': 'CtxRush - Anima Next-Scene (ic_lora / routed / omini)',
+    'CtxRushAnimaDualGuider': 'CtxRush - Anima Dual Guider (Text + Reference)',
 }

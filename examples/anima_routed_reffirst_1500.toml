@@ -1,0 +1,47 @@
+# BRAÇO CONTROLADO (audit 2026-07-18): target-first + condition-only routing.
+# A tradução fiel do método vencedor do Krea 2 para o Anima:
+#   alvo em T=0 (posição nativa do backbone T2I) | ref em T=1 | LoRA só nas
+#   rows da referência. rank 32, SEM shifted sampler, lr menor, saves frequentes.
+output_dir = '/workspace/checkpoints/anima_routed_reffirst'
+dataset = '/workspace/configs/contexto_rush_dataset.toml'
+epochs = 1000
+max_steps = 1500
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 4
+partition_method = 'parameters'
+
+[model]
+type = 'ic_lora_routed'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors'
+vae_path = '/workspace/models/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+sigmoid_scale = 1.0
+llm_adapter_lr = 0
+
+[ic_lora_full]
+ref_first = true                  # REF em T=0 (par controlado do target-first)
+condition_only_lora = true        # delta só nas rows da ref (mask no último frame)
+condition_dropout = 0.1
+condition_timestep = 0.0
+shifted_logit_normal = false      # logit-normal padrão (sem viés de ruído alto)
+
+[adapter]
+type = 'lora'
+rank = 32
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 5e-5
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8
