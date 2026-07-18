@@ -180,6 +180,7 @@ MODE_INFO = {
 # O modo 'auto' resolve o contrato pelo nome do arquivo (ordem importa:
 # padrões mais específicos primeiro).
 _NAME_HINTS = (
+    ('raiz', 'ic_lora_v2'),
     ('v3', 'broad_targetfirst'),
     ('dual', 'dual_targetfirst'),
     ('broad', 'broad_targetfirst'),
@@ -316,6 +317,12 @@ class CtxRushAnimaNextScene:
         dit = patched.get_model_object('diffusion_model')
         device = comfy.model_management.get_torch_device()
         entries_p = _match_entries(dit, pairs, device, torch.bfloat16)
+        n_adaln = sum(1 for e in entries_p if 'adaln_modulation' in e[0])
+        if n_adaln:
+            # skip_adaln implícito: adapters raiz treinam adaln como absorvedor
+            # de erro e ele é DESCARTADO na inferência (workflow original).
+            entries_p = [e for e in entries_p if 'adaln_modulation' not in e[0]]
+            print(f'[CtxRushAnima] skip_adaln: {n_adaln} linears adaln descartados na inferência')
         keep_blocks = _parse_block_range(block_range)
 
         def _in_range(path):
