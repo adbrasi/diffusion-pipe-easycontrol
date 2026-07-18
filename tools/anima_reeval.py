@@ -32,7 +32,7 @@ DIT = '/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safe
 VAE = '/workspace/models/qwen_image_vae.safetensors'
 LLM = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
 NEG = 'worst quality, low quality, score_1, score_2, score_3, artist name'
-OUT = '/workspace/outputs/anima_reeval'
+OUT = '/workspace/outputs/anima_reeval_v2'
 STEPS, TEXT_CFG, SHIFT = 30, 4.0, 3.0
 SEEDS = [76, 200]
 REF_CFGS = [0.0, 0.5, 1.0, 1.5]
@@ -99,14 +99,43 @@ def main():
     vae = load_vae(VAE, DEVICE, DTYPE, None)
     text_encoder, tokenizer, t5_tokenizer = load_text_encoder(LLM, DEVICE, DTYPE)
 
+    def build_context(enc):
+        """Embeds do Qwen -> contexto do DiT via LLM adapter (etapa que o main
+        do runner faz em 'Running LLM adapter...' — SEM ela sai puro ruído)."""
+        emb, mask, t5_ids, t5_mask = enc
+        assert dit.use_llm_adapter and hasattr(dit, 'llm_adapter')
+        with torch.autocast('cuda', dtype=DTYPE):
+            ctx = dit.llm_adapter(
+                source_hidden_states=emb.to(DTYPE),
+                target_input_ids=t5_ids,
+                target_attention_mask=t5_mask,
+                source_attention_mask=mask,
+            )
+        ctx[~t5_mask.bool()] = 0
+        return ctx
+
     ref_data, neg_ctx_cache = {}, {}
+    neg_ctx = build_context(encode_prompt(text_encoder, tokenizer, t5_tokenizer, NEG, DEVICE, DTYPE))
     for name, r in REFS.items():
-        pos = encode_prompt(text_encoder, tokenizer, t5_tokenizer, r['prompt'], DEVICE, DTYPE)
+        pos_ctx = build_context(encode_prompt(text_encoder, tokenizer, t5_tokenizer, r['prompt'], DEVICE, DTYPE))
         ctrl = encode_control(vae, r['ref'], r['h'], r['w'], DEVICE, DTYPE)
-        ref_data[name] = (pos[0], ctrl)
-        key = (r['w'], r['h'])
-        if key not in neg_ctx_cache:
-            neg_ctx_cache[key] = encode_prompt(text_encoder, tokenizer, t5_tokenizer, NEG, DEVICE, DTYPE)[0]
+        ref_data[name] = (pos_ctx, ctrl)
+        neg_ctx_cache[(r['w'], r['h'])] = neg_ctx
+
+    if len(sys.argv) > 1 and sys.argv[1] == 'smoke':
+        # UMA vanilla + UMA geração com adapter; inspecionar antes do batch.
+        name, r = 'hockey', REFS['hockey']
+        pos_ctx, ctrl = ref_data[name]
+        lat = sample_normal(dit, pos_ctx, neg_ctx_cache[(r['w'], r['h'])],
+                            r['h'], r['w'], STEPS, TEXT_CFG, SHIFT, 76, DEVICE, DTYPE)
+        decode(vae, lat).save(f'{OUT}/SMOKE_vanilla.png')
+        entries = load_routed_lora_entries(dit, ARMS['iclora_v2']['ckpts'][1000], DEVICE, DTYPE)
+        with _FullLoraScope(entries, 1.0):
+            lat = sample_ic_lora_full(dit, pos_ctx, neg_ctx_cache[(r['w'], r['h'])], ctrl,
+                                      r['h'], r['w'], STEPS, TEXT_CFG, SHIFT, 76, DEVICE, DTYPE, ref_cfg=1.0)
+        decode(vae, lat).save(f'{OUT}/SMOKE_iclora_rc1.png')
+        print('SMOKE COMPLETO', flush=True)
+        return
 
     # vanilla (sem lora, sem ref) por ref x seed — compartilhado entre braços
     print('== vanilla ==', flush=True)
