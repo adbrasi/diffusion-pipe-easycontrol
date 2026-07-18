@@ -30,10 +30,13 @@ from models.ic_lora_routed import ICLoraRoutedPipeline, AnimaConditionRouter
 from utils.common import is_main_process
 
 
-def configure_anima_broad_adapter(pipeline, adapter_config, log_tag, include_adaln=False):
-    """LoRA em self_attn + mlp + cross_attn (blocks) + llm_adapter.
+def configure_anima_broad_adapter(pipeline, adapter_config, log_tag,
+                                  include_adaln=False, include_cross_attn=True):
+    """LoRA em self_attn + mlp (+cross_attn, +llm_adapter, +adaln opcionais).
 
-    adaln_modulation só entra com include_adaln=True (não recomendado).
+    include_cross_attn=False + include_adaln=True = o contrato do v2 de abril
+    ('raiz_iclora'): adaln treina como absorvedor de erro e é SKIPADO na
+    inferência (workflow do usuário usava skip_adaln ativo).
     """
     target_linear_modules = set()
     for name, module in pipeline.transformer.named_modules():
@@ -42,19 +45,25 @@ def configure_anima_broad_adapter(pipeline, adapter_config, log_tag, include_ada
         for full_submodule_name, submodule in module.named_modules(prefix=name):
             if not isinstance(submodule, nn.Linear):
                 continue
-            if not include_adaln and any(
-                part.startswith('adaln_modulation') for part in full_submodule_name.split('.')
-            ):
+            parts = full_submodule_name.split('.')
+            if not include_adaln and any(p.startswith('adaln_modulation') for p in parts):
+                continue
+            if not include_cross_attn and 'cross_attn' in parts:
                 continue
             target_linear_modules.add(full_submodule_name)
     target_linear_modules = list(target_linear_modules)
 
     n_cross = sum('cross_attn' in m for m in target_linear_modules)
     n_llm = sum(m.startswith('llm_adapter') for m in target_linear_modules)
+    n_adaln = sum('adaln_modulation' in m for m in target_linear_modules)
     if is_main_process():
         print(f'[{log_tag}] BROAD LoRA targets: {len(target_linear_modules)} linears '
-              f'({n_cross} cross_attn, {n_llm} llm_adapter, adaln={"IN" if include_adaln else "out"})')
-    assert n_cross > 0 and n_llm > 0, f'[{log_tag}] escopo largo esperava cross_attn e llm_adapter nos alvos'
+              f'({n_cross} cross_attn, {n_llm} llm_adapter, {n_adaln} adaln)')
+    assert n_llm > 0, f'[{log_tag}] escopo largo esperava llm_adapter nos alvos'
+    if include_cross_attn:
+        assert n_cross > 0, f'[{log_tag}] esperava cross_attn nos alvos'
+    if include_adaln:
+        assert n_adaln > 0, f'[{log_tag}] esperava adaln nos alvos'
 
     peft_config = peft.LoraConfig(
         r=adapter_config['rank'],
@@ -97,6 +106,22 @@ class OminiControlBroadPipeline(ICLoraV3Pipeline):
     existe como tipo separado para o A/B de condition_dropout do abril-omini."""
 
     adapter_log_tag = 'OminiControl BROAD'
+
+
+class RaizICLoraPipeline(ICLoraV2Pipeline):
+    """RAIZ IC-LORA — réplica do anima_ic_lora_v2_next_scene_v2_s1950_r64
+    (14/abr, o adapter que o usuário considera o melhor de todos):
+    ref_first [ref T=0 | alvo T=1], LoRA em self_attn+mlp+ADALN+llm_adapter
+    (SEM cross_attn), shifted logit-normal, rank 64.
+    Na INFERÊNCIA o adaln deve ser SKIPADO (--skip_adaln / node descarta):
+    ele treina como absorvedor de erro e é jogado fora na hora de gerar."""
+
+    adapter_log_tag = 'RAIZ IC-LORA'
+    forbidden_adapter_key_patterns = ('cross_attn',)  # adaln é intencional aqui
+
+    def configure_adapter(self, adapter_config):
+        configure_anima_broad_adapter(self, adapter_config, self.adapter_log_tag,
+                                      include_adaln=True, include_cross_attn=False)
 
 
 class ICLoraDualPipeline(ICLoraRoutedPipeline):

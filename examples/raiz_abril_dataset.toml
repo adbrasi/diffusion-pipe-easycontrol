@@ -1,0 +1,18 @@
+# Dataset de ABRIL convertido (scene_rush_test1 + capp): 14.401 pares "next"
+# (create the next scene) + 6.780 pares "cut" (create a different scene).
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 9
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/datasets/raiz_abril/next_B'
+control_path = '/workspace/datasets/raiz_abril/next_A'
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/datasets/raiz_abril/cut_B'
+control_path = '/workspace/datasets/raiz_abril/cut_A'
+num_repeats = 1
