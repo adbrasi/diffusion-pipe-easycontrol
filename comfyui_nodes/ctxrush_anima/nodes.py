@@ -97,7 +97,13 @@ def _match_entries(dit, pairs, device, dtype):
         else:
             entries.append((module, a.to(device, dtype), b.to(device, dtype)))
     if not entries:
-        raise ValueError(f'No LoRA modules matched the Anima DiT (e.g. {list(pairs)[:3]})')
+        sample = list(pairs)[:3]
+        if any(('attn.wk' in p) or ('txtfusion' in p) or ('attn.gate' in p) for p in pairs):
+            raise ValueError(
+                f'Este arquivo é um LoRA do KREA 2, não do Anima (keys: {sample}). '
+                'Use os adapters ctxrush_ctrl_* ou ctxrush_anima_* com este node.'
+            )
+        raise ValueError(f'No LoRA modules matched the Anima DiT (e.g. {sample})')
     if missing:
         print(f'[CtxRushAnima] WARNING: {len(missing)} LoRA keys not matched (e.g. {missing[:3]})')
     return entries
@@ -162,6 +168,35 @@ MODE_INFO = {
     'routed_targetfirst': (False, 'last'),
 }
 
+# Casar adapter com o contrato errado NÃO dá erro — só mata o efeito.
+# O modo 'auto' resolve o contrato pelo nome do arquivo (ordem importa:
+# padrões mais específicos primeiro).
+_NAME_HINTS = (
+    ('routedtf', 'routed_targetfirst'),
+    ('targetfirst', 'routed_targetfirst'),
+    ('routedrf', 'ic_lora_routed'),
+    ('reffirst', 'ic_lora_routed'),
+    ('iclora_routed', 'ic_lora_routed'),
+    ('routed', 'ic_lora_routed'),
+    ('iclora', 'ic_lora_v2'),
+    ('ic_lora', 'ic_lora_v2'),
+    ('globaltf', 'omini_subject'),
+    ('omini', 'omini_subject'),
+)
+
+
+def _resolve_mode(mode, lora_name):
+    if mode != 'auto':
+        return mode
+    low = lora_name.lower()
+    for hint, resolved in _NAME_HINTS:
+        if hint in low:
+            return resolved
+    raise ValueError(
+        f'mode=auto não reconhece o contrato pelo nome "{lora_name}". '
+        'Escolha o mode manualmente (ic_lora_v2 / ic_lora_routed / omini_subject / routed_targetfirst).'
+    )
+
 _GUIDER_REF_BRANCHES = (False, False, True)
 _GUIDER_BRANCH_OPTION = 'ctxrush_anima_ref_branches'
 
@@ -182,8 +217,9 @@ class CtxRushAnimaNextScene:
                 'vae': ('VAE', {'tooltip': 'qwen_image_vae (Wan 2.1).'}),
                 'image': ('IMAGE', {'tooltip': 'Referência (cena anterior).'}),
                 'lora_name': (folder_paths.get_filename_list('loras'),),
-                'mode': (list(MODE_INFO), {'default': 'ic_lora_routed',
-                         'tooltip': 'Contrato do adapter: ic_lora_v2 (global), ic_lora_routed (mascarado, zero-drift), omini_subject.'}),
+                'mode': (['auto'] + list(MODE_INFO), {'default': 'auto',
+                         'tooltip': 'auto = resolve o contrato pelo nome do arquivo (recomendado). '
+                                    'Manual: TEM que casar com o braço do adapter, senão o efeito some sem erro.'}),
                 'lora_strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05,
                                   'tooltip': '0 = base + referência (baseline honesto).'}),
                 'width': ('INT', {'default': 672, 'min': 64, 'max': 4096, 'step': 16}),
@@ -207,13 +243,14 @@ class CtxRushAnimaNextScene:
                    'LoRA em runtime no contrato do treino, guidance independente da referência. '
                    'Use CFG 4, shift 3, sampler er_sde/res_multistep + scheduler simple.')
 
-    def apply(self, model, vae, image, lora_name, mode='ic_lora_routed',
+    def apply(self, model, vae, image, lora_name, mode='auto',
               lora_strength=1.0, width=672, height=400, batch_size=1,
               ref_cfg=1.0, expected_cfg=4.0):
         if expected_cfg <= 0:
             raise ValueError('expected_cfg must be greater than zero')
         if ref_cfg < 0:
             raise ValueError('ref_cfg must be non-negative')
+        mode = _resolve_mode(mode, lora_name)
         ref_first, masked = MODE_INFO[mode]
 
         image = _require_single_image(image)
