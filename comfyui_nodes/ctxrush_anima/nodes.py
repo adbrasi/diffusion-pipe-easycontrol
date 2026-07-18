@@ -88,6 +88,10 @@ def _load_lora_pairs(lora_path):
 
 
 def _match_entries(dit, pairs, device, dtype):
+    """Retorna (path, module, A, B). O path decide o canal na inferência:
+    llm_adapter.* roda ANTES do forward do DiT (preprocess_text_embeds) e
+    precisa de object patch próprio; cross_attn é canal semântico (sempre
+    global); o resto é canal de aparência (mascarável nos modos routed)."""
     named = dict(dit.named_modules())
     entries, missing = [], []
     for path, (a, b) in pairs.items():
@@ -95,7 +99,7 @@ def _match_entries(dit, pairs, device, dtype):
         if module is None:
             missing.append(path)
         else:
-            entries.append((module, a.to(device, dtype), b.to(device, dtype)))
+            entries.append((path, module, a.to(device, dtype), b.to(device, dtype)))
     if not entries:
         sample = list(pairs)[:3]
         if any(('attn.wk' in p) or ('txtfusion' in p) or ('attn.gate' in p) for p in pairs):
@@ -161,17 +165,24 @@ class _LoraScope:
 
 
 MODE_INFO = {
-    # mode: (ref_first, masked)
+    # mode: (ref_first, masked) — masked se aplica SÓ ao canal de aparência
+    # (self_attn+mlp); cross_attn e llm_adapter, quando presentes no adapter,
+    # são sempre globais (canal semântico dos braços de escopo largo).
     'ic_lora_v2': (True, None),
     'ic_lora_routed': (True, 'first'),
     'omini_subject': (False, None),
     'routed_targetfirst': (False, 'last'),
+    'broad_targetfirst': (False, None),   # ic_lora_v3 / ominicontrol_broad ⭐
+    'dual_targetfirst': (False, 'last'),  # ic_lora_dual
 }
 
 # Casar adapter com o contrato errado NÃO dá erro — só mata o efeito.
 # O modo 'auto' resolve o contrato pelo nome do arquivo (ordem importa:
 # padrões mais específicos primeiro).
 _NAME_HINTS = (
+    ('v3', 'broad_targetfirst'),
+    ('dual', 'dual_targetfirst'),
+    ('broad', 'broad_targetfirst'),
     ('routedtf', 'routed_targetfirst'),
     ('targetfirst', 'routed_targetfirst'),
     ('routedrf', 'ic_lora_routed'),
@@ -265,10 +276,26 @@ class CtxRushAnimaNextScene:
         patched = model.clone()
         dit = patched.get_model_object('diffusion_model')
         device = comfy.model_management.get_torch_device()
-        entries = _match_entries(dit, pairs, device, torch.bfloat16)
+        entries_p = _match_entries(dit, pairs, device, torch.bfloat16)
+        llm_entries = [e[1:] for e in entries_p if e[0].startswith('llm_adapter')]
+        sem_entries = [e[1:] for e in entries_p if 'cross_attn' in e[0]]
+        app_entries = [e[1:] for e in entries_p
+                       if not (e[0].startswith('llm_adapter') or 'cross_attn' in e[0])]
         print(f'[CtxRushAnima] mode={mode} ref_first={ref_first} masked={masked} '
-              f'linears={len(entries)} strength={lora_strength} '
+              f'aparencia={len(app_entries)} cross_attn={len(sem_entries)} '
+              f'llm_adapter={len(llm_entries)} strength={lora_strength} '
               f'expected_cfg={expected_cfg} ref_cfg={ref_cfg}')
+
+        if llm_entries:
+            # O llm_adapter roda no preprocess_text_embeds (extra_conds), ANTES
+            # do wrapper do DiT — o delta dele precisa de object patch próprio.
+            orig_pre = dit.preprocess_text_embeds
+
+            def _pre_with_lora(text_embeds, text_ids, t5xxl_weights=None):
+                with _LoraScope(llm_entries, lora_strength, masked=None):
+                    return orig_pre(text_embeds, text_ids, t5xxl_weights=t5xxl_weights)
+
+            patched.add_object_patch('diffusion_model.preprocess_text_embeds', _pre_with_lora)
 
         src = patched.model.process_latent_in(ref_latent)
 
@@ -316,7 +343,8 @@ class CtxRushAnimaNextScene:
                 else:
                     x_cat = torch.cat([x, ref_frames], dim=2)
                     t_cat = torch.stack([t, t_zero], dim=1)
-                with _LoraScope(entries, lora_strength, masked=masked):
+                with _LoraScope(app_entries, lora_strength, masked=masked), \
+                     _LoraScope(sem_entries, lora_strength, masked=None):
                     out = executor(x_cat, t_cat, context, fps, padding_mask, **kwargs)
                 return out[:, :, -1:, :, :] if ref_first else out[:, :, :1, :, :]
 
