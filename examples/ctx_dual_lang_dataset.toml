@@ -1,0 +1,20 @@
+# Dataset "bilíngue" do contexto_rush:
+#   parte 1 (original): A→B com captions em LINGUAGEM NATURAL
+#   parte 2 (invertida): B→A com TAGS WD14 (direção trocada = par novo válido
+#   para next-scene; cada direção tem seu estilo de caption)
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 9
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/datasets/contexto_rush/input_B'
+control_path = '/workspace/datasets/contexto_rush/input_A'
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/datasets/ctx_part_2/input_B'
+control_path = '/workspace/datasets/ctx_part_2/input_A'
+num_repeats = 1
