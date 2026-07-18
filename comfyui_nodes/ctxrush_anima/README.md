@@ -21,10 +21,15 @@ CLIP = `Load CLIP` com `qwen_3_06b_base.safetensors`, type **anima**.
 
 | Campo | Valor | Nota |
 |---|---|---|
-| `mode` | contrato do adapter | `ic_lora_v2`/`ic_lora_routed` (ref_first) ou `omini_subject` — TEM que casar com o adapter carregado |
-| `lora_strength` | 1.0 | 0 = baseline honesto (base + ref sem adapter); sweet spot observado = 1.0 |
-| `width/height` | 672×400 | gere no mesmo tamanho configurado aqui (a ref é crop-fit para esse tamanho) |
-| `zero_ref_in_uncond` | true | contrato do condition_dropout do treino; desligar amortece o controle |
+| `mode` | contrato do adapter | `ic_lora_v2`/`ic_lora_routed` (ref_first), `omini_subject` ou `routed_targetfirst` — TEM que casar com o adapter carregado |
+| `lora_strength` | 1.0 | 0 = baseline honesto (base + ref sem adapter) |
+| `width/height` | bucket do treino | gere no mesmo tamanho configurado aqui (a ref é crop-fit para esse tamanho) |
+| `ref_cfg` | 1.0 | guidance da REFERÊNCIA, independente do CFG do texto (3 branches IP2P-style). Sweep sugerido: {0, 0.5, 1, 1.5} |
+| `expected_cfg` | 4.0 | DEVE ser igual ao CFG do KSampler (desacopla ref_cfg do texto) |
+
+Nota: com `ref_cfg == expected_cfg` o node roda 1 forward por chunk (equivale ao
+CFG clássico com uncond de ref zerada — `zero_ref_in_uncond` implícito); com
+qualquer outro valor ele roda o segundo forward para separar as branches.
 
 ## Sampling recomendado (report Anima)
 

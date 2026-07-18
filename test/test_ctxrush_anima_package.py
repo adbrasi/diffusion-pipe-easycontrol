@@ -28,6 +28,13 @@ def test_modes_match_training_contracts():
     assert "'ic_lora_v2': (True, None)" in source
     assert "'ic_lora_routed': (True, 'first')" in source
     assert "'omini_subject': (False, None)" in source
+    assert "'routed_targetfirst': (False, 'last')" in source
+
+
+def test_three_branch_guidance_present():
+    source = _source()
+    assert "ref_ratio = float(ref_cfg) / float(expected_cfg)" in source
+    assert "out_no_ref + ref_ratio * (out - out_no_ref)" in source
 
 
 def test_cfg_uncond_zeroes_reference():
@@ -56,4 +63,5 @@ def test_readme_documents_wiring_and_settings():
     readme = (PACKAGE / "README.md").read_text(encoding="utf-8")
     assert "anima-base-v1.0" in readme
     assert "er_sde" in readme
-    assert "zero_ref_in_uncond" in readme
+    assert "ref_cfg" in readme
+    assert "expected_cfg" in readme

@@ -146,6 +146,7 @@ MODE_INFO = {
     'ic_lora_v2': (True, None),
     'ic_lora_routed': (True, 'first'),
     'omini_subject': (False, None),
+    'routed_targetfirst': (False, 'last'),
 }
 
 
@@ -174,8 +175,11 @@ class CtxRushAnimaNextScene:
                 'batch_size': ('INT', {'default': 1, 'min': 1, 'max': 16}),
             },
             'optional': {
-                'zero_ref_in_uncond': ('BOOLEAN', {'default': True,
-                    'tooltip': 'Zera a referência no passo negativo do CFG (contrato do condition_dropout do treino). Desligar = ref common-mode (amortece o controle).'}),
+                'ref_cfg': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.1,
+                    'tooltip': 'Guidance da REFERÊNCIA (3 branches, independente do CFG do texto). '
+                               '0 = sem guidance de ref. Requer expected_cfg = CFG do KSampler.'}),
+                'expected_cfg': ('FLOAT', {'default': 4.0, 'min': 1.0, 'max': 12.0, 'step': 0.5,
+                    'tooltip': 'DEVE ser igual ao CFG do KSampler — usado para desacoplar ref_cfg do CFG do texto.'}),
             },
         }
 
@@ -189,7 +193,7 @@ class CtxRushAnimaNextScene:
 
     def apply(self, model, vae, image, lora_name, mode='ic_lora_routed',
               lora_strength=1.0, width=672, height=400, batch_size=1,
-              zero_ref_in_uncond=True):
+              ref_cfg=1.0, expected_cfg=4.0):
         ref_first, masked = MODE_INFO[mode]
 
         image = _require_single_image(image)
@@ -210,6 +214,12 @@ class CtxRushAnimaNextScene:
 
         src = patched.model.process_latent_in(ref_latent)
 
+        # Guidance de 3 branches por cima do CFG de 2 branches do KSampler:
+        #   uncond -> ref zerada (u);  cond -> t + (ref_cfg/expected_cfg)*(c - t)
+        # Total (com cfg do KSampler == expected_cfg):
+        #   u + cfg*(t-u) + ref_cfg*(c-t)   [InstructPix2Pix-style]
+        ref_ratio = float(ref_cfg) / float(expected_cfg)
+
         def wrapper(executor, x, timesteps, context, fps=None, padding_mask=None, **kwargs):
             orig_4d = x.ndim == 4
             if orig_4d:
@@ -225,28 +235,38 @@ class CtxRushAnimaNextScene:
                     'Gere no mesmo width/height configurado no node.'
                 )
             ref = ref.clone()
+            ref_zero = torch.zeros_like(ref)
 
             to = kwargs.get('transformer_options') or {}
             c_or_u = to.get('cond_or_uncond')
-            if zero_ref_in_uncond and c_or_u and bs % len(c_or_u) == 0:
+            cond_mask = torch.ones(bs, dtype=torch.bool, device=x.device)
+            if c_or_u and bs % len(c_or_u) == 0:
                 chunk = bs // len(c_or_u)
                 for i, flag in enumerate(c_or_u):
-                    if flag == 1:
+                    if flag == 1:  # uncond chunk: ref sempre zerada (branch u)
                         ref[i * chunk:(i + 1) * chunk] = 0
+                        cond_mask[i * chunk:(i + 1) * chunk] = False
 
             t = timesteps if timesteps.ndim == 1 else timesteps[:, 0]
             t_zero = torch.zeros_like(t)
-            if ref_first:
-                x_cat = torch.cat([ref, x], dim=2)
-                t_cat = torch.stack([t_zero, t], dim=1)
-            else:
-                x_cat = torch.cat([x, ref], dim=2)
-                t_cat = torch.stack([t, t_zero], dim=1)
 
-            with _LoraScope(entries, lora_strength, masked=masked):
-                out = executor(x_cat, t_cat, context, fps, padding_mask, **kwargs)
+            def run(ref_frames):
+                if ref_first:
+                    x_cat = torch.cat([ref_frames, x], dim=2)
+                    t_cat = torch.stack([t_zero, t], dim=1)
+                else:
+                    x_cat = torch.cat([x, ref_frames], dim=2)
+                    t_cat = torch.stack([t, t_zero], dim=1)
+                with _LoraScope(entries, lora_strength, masked=masked):
+                    out = executor(x_cat, t_cat, context, fps, padding_mask, **kwargs)
+                return out[:, :, -1:, :, :] if ref_first else out[:, :, :1, :, :]
 
-            out = out[:, :, -1:, :, :] if ref_first else out[:, :, :1, :, :]
+            out = run(ref)  # c nos chunks cond, u nos chunks uncond
+            if abs(ref_ratio - 1.0) > 1e-6 and cond_mask.any():
+                out_no_ref = run(ref_zero)  # t nos chunks cond
+                mixed = out_no_ref + ref_ratio * (out - out_no_ref)
+                out = torch.where(cond_mask.view(-1, 1, 1, 1, 1), mixed, out)
+
             if orig_4d:
                 out = out.squeeze(2)
             return out

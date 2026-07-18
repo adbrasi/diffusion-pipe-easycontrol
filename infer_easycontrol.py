@@ -66,7 +66,7 @@ def parse_args():
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
     p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
-    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ic_lora_routed", "ominicontrol", "ominicontrol_subject"],
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ic_lora_routed", "routed_targetfirst", "ominicontrol", "ominicontrol_subject"],
                    help="Control mode: easycontrol, levzzz, ic_lora, ic_lora_full (ref_first), ominicontrol (spatial), ominicontrol_subject, auto (detect)")
     p.add_argument("--skip_adaln", action="store_true", default=False,
                    help="Skip LoRA on adaln_modulation layers (smoother strength control, matches LTX-2)")
@@ -80,6 +80,8 @@ def parse_args():
     p.add_argument("--control_strength", type=float, default=1.0, help="Control strength (0.0 = no control, 1.0 = full)")
     p.add_argument("--lora_strength", type=float, default=1.0,
                    help="PEFT LoRA merge scale for ic_lora/ominicontrol modes (0.0 = base model + ref, honest baseline)")
+    p.add_argument("--ref_cfg", type=float, default=1.0,
+                   help="Guidance da REFERENCIA (3 branches, independente do --cfg do texto). 0 = sem guidance de ref.")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--save_path", default="./outputs", help="Output directory")
     p.add_argument("--vae_chunk_size", type=int, default=None)
@@ -222,10 +224,19 @@ def encode_prompt(text_encoder, tokenizer, t5_tokenizer, prompt, device, dtype):
     return embeds.to(device, dtype), batch.attention_mask.to(device), t5_batch.input_ids.to(device), t5_batch.attention_mask.to(device)
 
 
+def preprocess_control_image(img, width, height):
+    """EXATAMENTE o preprocessing do treino (models/base.py):
+    ImageOps.fit (crop central preservando aspect ratio) + Normalize p/ [-1,1].
+    Retorna (1, 3, 1, H, W). Função pura para teste numérico de contrato."""
+    from PIL import ImageOps
+    img = ImageOps.fit(img.convert("RGB"), (width, height))
+    to_tensor = transforms.Compose([transforms.ToTensor(), transforms.Normalize([0.5], [0.5])])
+    return to_tensor(img).unsqueeze(0).unsqueeze(2)
+
+
 def encode_control(vae, image_path, height, width, device, dtype):
-    img = Image.open(image_path).convert("RGB")
-    img = img.resize((width, height), Image.LANCZOS)
-    tensor = transforms.ToTensor()(img).unsqueeze(0).unsqueeze(2).to(device, dtype)  # (1, 3, 1, H, W)
+    img = Image.open(image_path)
+    tensor = preprocess_control_image(img, width, height).to(device, dtype)
     with torch.no_grad():
         latents = vae_encode(tensor, vae)  # (1, 16, 1, H/8, W/8)
     return latents
@@ -333,15 +344,31 @@ def sample_ic_lora(
 # ============================================================================
 
 @torch.no_grad()
+def combine_three_branch(u, t, c, text_cfg, ref_cfg):
+    """Guidance InstructPix2Pix-style com escalas independentes.
+
+    u = f(texto negativo, ref zerada)
+    t = f(texto positivo, ref zerada)
+    c = f(texto positivo, ref real)
+    pred = u + text_cfg*(t - u) + ref_cfg*(c - t)
+
+    ref_cfg NAO é multiplicado por text_cfg — as duas forças são independentes
+    (o CFG de 2 branches com ref só no positivo amplificava a ref por text_cfg).
+    """
+    return u + text_cfg * (t - u) + ref_cfg * (c - t)
+
+
 def sample_ic_lora_full(
     dit, pos_context, neg_context,
     control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
+    ref_cfg=1.0,
 ):
     """IC-LoRA Full sampling: reference FIRST, then target (LTX-2 style).
 
     Concat order: [clean_ref T=0, noisy_target T=1]
     Timestep:     [0_ref,         sigma_target   ]
     Output slice: last frame (T=1) = target prediction
+    Guidance: 3 branches (combine_three_branch) — text_cfg = cfg, ref_cfg separado.
     """
     latent_h = height // 8
     latent_w = width // 8
@@ -356,32 +383,27 @@ def sample_ic_lora_full(
     timesteps /= 1000
     timesteps = timesteps.to(device, dtype=torch.bfloat16)
 
-    do_cfg = cfg > 1.0 and neg_context is not None
+    do_text_cfg = cfg > 1.0 and neg_context is not None
     ctrl = control_latents.to(torch.bfloat16)
+    ctrl_zero = torch.zeros_like(ctrl)
 
-    for step_i in tqdm(range(steps), desc="Sampling (IC-LoRA Full)"):
+    def _fwd(x_frames, t_per_token, context):
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            out = dit(x_frames, t_per_token, context, padding_mask=padding_mask)
+        return out[:, :, -1:, :, :]  # target = último frame
+
+    for step_i in tqdm(range(steps), desc="Sampling (IC-LoRA Full, 3-branch)"):
         t_target = timesteps[step_i].unsqueeze(0)  # (1,)
         t_ref = torch.zeros(1, device=device, dtype=torch.bfloat16)
-        # ref_first: [0_ref, sigma_target]
         t_per_token = torch.stack([t_ref, t_target], dim=1)  # (1, 2)
 
-        # ref_first: [clean_reference, noisy_target]
-        x_input = torch.cat([ctrl, latents], dim=2)  # (1, 16, 2, H/8, W/8)
-
-        with torch.autocast('cuda', dtype=torch.bfloat16):
-            output = dit(x_input, t_per_token, pos_context, padding_mask=padding_mask)
-
-        # Target is the LAST frame (T=1)
-        noise_pred = output[:, :, -1:, :, :]
-
-        if do_cfg:
-            # Trained uncond (condition_dropout) = text uncond + reference ZEROED.
-            # Keeping the ref in the neg pass (common-mode) dampens control response.
-            x_input_neg = torch.cat([torch.zeros_like(ctrl), latents], dim=2)
-            with torch.autocast('cuda', dtype=torch.bfloat16):
-                output_neg = dit(x_input_neg, t_per_token, neg_context, padding_mask=padding_mask)
-            uncond_pred = output_neg[:, :, -1:, :, :]
-            noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
+        c = _fwd(torch.cat([ctrl, latents], dim=2), t_per_token, pos_context)
+        t_branch = _fwd(torch.cat([ctrl_zero, latents], dim=2), t_per_token, pos_context)
+        if do_text_cfg:
+            u = _fwd(torch.cat([ctrl_zero, latents], dim=2), t_per_token, neg_context)
+        else:
+            u = t_branch
+        noise_pred = combine_three_branch(u, t_branch, c, cfg if do_text_cfg else 1.0, ref_cfg)
 
         latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
 
@@ -396,7 +418,7 @@ def sample_ic_lora_full(
 def sample_ominicontrol(
     dit, pos_context, neg_context,
     control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
-    position_mode='spatial',
+    position_mode='spatial', ref_cfg=1.0,
 ):
     """OminiControl sampling: temporal concat + per-token timestep + RoPE manipulation.
 
@@ -417,8 +439,9 @@ def sample_ominicontrol(
     timesteps /= 1000
     timesteps = timesteps.to(device, dtype=torch.bfloat16)
 
-    do_cfg = cfg > 1.0 and neg_context is not None
+    do_text_cfg = cfg > 1.0 and neg_context is not None
     ctrl = control_latents.to(torch.bfloat16)
+    ctrl_zero = torch.zeros_like(ctrl)
 
     # For spatial mode, we need to hook into the model to override RoPE positions.
     # We use a forward hook on prepare_embedded_sequence result.
@@ -426,28 +449,25 @@ def sample_ominicontrol(
     if position_mode == 'spatial':
         rope_hook_handle = _install_spatial_rope_hook(dit)
 
+    def _fwd(x_frames, t_per_token, context):
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            out = dit(x_frames, t_per_token, context, padding_mask=padding_mask)
+        return out[:, :, :1, :, :]  # target = primeiro frame
+
     try:
-        for step_i in tqdm(range(steps), desc=f"Sampling (OminiControl-{position_mode})"):
+        for step_i in tqdm(range(steps), desc=f"Sampling (OminiControl-{position_mode}, 3-branch)"):
             # Per-token timestep: [sigma_target, 0_condition]
             t_target = timesteps[step_i].unsqueeze(0)
             t_ref = torch.zeros(1, device=device, dtype=torch.bfloat16)
             t_per_token = torch.stack([t_target, t_ref], dim=1)  # (1, 2)
 
-            # Temporal concat: [noise_frame, clean_condition_frame]
-            x_input = torch.cat([latents, ctrl], dim=2)
-
-            with torch.autocast('cuda', dtype=torch.bfloat16):
-                output = dit(x_input, t_per_token, pos_context, padding_mask=padding_mask)
-
-            noise_pred = output[:, :, :1, :, :]
-
-            if do_cfg:
-                # Trained uncond (condition_dropout) = text uncond + condition ZEROED.
-                x_input_neg = torch.cat([latents, torch.zeros_like(ctrl)], dim=2)
-                with torch.autocast('cuda', dtype=torch.bfloat16):
-                    output_neg = dit(x_input_neg, t_per_token, neg_context, padding_mask=padding_mask)
-                uncond_pred = output_neg[:, :, :1, :, :]
-                noise_pred = uncond_pred + cfg * (noise_pred - uncond_pred)
+            c = _fwd(torch.cat([latents, ctrl], dim=2), t_per_token, pos_context)
+            t_branch = _fwd(torch.cat([latents, ctrl_zero], dim=2), t_per_token, pos_context)
+            if do_text_cfg:
+                u = _fwd(torch.cat([latents, ctrl_zero], dim=2), t_per_token, neg_context)
+            else:
+                u = t_branch
+            noise_pred = combine_three_branch(u, t_branch, c, cfg if do_text_cfg else 1.0, ref_cfg)
 
             latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
     finally:
@@ -588,13 +608,16 @@ class _RoutedLoraScope:
     Anything else (e.g. a vanilla single-frame pass) gets no delta.
     """
 
-    def __init__(self, entries, strength=1.0):
+    def __init__(self, entries, strength=1.0, masked='first'):
         self.entries = entries
         self.strength = strength
+        assert masked in ('first', 'last')
+        self.masked = masked
         self._originals = []
 
     def __enter__(self):
         import torch.nn.functional as _F
+        ref_first = self.masked == 'first'
         for module, a, b, scale in self.entries:
             orig = module.forward
 
@@ -605,10 +628,13 @@ class _RoutedLoraScope:
                 if result.ndim == 3 and result.shape[1] % 2 == 0:
                     hw = result.shape[1] // 2
                     mask = result.new_zeros(1, result.shape[1], 1)
-                    mask[:, :hw] = 1
+                    if ref_first:
+                        mask[:, :hw] = 1
+                    else:
+                        mask[:, hw:] = 1
                 elif result.ndim == 5 and result.shape[1] == 2:
                     mask = result.new_zeros(1, 2, 1, 1, 1)
-                    mask[:, 0] = 1
+                    mask[:, 0 if ref_first else 1] = 1
                 else:
                     return result
                 delta = _F.linear(_F.linear(x.to(_a.dtype), _a), _b) * _s
@@ -881,7 +907,7 @@ def main():
 
         if mode == "easycontrol":
             control_processors = load_control_lora(dit, args.lora, device, dtype)
-        elif mode == "ic_lora_routed":
+        elif mode in ("ic_lora_routed", "routed_targetfirst"):
             # Masked runtime application — merging would apply the delta to ALL
             # rows, breaking the condition-only training contract.
             routed_entries = load_routed_lora_entries(dit, args.lora, device, dtype)
@@ -955,28 +981,36 @@ def main():
             device, dtype,
         )
     elif mode == "ic_lora_full" and control_latents is not None:
-        print(f"  Mode: IC-LoRA Full (ref_first, LTX-2 style)")
+        print(f"  Mode: IC-LoRA Full (ref_first, LTX-2 style, ref_cfg={args.ref_cfg})")
         latents = sample_ic_lora_full(
             dit, pos_context, neg_context,
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
-            device, dtype,
+            device, dtype, ref_cfg=args.ref_cfg,
         )
     elif mode == "ic_lora_routed" and control_latents is not None:
-        print(f"  Mode: IC-LoRA Routed (ref_first, masked runtime LoRA, strength={args.lora_strength})")
-        with _RoutedLoraScope(routed_entries, args.lora_strength):
+        print(f"  Mode: IC-LoRA Routed (ref_first, masked runtime LoRA, strength={args.lora_strength}, ref_cfg={args.ref_cfg})")
+        with _RoutedLoraScope(routed_entries, args.lora_strength, masked='first'):
             latents = sample_ic_lora_full(
                 dit, pos_context, neg_context,
                 control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
-                device, dtype,
+                device, dtype, ref_cfg=args.ref_cfg,
+            )
+    elif mode == "routed_targetfirst" and control_latents is not None:
+        print(f"  Mode: Routed TARGET-FIRST (alvo T=0, ref T=1, LoRA mascarado, strength={args.lora_strength}, ref_cfg={args.ref_cfg})")
+        with _RoutedLoraScope(routed_entries, args.lora_strength, masked='last'):
+            latents = sample_ominicontrol(
+                dit, pos_context, neg_context,
+                control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+                device, dtype, position_mode='subject', ref_cfg=args.ref_cfg,
             )
     elif mode in ("ominicontrol", "ominicontrol_subject") and control_latents is not None:
         pos_mode = "subject" if mode == "ominicontrol_subject" else "spatial"
-        print(f"  Mode: OminiControl ({pos_mode})")
+        print(f"  Mode: OminiControl ({pos_mode}, ref_cfg={args.ref_cfg})")
         latents = sample_ominicontrol(
             dit, pos_context, neg_context,
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,
-            position_mode=pos_mode,
+            position_mode=pos_mode, ref_cfg=args.ref_cfg,
         )
     elif mode == "levzzz" and control_latents is not None:
         print(f"  Mode: levzzz (temporal concat)")
