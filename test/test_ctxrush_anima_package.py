@@ -114,3 +114,21 @@ def test_readme_documents_wiring_and_settings():
     assert "expected_cfg" in readme
     assert "SamplerCustomAdvanced" in readme
     assert "u + text_cfg * (t - u) + ref_cfg * (c - t)" in readme
+
+
+def test_block_range_parser_and_channel_dials():
+    parse = _load_function('_parse_block_range')
+    bidx = _load_function('_block_index')
+    assert parse('all') is None and parse('') is None
+    assert parse('4-6') == {4, 5, 6}
+    assert parse('0-1,27') == {0, 1, 27}
+    try:
+        parse('28')
+        assert False, 'devia rejeitar block 28'
+    except ValueError:
+        pass
+    assert bidx('blocks.13.self_attn.q_proj') == 13
+    assert bidx('llm_adapter.blocks.0.mlp') is None
+    source = _source()
+    for dial in ('appearance_strength', 'cross_attn_strength', 'llm_adapter_strength', 'block_range'):
+        assert dial in source

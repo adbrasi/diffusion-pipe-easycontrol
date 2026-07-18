@@ -64,3 +64,15 @@ base v1.0, lr 1e-4. O `mode` do node deve casar com o braço do arquivo.
 - ic_lora_routed aplica o delta SÓ nas rows da referência em runtime (fundir o
   LoRA quebraria o contrato zero-drift);
 - guidance de texto e referência desacoplados, sem multiplicar o controle pelo CFG.
+
+## Dials de calibração (adapters broad/dual — v3 etc.)
+
+| Dial | Default | Canal |
+|---|---|---|
+| `appearance_strength` | 1.0 | self_attn+mlp (aparência) × lora_strength |
+| `cross_attn_strength` | 1.0 | texto↔visual (só broad/dual) |
+| `llm_adapter_strength` | 1.0 | ponte texto→DiT — o canal do eureka; 0 mede a contribuição dele |
+| `block_range` | all | quais blocks 0-27 recebem aparência/cross_attn (ex. "4-24", "0-13,20-27") |
+
+Todos multiplicam `lora_strength`. Em adapters antigos (só self_attn+mlp) os
+dials de cross_attn/llm_adapter simplesmente não têm o que escalar.

@@ -196,6 +196,34 @@ _NAME_HINTS = (
 )
 
 
+def _parse_block_range(spec, num_blocks=28):
+    """'all' -> None (todos); '4-24' ou '0-13,20-27' -> set de índices de block."""
+    spec = (spec or 'all').strip().lower()
+    if spec in ('all', ''):
+        return None
+    keep = set()
+    for part in spec.split(','):
+        part = part.strip()
+        if not part:
+            continue
+        if '-' in part:
+            a, b = part.split('-')
+            keep.update(range(int(a), int(b) + 1))
+        else:
+            keep.add(int(part))
+    bad = [i for i in keep if i < 0 or i >= num_blocks]
+    if bad:
+        raise ValueError(f'block_range fora de 0-{num_blocks - 1}: {bad}')
+    return keep
+
+
+def _block_index(path):
+    parts = path.split('.')
+    if parts and parts[0] == 'blocks' and len(parts) > 1 and parts[1].isdigit():
+        return int(parts[1])
+    return None
+
+
 def _resolve_mode(mode, lora_name):
     if mode != 'auto':
         return mode
@@ -243,6 +271,15 @@ class CtxRushAnimaNextScene:
                                '0 = sem guidance de ref. Ignorado ao usar o CtxRush Anima Dual Guider.'}),
                 'expected_cfg': ('FLOAT', {'default': 4.0, 'min': 1.0, 'max': 12.0, 'step': 0.5,
                     'tooltip': 'KSampler clássico: DEVE ser igual ao CFG. Ignorado pelo CtxRush Anima Dual Guider.'}),
+                'appearance_strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05,
+                    'tooltip': 'Canal de APARÊNCIA (self_attn+mlp) × lora_strength. 0 = desliga.'}),
+                'cross_attn_strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05,
+                    'tooltip': 'Canal texto↔visual (cross_attn) × lora_strength. Só age em adapters broad/dual.'}),
+                'llm_adapter_strength': ('FLOAT', {'default': 1.0, 'min': 0.0, 'max': 4.0, 'step': 0.05,
+                    'tooltip': 'Ponte texto→DiT (llm_adapter) × lora_strength. O canal do eureka. 0 = mede o quanto ele importa.'}),
+                'block_range': ('STRING', {'default': 'all',
+                    'tooltip': 'Quais blocks (0-27) recebem o LoRA de aparência/cross_attn. '
+                               'Ex.: "4-24" ou "0-13,20-27". llm_adapter não é afetado.'}),
             },
         }
 
@@ -256,7 +293,9 @@ class CtxRushAnimaNextScene:
 
     def apply(self, model, vae, image, lora_name, mode='auto',
               lora_strength=1.0, width=672, height=400, batch_size=1,
-              ref_cfg=1.0, expected_cfg=4.0):
+              ref_cfg=1.0, expected_cfg=4.0,
+              appearance_strength=1.0, cross_attn_strength=1.0,
+              llm_adapter_strength=1.0, block_range='all'):
         if expected_cfg <= 0:
             raise ValueError('expected_cfg must be greater than zero')
         if ref_cfg < 0:
@@ -277,22 +316,32 @@ class CtxRushAnimaNextScene:
         dit = patched.get_model_object('diffusion_model')
         device = comfy.model_management.get_torch_device()
         entries_p = _match_entries(dit, pairs, device, torch.bfloat16)
+        keep_blocks = _parse_block_range(block_range)
+
+        def _in_range(path):
+            idx = _block_index(path)
+            return keep_blocks is None or idx is None or idx in keep_blocks
+
         llm_entries = [e[1:] for e in entries_p if e[0].startswith('llm_adapter')]
-        sem_entries = [e[1:] for e in entries_p if 'cross_attn' in e[0]]
+        sem_entries = [e[1:] for e in entries_p if 'cross_attn' in e[0] and _in_range(e[0])]
         app_entries = [e[1:] for e in entries_p
-                       if not (e[0].startswith('llm_adapter') or 'cross_attn' in e[0])]
+                       if not (e[0].startswith('llm_adapter') or 'cross_attn' in e[0])
+                       and _in_range(e[0])]
+        app_scale = lora_strength * appearance_strength
+        sem_scale = lora_strength * cross_attn_strength
+        llm_scale = lora_strength * llm_adapter_strength
         print(f'[CtxRushAnima] mode={mode} ref_first={ref_first} masked={masked} '
-              f'aparencia={len(app_entries)} cross_attn={len(sem_entries)} '
-              f'llm_adapter={len(llm_entries)} strength={lora_strength} '
+              f'aparencia={len(app_entries)}x{app_scale:g} cross_attn={len(sem_entries)}x{sem_scale:g} '
+              f'llm_adapter={len(llm_entries)}x{llm_scale:g} blocks={block_range} '
               f'expected_cfg={expected_cfg} ref_cfg={ref_cfg}')
 
-        if llm_entries:
+        if llm_entries and llm_scale != 0:
             # O llm_adapter roda no preprocess_text_embeds (extra_conds), ANTES
             # do wrapper do DiT — o delta dele precisa de object patch próprio.
             orig_pre = dit.preprocess_text_embeds
 
             def _pre_with_lora(text_embeds, text_ids, t5xxl_weights=None):
-                with _LoraScope(llm_entries, lora_strength, masked=None):
+                with _LoraScope(llm_entries, llm_scale, masked=None):
                     return orig_pre(text_embeds, text_ids, t5xxl_weights=t5xxl_weights)
 
             patched.add_object_patch('diffusion_model.preprocess_text_embeds', _pre_with_lora)
@@ -343,8 +392,8 @@ class CtxRushAnimaNextScene:
                 else:
                     x_cat = torch.cat([x, ref_frames], dim=2)
                     t_cat = torch.stack([t, t_zero], dim=1)
-                with _LoraScope(app_entries, lora_strength, masked=masked), \
-                     _LoraScope(sem_entries, lora_strength, masked=None):
+                with _LoraScope(app_entries, app_scale, masked=masked), \
+                     _LoraScope(sem_entries, sem_scale, masked=None):
                     out = executor(x_cat, t_cat, context, fps, padding_mask, **kwargs)
                 return out[:, :, -1:, :, :] if ref_first else out[:, :, :1, :, :]
 
