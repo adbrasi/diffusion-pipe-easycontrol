@@ -171,6 +171,7 @@ class Ideogram4OminiGroundedPipeline(Ideogram4OminiControlPipeline):
                     f'Got {len(captions)} captions but {len(control_files)} control files'
                 )
 
+            need_plain = self.condition_dropout > 0
             grounded_embeds, grounded_masks = [], []
             plain_embeds, plain_masks = [], []
             for caption, control_file in zip(captions, control_files):
@@ -182,23 +183,29 @@ class Ideogram4OminiGroundedPipeline(Ideogram4OminiControlPipeline):
                 files = control_file if isinstance(control_file, (list, tuple)) else [control_file]
                 images = [prepare_vl_image_longest_side(f, self.vl_longest_side) for f in files]
                 g_embed, g_mask = encode_one(caption, images)
-                p_embed, p_mask = encode_one(caption, [])
-                if torch.equal(g_mask, p_mask) and g_embed.shape == p_embed.shape:
-                    raise RuntimeError(
-                        'Grounded and text-only embeddings are identical in shape/mask: '
-                        'the visual tower is not receiving the reference image'
-                    )
                 grounded_embeds.append(g_embed)
                 grounded_masks.append(g_mask)
-                plain_embeds.append(p_embed)
-                plain_masks.append(p_mask)
+                if need_plain:
+                    p_embed, p_mask = encode_one(caption, [])
+                    if torch.equal(g_mask, p_mask) and g_embed.shape == p_embed.shape:
+                        raise RuntimeError(
+                            'Grounded and text-only embeddings are identical in shape/mask: '
+                            'the visual tower is not receiving the reference image'
+                        )
+                    plain_embeds.append(p_embed)
+                    plain_masks.append(p_mask)
 
-            return {
+            result = {
                 f'text_embeds_{te_idx}': grounded_embeds,
                 f'attention_mask_{te_idx}': grounded_masks,
-                f'text_embeds_noref_{te_idx}': plain_embeds,
-                f'attention_mask_noref_{te_idx}': plain_masks,
             }
+            if need_plain:
+                # Dual cache (~2x disco): só quando o dropout acoplado está ativo.
+                # Com o CFG dual-model (uncond = transformer incondicional
+                # dedicado), o adapter não precisa cobrir o caso sem referência.
+                result[f'text_embeds_noref_{te_idx}'] = plain_embeds
+                result[f'attention_mask_noref_{te_idx}'] = plain_masks
+            return result
 
         return fn
 

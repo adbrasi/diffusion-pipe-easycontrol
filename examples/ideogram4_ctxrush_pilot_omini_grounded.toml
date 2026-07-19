@@ -37,9 +37,12 @@ shift = 3
 # train_adaln_modulation é lido da seção ideogram4_ic_lora mesmo no tipo omini (herança).
 [ideogram4_ic_lora]
 train_adaln_modulation = true
+# dropout acoplado desligado: CFG usa o transformer incondicional dedicado;
+# evita o cache duplo de ~55GB (incidente de disco 2026-07-19).
+condition_dropout = 0.0
 
 [omini_grounded]
-vl_longest_side = 512
+vl_longest_side = 256
 
 [ominicontrol]
 condition_only_lora = true
