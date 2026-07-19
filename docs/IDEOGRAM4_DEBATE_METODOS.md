@@ -122,3 +122,27 @@ fatos que INVALIDAVAM qualquer avaliação anterior:
    fp8-scaled do ComfyUI, sem o recast destrutivo).
 
 Pilotos re-executados com captions JSON + harness corrigido a partir daqui.
+
+## Resultado P3 (2026-07-19, 600 steps, captions completas, dropout acoplado 0.1)
+
+O grounding INVERTEU o modo de falha — evidência causal forte + colapso de reconstrução:
+
+- **Causalidade PROVADA**: com prompt mínimo ("the same woman", zero descrição) o P3
+  gera a identidade da referência (elfa OOD: rosto, tatuagem, armadura) — P1/P2
+  falharam 100% nisso. Ref embaralhada → segue a nova ref. A resolução de "the
+  same X" via torre visual funciona como teorizado.
+- **Colapso de reconstrução**: TODAS as saídas ≈ a própria referência "recozida"
+  (enquadramento/pose/cena), instrução nova ignorada. Dataset de frames adjacentes
+  (alvo≈ref) + tokens visuais descrevendo a ref = reconstruir é o mínimo da MSE.
+- **CFG triplo NÃO cura** (sR=5, sT=9): vRT≈vR — o adapter produz a mesma velocity
+  com ou sem caption; a cópia está nos pesos, não no guidance. Ferramenta
+  implementada em tools/infer_reference_batch.py (--triple-cfg --sr --st) e útil
+  para o modelo final, mas não resgata um adapter colapsado.
+
+Leitura de arquitetura: P1/P2 = obedecem texto, ignoram ref (atalho de caption);
+P3 = obedece ref, ignora texto (atalho de reconstrução). Os dois atalhos são
+propriedades do DADO+objetivo, não dos módulos: captions exaustivas alimentam o
+primeiro; pares sem delta alimentam o segundo. A receita de escala (delta-captions
++ modos 70/15/15 + gaps temporais) ataca exatamente os dois. Próximos braços do
+fatorial: E2b = routing + caption_dropout 0.25 SEM grounding (referência
+necessária sem tokens visuais "copie-me"); depois P3 + delta-captions.
