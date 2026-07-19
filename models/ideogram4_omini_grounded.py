@@ -176,10 +176,15 @@ class Ideogram4OminiGroundedPipeline(Ideogram4OminiControlPipeline):
             plain_embeds, plain_masks = [], []
             for caption, control_file in zip(captions, control_files):
                 if control_file is None:
-                    raise ValueError(
-                        'ideogram4_omini_grounded requires a control file per caption '
-                        '(grounding needs the reference image)'
-                    )
+                    # Amostras internas sem referência (ex.: dataset auxiliar de 1
+                    # item do diffusion-pipe): degrada para text-only nos dois slots.
+                    embed, mask = encode_one(caption, [])
+                    grounded_embeds.append(embed)
+                    grounded_masks.append(mask)
+                    if need_plain:
+                        plain_embeds.append(embed.clone())
+                        plain_masks.append(mask.clone())
+                    continue
                 files = control_file if isinstance(control_file, (list, tuple)) else [control_file]
                 images = [prepare_vl_image_longest_side(f, self.vl_longest_side) for f in files]
                 g_embed, g_mask = encode_one(caption, images)
