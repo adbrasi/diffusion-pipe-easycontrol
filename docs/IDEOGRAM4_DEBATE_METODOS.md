@@ -146,3 +146,27 @@ primeiro; pares sem delta alimentam o segundo. A receita de escala (delta-captio
 + modos 70/15/15 + gaps temporais) ataca exatamente os dois. Próximos braços do
 fatorial: E2b = routing + caption_dropout 0.25 SEM grounding (referência
 necessária sem tokens visuais "copie-me"); depois P3 + delta-captions.
+
+## Encerramento da fase (2026-07-19) — estado FIRA e handoff
+
+Sweep sR×sT completo (24 células): NENHUMA combinação escapa da reconstrução no
+P3 — só migalhas de obediência (gaivota pousada, esporos) vazam em sR baixo.
+Confirmação final: o colapso está nos pesos, não no guidance.
+
+FIRA v1 implementada e commitada (role_routed_lora.py + ideogram4_identity_nextscene.py
++ configs + dataset fatorado COMPLETO em /workspace/datasets/contexto_rush_fira:
+1255 entity crops [1140 bbox gemini + 115 center-crop] + 1255 delta-captions R1
+validadas + 1255 change masks; layout de treino em targets/ + change_masks_floored/).
+
+GATE DA CÁPSULA REPROVOU (o preflight do Codex funcionou): capsule = últimos 8
+estados do encode identidade → cos(mesma ref, captions≠)=0.9961 OK, mas
+cos(refs≠)=0.9453 — o rabo causal é dominado pelo texto do TEMPLATE, não pela
+imagem. A sonda de 300 steps NÃO foi treinada (teria sido inválida).
+
+FIX DESENHADO (próxima sessão): extrair a cápsula das ROWS DE VISÃO (localizar o
+span do <|image_pad|> expandido no token stream: índice da entry-imagem no
+tokenize + n_vision = L_com_img − (T_tokens−1); pooling adaptativo em 4 grupos)
++ 4 âncoras do rabo = 8 tokens. Rows de visão de refs distintas divergem por
+construção. Re-rodar o preflight (mesmos thresholds) antes de qualquer cache.
+
+Prioridade de GPU transferida para o treino LTX smooth_rush por ordem do usuário.
