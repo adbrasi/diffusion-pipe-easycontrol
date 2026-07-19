@@ -57,6 +57,7 @@ MODEL_CLASSES = {
     'ideogram4_ic_lora': ('models.ideogram4_ic_lora', 'Ideogram4ICLoRAPipeline'),
     'ideogram4_ominicontrol': ('models.ideogram4_ominicontrol', 'Ideogram4OminiControlPipeline'),
     'ideogram4_ominicontrol2': ('models.ideogram4_ominicontrol2', 'Ideogram4OminiControl2Pipeline'),
+    'ideogram4_omini_grounded': ('models.ideogram4_omini_grounded', 'Ideogram4OminiGroundedPipeline'),
     'krea2_ic_lora': ('models.krea2_ic_lora', 'Krea2ICLoRAPipeline'),
     'krea2_edit': ('models.krea2_edit', 'Krea2EditPipeline'),
     'krea2_ominicontrol': ('models.krea2_ominicontrol', 'Krea2OminiControlPipeline'),
@@ -572,7 +573,7 @@ def main():
         )
     need_unconditional = args.text_guidance != 1.0
     sample_kwargs = {}
-    if config['model']['type'] in ('krea2_edit', 'krea2_omini_grounded') and not args.disable_vl_reference:
+    if config['model']['type'] in ('krea2_edit', 'krea2_omini_grounded', 'ideogram4_omini_grounded') and not args.disable_vl_reference:
         # Dual conditioning: the reference grounds the Qwen3-VL embeddings of
         # both the conditional and the unconditional prompt.
         sample_kwargs['control_files'] = [str(args.reference)]

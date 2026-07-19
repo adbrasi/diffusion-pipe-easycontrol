@@ -414,6 +414,9 @@ if __name__ == '__main__':
     elif model_type == 'ideogram4_ominicontrol2':
         from models import ideogram4_ominicontrol2
         model = ideogram4_ominicontrol2.Ideogram4OminiControl2Pipeline(config)
+    elif model_type == 'ideogram4_omini_grounded':
+        from models import ideogram4_omini_grounded
+        model = ideogram4_omini_grounded.Ideogram4OminiGroundedPipeline(config)
     elif model_type == 'krea2':
         from models import krea2
         model = krea2.Krea2Pipeline(config)
