@@ -1,0 +1,54 @@
+# E2 — P1-global + caption_dropout 0.15 (anti-atalho: caption vazia, referência mantida)
+# Piloto curto: ≤50 min de treino; julgamento nos steps 250/500 (lição Krea 2: nunca antes de 250).
+
+output_dir = '/workspace/ideogram4_ctxrush_e2_output'
+dataset = '/workspace/configs/ideogram4_ctxrush_dataset.toml'
+
+epochs = 1000
+max_steps = 600
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+
+save_every_n_steps = 100
+checkpoint_every_n_minutes = 120
+activation_checkpointing = true
+partition_method = 'parameters'
+save_dtype = 'bfloat16'
+caching_batch_size = 1
+steps_per_print = 1
+
+blocks_to_swap = 8
+
+[model]
+type = 'ideogram4_ic_lora'
+diffusion_model = '/workspace/models/ideogram4_bf16.safetensors'
+vae = '/workspace/models/flux2-vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/qwen3vl_8b_fp8_scaled.safetensors', type = 'ideogram4'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'bfloat16'
+timestep_sample_method = 'logit_normal'
+shift = 3
+
+[ideogram4_ic_lora]
+train_adaln_modulation = true
+caption_dropout = 0.15
+condition_dropout = 0.1
+reference_position_offset = 1
+reference_model_timestep = 1.0
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 5e-5
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

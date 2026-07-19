@@ -67,6 +67,12 @@ class Ideogram4ICLoRAPipeline(Ideogram4Pipeline):
         self.reference_position_offset = int(reference_config.get('reference_position_offset', 1))
         self.reference_model_timestep = float(reference_config.get('reference_model_timestep', 1.0))
         self.train_adaln_modulation = bool(reference_config.get('train_adaln_modulation', False))
+        # Anti-atalho-de-caption (InstructPix2Pix assimétrico): fração de fetches
+        # com caption VAZIA e referência MANTIDA — força identidade vir do latent.
+        # Usa a infra grounded_uncond do dataset (cache per-sample de uncond).
+        self.caption_dropout = float(reference_config.get('caption_dropout', 0.0))
+        if not 0.0 <= self.caption_dropout <= 0.5:
+            raise ValueError('caption_dropout must be between 0.0 and 0.5')
 
         if not 0.0 <= self.condition_dropout <= 1.0:
             raise ValueError('condition_dropout must be between 0.0 and 1.0')
