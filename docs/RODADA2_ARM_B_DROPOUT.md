@@ -25,7 +25,7 @@ forçando o modelo a nunca poder assumir que a referência está lá.
 
 ## O resultado (comparativo direto, step 1000)
 
-Grid comparativo gerado em `/workspace/outputs/COMPARE_arm1_vs_armB_s1000.png`
+Grid comparativo gerado em `/workspace/outputs/_comparativos/COMPARE_arm1_vs_armB_s1000.png`
 (colunas: referência correta vs referência EMBARALHADA, mesmo caption/seed):
 
 | Braço | ex2 (elf/dungeon, held-out) | ex3 (floresta, held-out) |

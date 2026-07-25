@@ -44,7 +44,7 @@ artefato).
 **Isto precisa de confirmação humana.** Diferente da Rodada 1 (onde o
 usuário viu os grids e decidiu "Arm 1 é muito melhor" com clareza), aqui a
 diferença é mais sutil e a decisão foi tomada por mim sozinho. Os grids
-completos estão em `/workspace/outputs/round2_2026-07-25/armA_adaln_in/` —
+completos estão em `/workspace/outputs/armA_adaln_in/` —
 vale revisar quando o usuário acordar, especialmente se ele discordar do
 padrão que venho seguindo até aqui.
 

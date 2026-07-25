@@ -5,7 +5,7 @@
 # checkpoints com o mesmo protocolo da Rodada 1.
 set -uo pipefail
 cd /home/claude/diffusion-pipe-easycontrol
-CKPT_STEPS="250 500 750 1000"
+CKPT_STEPS="${CKPT_STEPS:-250 500 750 1000}"
 
 LOGFILE="$1"
 CKPT_ROOT="$2"
@@ -48,7 +48,7 @@ eval_checkpoint() {
     echo "MILESTONE: ${arm} step${step} SEM CHECKPOINT (pulei)"
     return
   fi
-  outdir="/workspace/outputs/round2_2026-07-25/${arm}"
+  outdir="/workspace/outputs/${arm}"
   mkdir -p "$outdir"
   bash tools/battery_eval.sh "$found" "s${step}" "$outdir" "$skip" \
     >> /workspace/.tmp/eval_round2_${arm}_s${step}.log 2>&1
@@ -61,4 +61,4 @@ echo "MILESTONE: ${ARM_NAME} treino completo, avaliando checkpoints"
 for s in $CKPT_STEPS; do
   eval_checkpoint "$CKPT_ROOT" "$ARM_NAME" "$s" "$SKIP_ADALN"
 done
-echo "MILESTONE: ${ARM_NAME} RODADA 2 AVALIACAO COMPLETA -> /workspace/outputs/round2_2026-07-25/${ARM_NAME}/"
+echo "MILESTONE: ${ARM_NAME} RODADA 2 AVALIACAO COMPLETA -> /workspace/outputs/${ARM_NAME}/"

@@ -28,7 +28,7 @@ refutada.
 
 ## O que apareceu no lugar (o achado que importa)
 
-Olhando as imagens do sweep (`/workspace/outputs/SWEEP_refcfg_arm1_vs_armB.png`),
+Olhando as imagens do sweep (`/workspace/outputs/_comparativos/SWEEP_refcfg_arm1_vs_armB.png`),
 no exemplo held-out da elfa (SAO/Leafa):
 
 - **`ref_cfg` 0.0–1.0**: elfa loira genérica, sem adorno de cabelo, roupa

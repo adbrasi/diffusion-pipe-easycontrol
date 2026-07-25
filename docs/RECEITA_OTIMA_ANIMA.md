@@ -74,7 +74,7 @@ uma paisagem de floresta ampla e vazia):
 | armB s1000 @ ref_cfg 1.0 | garotas grandes, fundo com árvore |
 | armB s1000 @ ref_cfg 2.5 | **colapso: garotas viram pontinhos, cena ≈ cópia da referência** ❌ |
 
-Comparativo: `/workspace/outputs/COMPARE_refcfg_sobrecopia_ex3.png`.
+Comparativo: `/workspace/outputs/_comparativos/COMPARE_refcfg_sobrecopia_ex3.png`.
 
 Ou seja: dropout + ref_cfg alto = copia a composição da referência e
 ignora o prompt. Sem dropout + ref_cfg alto = pega o cenário mantendo a
