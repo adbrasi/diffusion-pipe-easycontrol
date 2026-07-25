@@ -19,6 +19,8 @@ set -euo pipefail
 
 ADAPTER="$1"
 LABEL="$2"
+SEEDSFX=""
+if [ "${SEED:-76}" != "76" ]; then SEEDSFX="_seed${SEED}"; fi
 OUT="$3"
 SKIP_ADALN_FLAG=""
 if [ "${4:-}" = "skip_adaln" ]; then
@@ -33,7 +35,7 @@ LLM=/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensor
 DS=/workspace/dataset_raw/extracted
 OUTS=/workspace/outputs
 NEG="worst quality, low quality, score_1, score_2, score_3, artist name"
-SEED=76
+SEED="${SEED:-76}"
 STEPS=30
 CFG=4.0
 SHIFT=3.0
@@ -76,7 +78,7 @@ for ex in ex1 ex2 ex3; do
   prompt="${PROMPT[$ex]}"
 
   # sem referência (LoRA mergeado, mas sem control_image -> cai em sample_normal)
-  f="$OUT/${LABEL}_${ex}_noref.png"
+  f="$OUT/${LABEL}_${ex}_noref${SEEDSFX}.png"
   if [ ! -f "$f" ]; then
     rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
@@ -88,7 +90,7 @@ for ex in ex1 ex2 ex3; do
   fi
 
   # com referência, força 1.0
-  f="$OUT/${LABEL}_${ex}_ref1.0.png"
+  f="$OUT/${LABEL}_${ex}_ref1.0${SEEDSFX}.png"
   if [ ! -f "$f" ]; then
     rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
@@ -104,7 +106,7 @@ for ex in ex1 ex2 ex3; do
   # continua sendo a coluna lora 1.0 / ref_cfg 1.0 — se o adapter só fica
   # bom com ref_cfg alto, ele não está bom o suficiente. Esta coluna é
   # para ver o headroom do dial, não para julgar o braço.
-  f="$OUT/${LABEL}_${ex}_refcfg1.75.png"
+  f="$OUT/${LABEL}_${ex}_refcfg1.75${SEEDSFX}.png"
   if [ ! -f "$f" ]; then
     rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
@@ -116,7 +118,7 @@ for ex in ex1 ex2 ex3; do
   fi
 
   # ref embaralhada (mesmo caption, referência de outro exemplo), força 1.0
-  f="$OUT/${LABEL}_${ex}_refshuffle.png"
+  f="$OUT/${LABEL}_${ex}_refshuffle${SEEDSFX}.png"
   if [ ! -f "$f" ]; then
     rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \

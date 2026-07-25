@@ -1,4 +1,10 @@
-# Rodada 2 — Arm D VENCE: dropout 0.1 + treino longo (2026-07-25)
+# Rodada 2 — Arm D: dropout 0.1 + treino longo (2026-07-25)
+
+> ## ⚠️ VEREDITO REBAIXADO (teste multi-seed, mesmo dia)
+> O título original era "Arm D VENCE". Rodei depois um teste multi-seed e a
+> diferença **não é estatisticamente conclusiva**. Ver a seção "Teste
+> multi-seed" no fim. O armD segue como o candidato mais promissor, mas
+> "vence" era forte demais para o dado que eu tinha.
 
 **Isto inverte a conclusão anterior da bateria.** Até aqui o arm1 (sem
 dropout, ~500 steps) era o campeão e o dropout parecia apenas "proteger
@@ -129,3 +135,53 @@ detectar colapso grosseiro; a decisão é visual.**
    métricas, tomadas ao pé da letra, escolheriam o s500 — que tem artefatos.
 4. **Este veredito é meu, não do usuário.** Ele julgou o arm1 como "incrível"
    olhando os grids; ainda não viu o armD s2000.
+
+
+---
+
+## Teste multi-seed — o que derruba o veredito
+
+Toda a bateria foi julgada com **uma seed só** (76). Rodei os dois
+finalistas em mais duas seeds (1234, 777), medindo sensibilidade:
+
+| braço | média entre seeds | desvio | min / max |
+|---|---|---|---|
+| arm1 s500 | 0.650 | **0.050** | 0.615 / 0.686 |
+| armD s2000 | 0.852 | **0.146** | 0.688 / 0.969 |
+
+diferença armD−arm1 = **+0.201** · desvio combinado = **0.153**
+
+Critério fixado ANTES de rodar: conclusivo se |diferença| > 2×desvio
+(0.306). **0.201 < 0.306 → NÃO CONCLUSIVO.**
+
+### O que isso muda
+
+1. **Os números que eu vinha citando eram pontos altos da variação.** O
+   0.898 do armD vira 0.969 e 0.688 em outras seeds. O 0.778 do arm1 s500,
+   que eu chamava de "pico histórico", vira 0.615 e 0.686.
+2. **O armD é ~3× menos estável entre seeds** (desvio 0.146 vs 0.050). Isso
+   é informação nova e independente: um adapter cuja qualidade oscila com a
+   seed é menos confiável em produção, mesmo com média maior.
+3. **A direção continua favorecendo o armD** (0.852 vs 0.650 de média), mas
+   agora como tendência, não como fato estabelecido.
+
+### O que faltaria para concluir
+
+Mais seeds (5-10) e/ou mais exemplos de avaliação. Com 3 exemplos × 3 seeds
+o erro padrão ainda é grande demais para separar 0.65 de 0.85.
+
+## Nota de método (4ª correção da sessão)
+
+Esta é a quarta vez nesta sessão em que eu afirmo algo e depois o dado
+derruba:
+1. atribuí a perda de sensibilidade ao branch OOD do CFG — a álgebra mostrou
+   que o termo cancela (`docs/CFG_REFERENCIA_ANIMA.md`);
+2. previ que o dial `ref_cfg` seria errático sem dropout — o sweep mostrou
+   monotônico nos dois (`docs/ACHADO_REF_CFG_ALTO.md`);
+3. usei a métrica de fidelidade como critério — ela premiava o checkpoint com
+   artefatos (seção acima);
+4. declarei o armD vencedor com n=1 — o multi-seed diz não conclusivo.
+
+O padrão é o mesmo: **concluo cedo demais com amostra pequena.** A regra que
+sai disso, e que vale para as próximas rodadas: *nenhum veredito de braço sem
+pelo menos 3 seeds, e a decisão final continua sendo visual e do usuário.*
