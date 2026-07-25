@@ -216,16 +216,21 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
 
         `txtfusion_rank = 0` reproduz o comportamento antigo (rank uniforme).
         """
-        super().configure_adapter(adapter_config)
         if not self.txtfusion_rank or adapter_config['type'] != 'lora':
+            super().configure_adapter(adapter_config)
             return
-        pattern = {
-            name: self.txtfusion_rank
-            for name in self.peft_config.target_modules
-            if 'txtfusion' in name
-        }
-        if not pattern:
-            raise RuntimeError('rank do txtfusion pedido mas nenhum alvo txtfusion encontrado')
+        # Os nomes COMPLETOS têm que sair do modelo: o PEFT normaliza
+        # `target_modules` para um conjunto de sufixos, então ler de volta do
+        # peft_config depois do get_peft_model não devolve nomes casáveis.
+        full_names = [
+            name for name, module in self.diffusion_model.named_modules()
+            if 'txtfusion' in name and isinstance(module, torch.nn.Linear)
+            and not name.endswith('projector')
+        ]
+        if not full_names:
+            raise RuntimeError('rank do txtfusion pedido mas nenhum Linear de txtfusion existe')
+        super().configure_adapter(adapter_config)
+        pattern = {name: self.txtfusion_rank for name in full_names}
         self.peft_config.rank_pattern = pattern
         self.peft_config.alpha_pattern = dict(pattern)
         # reconstrói com o padrão aplicado (o get_peft_model do pai já rodou
@@ -265,6 +270,27 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
             return result
 
         return fn
+
+    def prepare_inputs(self, inputs, timestep_quantile=None):
+        """O collate entrega `control_latents` como LISTA (uma entrada por
+        amostra, com N variável). Empilha em `(B, C, N_max, h, w)` com padding
+        de zeros — que é exatamente a representação de "referência ausente"
+        que o `condition_dropout` do Anima usa (`ic_lora_full.py:143`): o slot
+        continua na sequência, só fica em branco. Logo o padding é
+        in-distribution por construção, não um caso especial."""
+        control = inputs.get('control_latents')
+        if isinstance(control, (list, tuple)):
+            per_sample = [c if c.ndim == 4 else c.squeeze(0) for c in control]
+            num_refs = max(c.shape[1] for c in per_sample)
+            padded = []
+            for c in per_sample:
+                if c.shape[1] < num_refs:
+                    pad = c.new_zeros(c.shape[0], num_refs - c.shape[1], *c.shape[2:])
+                    c = torch.cat([c, pad], dim=1)
+                padded.append(c)
+            inputs = dict(inputs)
+            inputs['control_latents'] = torch.stack(padded)
+        return super().prepare_inputs(inputs, timestep_quantile=timestep_quantile)
 
     def prepare_reference_latents(self, reference, noisy_target, timestep_quantile=None):
         """Aceita (B, C, N, h, w). Só o eixo de frame pode diferir do target."""

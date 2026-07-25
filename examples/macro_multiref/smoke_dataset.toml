@@ -1,0 +1,20 @@
+# Macro-Dataset, bracket 1-3 (o usuário descartou >3 referências).
+# Preparado por tools/prepare_macro.py: refs nomeadas '<stem>_<n>', e o
+# sufixo numérico É o contrato de ordem (ver comentário em utils/dataset.py).
+#
+# 512px apenas no primeiro treino: a 768 o cache de embeddings de texto
+# quadruplica (~576 tokens de grounding por referência a 768, contra ~144 a
+# 384) e o disco é o gargalo real deste projeto, não FLOPs nem VRAM.
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/datasets/macro_smoke/target'
+control_path = '/workspace/datasets/macro_smoke/refs'
+multi_ref = true
+max_refs = 3
+num_repeats = 1

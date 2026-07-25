@@ -63,6 +63,7 @@ MODEL_CLASSES = {
     'krea2_ominicontrol': ('models.krea2_ominicontrol', 'Krea2OminiControlPipeline'),
     'krea2_ominicontrol2': ('models.krea2_ominicontrol2', 'Krea2OminiControl2Pipeline'),
     'krea2_omini_grounded': ('models.krea2_omini_grounded', 'Krea2OminiGroundedPipeline'),
+    'krea2_multiref_grounded': ('models.krea2_multiref', 'Krea2MultiRefGroundedPipeline'),
 }
 
 
@@ -72,7 +73,11 @@ def parse_args():
     )
     parser.add_argument('--config', type=Path, required=True, help='Training TOML used for the adapter.')
     parser.add_argument('--adapter', type=Path, required=True, help='Checkpoint directory containing one safetensors file.')
-    parser.add_argument('--reference', type=Path, help='Reference/control image.')
+    parser.add_argument(
+        '--reference', type=Path, action='append', dest='references',
+        help='Reference/control image. Repita para N referencias: a ORDEM das '
+             'flags e a ordem dos slots, e e o que <image 1>/<image 2> enderecam.',
+    )
     parser.add_argument('--prompt', default='', help='Target prompt (Ideogram structured JSON is accepted).')
     parser.add_argument('--negative-prompt', default='', help='Negative/unconditional prompt.')
     parser.add_argument('--output', type=Path, default=Path('reference_sample.png'))
@@ -219,7 +224,7 @@ def expected_contract(config: dict) -> dict[str, str]:
         })
         if 'ominicontrol' in model_type:
             expected['condition_only_lora'] = str(bool(control.get('condition_only_lora', True))).lower()
-    elif model_type in ('krea2_edit', 'krea2_omini_grounded'):
+    elif model_type in ('krea2_edit', 'krea2_omini_grounded', 'krea2_multiref_grounded'):
         section = config.get(model_type, {})
         expected.update({
             'reference_model_timestep': (
@@ -235,7 +240,7 @@ def expected_contract(config: dict) -> dict[str, str]:
             'vl_image_max_pixels': str(int(section.get('vl_image_max_pixels', 384 * 384))),
             'lora_targets': 'blocks+txtfusion',
         })
-        if model_type == 'krea2_omini_grounded':
+        if model_type in ('krea2_omini_grounded', 'krea2_multiref_grounded'):
             expected['condition_only_lora'] = str(bool(section.get('condition_only_lora', True))).lower()
     else:
         section_name = 'krea2_ic_lora' if model_type == 'krea2_ic_lora' else 'ominicontrol'
@@ -547,7 +552,7 @@ def main():
     }, indent=2))
     if args.validate_only:
         return
-    if args.reference is None:
+    if not args.references:
         raise ValueError('--reference is required unless --validate-only is used')
     if args.width <= 0 or args.height <= 0 or args.steps <= 0:
         raise ValueError('width, height, and steps must be positive')
@@ -573,19 +578,29 @@ def main():
         )
     need_unconditional = args.text_guidance != 1.0
     sample_kwargs = {}
-    if config['model']['type'] in ('krea2_edit', 'krea2_omini_grounded', 'ideogram4_omini_grounded') and not args.disable_vl_reference:
+    if config['model']['type'] in ('krea2_edit', 'krea2_omini_grounded', 'krea2_multiref_grounded', 'ideogram4_omini_grounded') and not args.disable_vl_reference:
         # Dual conditioning: the reference grounds the Qwen3-VL embeddings of
         # both the conditional and the unconditional prompt.
-        sample_kwargs['control_files'] = [str(args.reference)]
+        # lista na MESMA ordem dos slots VAE — se os dois canais divergirem,
+        # o binding '<image N>' -> slot N aprendido no treino nao vale mais
+        sample_kwargs['control_files'] = [[str(p) for p in args.references]]
     pipeline.prepare_sample_test(
         args.prompt,
         negative_prompt=args.negative_prompt,
         cfg=2 if need_unconditional else 1,
         **sample_kwargs,
     )
-    full_reference = encode_reference(
-        pipeline, args.reference, args.width, args.height, args.reference_fit
-    )
+    encoded = [
+        encode_reference(pipeline, path, args.width, args.height, args.reference_fit)
+        for path in args.references
+    ]
+    if len(encoded) == 1:
+        full_reference = encoded[0]
+    else:
+        # (1, C, 1, h, w) cada -> (1, C, N, h, w): o mesmo layout que o
+        # treino monta a partir do cache do VAE
+        squeezed = [e.squeeze(2) if e.ndim == 5 else e for e in encoded]
+        full_reference = torch.stack(squeezed, dim=2)
     if args.disable_vae_reference:
         full_reference = torch.zeros_like(full_reference)
     print(
