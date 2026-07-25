@@ -19,19 +19,42 @@ runtime). Ver seção de armadilha abaixo.
 
 ## Resultado
 
-| step | arm1 (campeão) | armC (routing) |
+> ### ⚠️ Correção metodológica (revisão de configs pedida pelo usuário)
+> A primeira versão deste doc comparava armC contra **arm1**. Isso estava
+> ERRADO: o armC herdou `condition_dropout = 0.1` do armB, enquanto o arm1
+> usa `0.0` — ou seja, aquela comparação tinha **dois eixos mudados**
+> (routing *e* dropout) e não isolava o efeito do routing.
+> A comparação limpa de um eixo é **armC vs armB** (ambos dropout 0.1,
+> diferindo só no routing). Tabela corrigida abaixo.
+
+**Comparação correta (1 eixo: routing), armC vs armB:**
+
+| step | armB (dropout, LoRA global) | armC (dropout + routing) |
 |---|---|---|
-| s250 | **.711 / .217** | .264 / .043 |
-| s500 | **.778 / .246** | .438 / .099 |
-| s750 | **.771 / .204** | .405 / .138 |
-| s1000 | .372 / .078 | .342 / .041 |
+| s250 | **.574 / .157** | .264 / .043 |
+| s500 | **.581 / .113** | .438 / .099 |
+| s750 | .390 / .097 | **.405 / .138** (empate) |
+| s1000 | **.641 / .148** | .342 / .041 |
 
 *(sensibilidade / fidelidade — ver `tools/battery_metrics.py`)*
 
-Sensibilidade à referência ~2× menor que o arm1 nos checkpoints úteis
-(250-750). Bate com a inspeção visual: nos grids, a coluna "ref
-EMBARALHADA" fica quase idêntica à "lora 1.0", ou seja, trocar a
-referência por outra muda pouco a saída.
+**A conclusão "routing perde" se mantém**, mas a margem é menor do que a
+primeira versão do doc reportava, e em s750 há empate. Perde em 3 dos 4
+checkpoints, incluindo os dois mais úteis (250/500) e o final.
+
+Referência do campeão absoluto, para contexto (NÃO é comparação de 1 eixo
+contra o armC, porque difere também no dropout):
+
+| step | arm1 (campeão) |
+|---|---|
+| s250 | .711 / .217 |
+| s500 | **.778 / .246** |
+| s750 | .771 / .204 |
+| s1000 | .372 / .078 |
+
+Bate com a inspeção visual: nos grids do armC, a coluna "ref EMBARALHADA"
+fica quase idêntica à "lora 1.0", ou seja, trocar a referência por outra
+muda pouco a saída.
 
 Qualidade de imagem em si é boa — não há degradação. O problema é
 especificamente **usar a referência**.
