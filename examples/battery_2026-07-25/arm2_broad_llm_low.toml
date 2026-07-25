@@ -1,0 +1,52 @@
+# BATERIA 2026-07-25 — ARM 2: broad scope, llm_adapter com LR BAIXO (1/10 do
+# lr base = 1e-5). Meio-termo: dá ao canal semântico sinal suficiente para
+# adaptar ao regime novo (referência via self-attn) sem o risco pleno de
+# catastrophic forgetting que a config oficial do Anima adverte para LoRAs
+# de personagem/estilo padrão (RELATORIO_FINAL_ANIMA.md sugere justamente
+# "se absolutamente necessario: usar LR < 1e-5").
+#
+# Idêntico ao Arm 1/Arm 3 em tudo, exceto llm_adapter_lr.
+
+output_dir = '/workspace/checkpoints/battery_2026-07-25/arm2_broad_llm_low'
+dataset = 'examples/battery_2026-07-25/anima_battery_dataset.toml'
+epochs = 1000
+max_steps = 1000
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 8
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 25
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 4
+partition_method = 'parameters'
+
+[model]
+type = 'ic_lora_v3'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors'
+vae_path = '/workspace/models/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+sigmoid_scale = 1.0
+llm_adapter_lr = 1e-5   # <-- variável do experimento (Arm 2: 1/10 do lr base)
+
+[ic_lora_full]
+ref_first = false
+condition_dropout = 0.0
+condition_timestep = 0.0
+shifted_logit_normal = false
+include_adaln = false
+
+[adapter]
+type = 'lora'
+rank = 32
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

@@ -1,0 +1,20 @@
+# Dataset da bateria de testes 2026-07-25 = dataset_pares_contexto_captioned
+# (é o contexto_rush citado em toda a saga: 1255 pares, input_A=referência,
+# input_B=alvo+caption). Verificado nesta sessão:
+# - stems de input_A e input_B batem 1:1 (1255 = 1255).
+# - gaps temporais reais entre ref e alvo (não são frames adjacentes) —
+#   checado visualmente no par imagem000001 (huddle de mãos vs face-off wide
+#   shot). Baixo risco do atalho de reconstrução visto no Ideogram4.
+# - AR predominante 16:9 (1.778), alguns widescreen 2.4 — max_ar ajustado
+#   pra não cortar demais os widescreen.
+
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.45
+num_ar_buckets = 9
+
+[[directory]]
+path = '/workspace/dataset_raw/extracted/input_B/'
+caption_ext = '.txt'
+control_path = '/workspace/dataset_raw/extracted/input_A/'

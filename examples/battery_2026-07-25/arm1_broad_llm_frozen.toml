@@ -1,0 +1,54 @@
+# BATERIA 2026-07-25 — ARM 1: broad scope (self_attn+mlp+cross_attn+llm_adapter
+# nos TARGETS do LoRA), mas llm_adapter_lr=0 (congelado). Replica a
+# recomendação OFICIAL do criador do Anima (ANIMA_TRAINING_GUIDE.md: "NUNCA
+# treine o llm_adapter") e também replica o bug encontrado em
+# examples/anima_v3_500.toml — serve de baseline/controle: se este braço
+# empatar ou vencer o Arm 3 (full lr), a "eureka" de julho não se sustenta
+# fora do confundidor; se perder claramente, a eureka é real.
+#
+# Idêntico ao Arm 2/Arm 3 em tudo, exceto llm_adapter_lr. Comparar SEMPRE
+# com mesma seed/prompts/refs no protocolo de avaliação (ver conversa).
+
+output_dir = '/workspace/checkpoints/battery_2026-07-25/arm1_broad_llm_frozen'
+dataset = 'examples/battery_2026-07-25/anima_battery_dataset.toml'
+epochs = 1000
+max_steps = 1000
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 8
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 25
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 4
+partition_method = 'parameters'
+
+[model]
+type = 'ic_lora_v3'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors'
+vae_path = '/workspace/models/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+sigmoid_scale = 1.0
+llm_adapter_lr = 0   # <-- variável do experimento (Arm 1: congelado)
+
+[ic_lora_full]
+ref_first = false
+condition_dropout = 0.0
+condition_timestep = 0.0
+shifted_logit_normal = false
+include_adaln = false
+
+[adapter]
+type = 'lora'
+rank = 32
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

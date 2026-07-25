@@ -10,7 +10,21 @@ from multiprocess.util import register_after_fork
 from typing import Union
 
 import torch
-from torch._namedtensor_internals import check_serializing_named_tensor
+
+try:
+    from torch._namedtensor_internals import check_serializing_named_tensor
+except ImportError:
+    # torch >= 2.13 removed this private module. Reimplemented inline
+    # (unchanged logic from upstream torch/multiprocessing/reductions.py).
+    def check_serializing_named_tensor(tensor):
+        if not hasattr(tensor, 'has_names'):
+            # torch >= 2.13 dropped the legacy named-tensor API entirely.
+            return
+        if tensor.has_names():
+            raise RuntimeError(
+                "NYI: Named tensors don't support serialization. Please drop "
+                "names via `tensor = tensor.rename(None)` before serialization."
+            )
 
 
 try:
