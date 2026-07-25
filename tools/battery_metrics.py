@@ -82,9 +82,11 @@ def dist(a_img, b_img):
 
 
 def analyse(arm_dir):
-    steps = sorted({os.path.basename(p).split('_')[0]
+    # o label é tudo que vem antes de "_exN" — pode ser 's1000' ou
+    # 's1000_eval10'. Cortar no primeiro '_' quebrava o conjunto de 10.
+    steps = sorted({os.path.basename(p).rsplit('_ex', 1)[0]
                     for p in glob.glob(f'{arm_dir}/s*_ex*_ref1.0.png')},
-                   key=lambda s: int(s[1:]))
+                   key=lambda s: int(s.split('_')[0][1:]))
     rows = []
     for step in steps:
         sens, fid = [], []
