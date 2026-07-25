@@ -185,3 +185,62 @@ derruba:
 O padrão é o mesmo: **concluo cedo demais com amostra pequena.** A regra que
 sai disso, e que vale para as próximas rodadas: *nenhum veredito de braço sem
 pelo menos 3 seeds, e a decisão final continua sendo visual e do usuário.*
+
+---
+
+## Fechamento: 6 seeds, ainda NÃO CONCLUSIVO
+
+Expandi para 6 seeds por braço e troquei a regra improvisada de "2× desvio"
+por um **teste de Welch** (apropriado aqui porque as variâncias podem
+diferir).
+
+| braço | média | desvio | min / max |
+|---|---|---|---|
+| arm1 s500 | 0.625 | 0.155 | 0.338 / 0.778 |
+| armD s2000 | 0.786 | 0.165 | 0.572 / 0.969 |
+
+diferença = **+0.161** · Welch **t = 1.74** (df ≈ 10) · crítico 5% = **2.23**
+→ **NÃO CONCLUSIVO.**
+
+### 5ª correção: o "armD é 3× menos estável" também era artefato
+
+Com 3 seeds eu tinha medido desvio 0.146 (armD) vs 0.050 (arm1) e concluí que
+o armD era muito menos estável. Com 6 seeds os desvios ficaram
+**praticamente iguais**: 0.165 vs 0.155. Aquele "3×" era ruído de amostra
+pequena — exatamente o erro que o teste multi-seed existia para pegar, e que
+eu cometi de novo ao interpretar o próprio teste com n=3.
+
+### Quanto faltaria para concluir
+
+- Cohen d = 1.00 (diferença 0.161 / desvio agrupado 0.160)
+- Para poder 80% a 5%: **~16 seeds por braço**, faltam ~10
+- Custo: ~237 gerações ≈ 47 min de GPU
+
+**Não rodei.** Duas razões: (a) o retorno é baixo — mesmo confirmando, a
+diferença é de magnitude modesta e a decisão de produção é visual; (b) há um
+caminho mais eficiente, abaixo.
+
+### O caminho mais eficiente é outro
+
+A variância **entre exemplos** (ex1/ex2/ex3 dentro da mesma seed) é maior que
+a variância entre seeds. Ex.: arm1 seed 2024 → 1.159 / 0.390 / 0.624 no mesmo
+run. Isso significa que **adicionar exemplos held-out reduz o erro padrão
+mais rápido do que adicionar seeds**, por geração gasta.
+
+Recomendação para a próxima rodada: subir de 3 para ~10 exemplos de avaliação
+held-out antes de aumentar seeds. Isso também torna o julgamento visual mais
+confiável, que é o critério que de fato decide.
+
+## Conclusão honesta da Rodada 2
+
+**Com a metodologia atual eu não consigo distinguir arm1 de armD.** A direção
+favorece o armD em todas as medições, mas nunca com separação estatística.
+
+O que **sobrevive** ao escrutínio, por ter efeito grande ou por ser
+julgamento visual do usuário:
+- `llm_adapter` congelado vence treinável — veredito visual do usuário, claro
+- adaln fora — artefato de instabilidade observado diretamente
+- routing condition-only perde — efeito grande e consistente
+- captions exaustivas causam atalho de caption — medido por vários ângulos
+
+O que **não sobrevive**: qualquer ranking fino entre arm1, armB e armD.
