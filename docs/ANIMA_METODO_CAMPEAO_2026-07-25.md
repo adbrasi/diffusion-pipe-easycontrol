@@ -1,9 +1,15 @@
 # Anima — método campeão até 2026-07-25 (bateria pós-bug do llm_adapter)
 
 **Veredito do usuário:** "incrivelmente bom... em 750 steps já tá fazendo mágica."
-**Status:** líder provisório da Rodada 1 (llm_adapter congelado vs treinável).
-Ainda falta comparar com Arm 3 antes de declarar vencedor definitivo — ver
+**Status:** vencedor da Rodada 1 (llm_adapter congelado). Ver
 `docs/BATERIA_2026-07-25_LLM_ADAPTER.md` para o contexto completo da bateria.
+
+> **ATUALIZAÇÃO (Rodada 2):** a receita abaixo foi MELHORADA por um achado
+> posterior — `condition_dropout = 0.1` (era 0.0) preserva muito melhor a
+> dependência da referência até o fim do treino. Ver
+> `docs/RODADA2_ARM_B_DROPOUT.md`, que traz o comparativo direto. A receita
+> campeã atual é a deste doc **+ `condition_dropout = 0.1`**. O Arm A
+> (adaln dentro) foi testado e perdeu — ver `docs/RODADA2_ARM_A_ADALN.md`.
 
 ---
 

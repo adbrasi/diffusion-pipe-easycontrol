@@ -31,10 +31,10 @@ llm_adapter_lr = 0
 
 [ic_lora_full]
 ref_first = false
-condition_dropout = 0.0   # ajustar para o valor vencedor do Arm B se >0.0 vencer
+condition_dropout = 0.1   # HERDADO do Arm B (venceu: preserva dependencia da ref ate o fim)
 condition_timestep = 0.0
 shifted_logit_normal = false
-include_adaln = false     # ajustar se Arm A vencer
+include_adaln = false     # Arm A perdeu: adaln fica FORA
 condition_only_lora = true   # <-- variável do experimento (Arm C: routing no canal de aparência)
 
 [adapter]
