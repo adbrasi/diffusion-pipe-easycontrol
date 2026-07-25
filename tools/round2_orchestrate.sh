@@ -14,7 +14,16 @@ SKIP_ADALN="${4:-}"
 
 wait_for_training() {
   local logfile="$1"
-  local target_step="1000"
+  local target_step="${TARGET_STEP:-1000}"
+  # espera o processo de treino APARECER antes de vigiar (evita corrida em
+  # que o orquestrador sobe antes do train.py existir e conclui na hora)
+  local waited=0
+  while ! pgrep -f "train.py --local_rank=0" > /dev/null; do
+    sleep 5; waited=$((waited+5))
+    if [ "$waited" -ge 180 ]; then
+      echo "MILESTONE: FALHA — treino nunca apareceu em 180s"; return 1
+    fi
+  done
   while true; do
     if grep -q "steps: ${target_step} " "$logfile" 2>/dev/null; then
       sleep 20
