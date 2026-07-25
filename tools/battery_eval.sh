@@ -5,12 +5,16 @@
 # adaln_modulation (ex.: Rodada 2 Arm A) — o adaln é descartado na
 # inferência por design (absorvedor de erro, ver docs da bateria).
 #
-# Gera, para os 3 pares fixos de referência (mesma seed em todos os
-# checkpoints/braços para comparação justa): sem referência, com referência
-# (força 1.0), com referência (força 1.5) e com referência EMBARALHADA
-# (mesmo caption, ref de outro exemplo — separa memorização de uso real).
-# Depois monta um grid. Resolução mais alta (v2, pedido do usuário) pra dar
-# pra julgar rosto/detalhe de verdade, não só no thumbnail do grid.
+# Colunas (padrão v3, definido pelo usuário em 2026-07-25):
+#   1. sem ref          — LoRA aplicado, sem imagem de referência (baseline)
+#   2. lora 1.0         — CRITÉRIO DE AVALIAÇÃO. É aqui que o braço é
+#                         julgado. Se o adapter só fica bom com ref_cfg
+#                         alto, ele NÃO está bom o suficiente.
+#   3. lora 1.0 + ref_cfg 1.75 — headroom do dial (substituiu a antiga
+#                         coluna lora_strength 1.5)
+#   4. ref EMBARALHADA  — mesmo caption, referência de outro exemplo.
+#                         Separa memorização de uso real da referência.
+# Mesma seed em todos os checkpoints/braços para comparação justa.
 set -euo pipefail
 
 ADAPTER="$1"
@@ -88,28 +92,19 @@ for ex in ex1 ex2 ex3; do
     mv /tmp/battery_tmp_ref1/*.png "$f"
   fi
 
-  # com referência, força 1.5
-  f="$OUT/${LABEL}_${ex}_ref1.5.png"
+  # lora 1.0 + ref_cfg 1.75 (padrão definido pelo usuário 2026-07-25):
+  # substitui a antiga coluna lora_strength 1.5. O CRITÉRIO de avaliação
+  # continua sendo a coluna lora 1.0 / ref_cfg 1.0 — se o adapter só fica
+  # bom com ref_cfg alto, ele não está bom o suficiente. Esta coluna é
+  # para ver o headroom do dial, não para julgar o braço.
+  f="$OUT/${LABEL}_${ex}_refcfg1.75.png"
   if [ ! -f "$f" ]; then
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
       --lora "$ADAPTER" --mode ominicontrol_subject --control_image "$ref_img" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.5 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_ref15
-    mv /tmp/battery_tmp_ref15/*.png "$f"
-  fi
-
-  # ref_cfg ALTO (2.5): descoberto em 2026-07-25 que a fidelidade de
-  # IDENTIDADE (adornos, detalhes de figurino) só aparece em ref_cfg 2-3.
-  # Avaliar só com ref_cfg=1.0 subestima todos os braços.
-  f="$OUT/${LABEL}_${ex}_refcfg2.5.png"
-  if [ ! -f "$f" ]; then
-    $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
-      --lora "$ADAPTER" --mode ominicontrol_subject --control_image "$ref_img" \
-      --prompt "$prompt" --negative_prompt "$NEG" \
-      --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --ref_cfg 2.5 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_rc25
-    mv /tmp/battery_tmp_rc25/*.png "$f"
+      --lora_strength 1.0 --ref_cfg 1.75 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_rc175
+    mv /tmp/battery_tmp_rc175/*.png "$f"
   fi
 
   # ref embaralhada (mesmo caption, referência de outro exemplo), força 1.0

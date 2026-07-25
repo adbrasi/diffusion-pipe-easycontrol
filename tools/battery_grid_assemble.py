@@ -21,7 +21,7 @@ EXAMPLES = {
     'ex2': dict(ref=f'{OUTS}/image1.webp', target=None, shuffled_from='ex3'),
     'ex3': dict(ref=f'{OUTS}/image2.png', target=None, shuffled_from='ex1'),
 }
-COLS = ['referencia', 'alvo real', 'sem ref', 'ref forca 1.0', 'ref forca 1.5', 'ref_cfg 2.5', 'ref EMBARALHADA']
+COLS = ['referencia', 'alvo real', 'sem ref', 'lora 1.0 (CRITERIO)', 'lora 1.0 + ref_cfg 1.75', 'ref EMBARALHADA']
 
 W, H, LH = 460, 258, 22
 grid = Image.new('RGB', (W * len(COLS), (H + LH) * len(EXAMPLES) + 34), 'white')
@@ -33,14 +33,13 @@ for row, (name, ex) in enumerate(EXAMPLES.items()):
         ex['ref'], ex['target'],
         f'{out_dir}/{label}_{name}_noref.png',
         f'{out_dir}/{label}_{name}_ref1.0.png',
-        f'{out_dir}/{label}_{name}_ref1.5.png',
-        f'{out_dir}/{label}_{name}_refcfg2.5.png',
+        f'{out_dir}/{label}_{name}_refcfg1.75.png',
         f'{out_dir}/{label}_{name}_refshuffle.png',
     ]
     y = 34 + row * (H + LH)
     for cix, p in enumerate(paths):
         label_text = f"{name} - {COLS[cix]}"
-        if cix == 6:
+        if cix == 5:
             label_text += f" (ref de {ex['shuffled_from']})"
         d.text((cix * W + 4, y + 2), label_text, fill='black')
         if p is None or not os.path.exists(p):

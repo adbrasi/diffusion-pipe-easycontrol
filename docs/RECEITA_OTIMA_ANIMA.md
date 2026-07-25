@@ -1,11 +1,23 @@
 # Receita ótima Anima — estado em 2026-07-25 (fim da Rodada 2 parcial)
 
 **Melhor configuração encontrada: `arm1` (ic_lora_v3, llm_adapter
-congelado, SEM dropout) no checkpoint 500, inferido com `ref_cfg 2.5`.**
+congelado, SEM dropout), checkpoint ~500.**
 
-Confirma o veredito original do usuário ("arm 1 é incrível") e adiciona
-dois ajustes que a bateria descobriu: o checkpoint certo é o 500 (não o
-1000) e o dial de inferência certo é `ref_cfg` 2-3 (não 1.0).
+> ### ⚠️ Correção do usuário (2026-07-25)
+> A primeira versão deste doc recomendava inferir com `ref_cfg 2.5`. O
+> usuário corrigiu, com razão: **o critério de avaliação tem que ser
+> `lora_strength 1.0` / `ref_cfg 1.0`.** Se um adapter só fica bom com
+> `ref_cfg` alto, ele não está bom o suficiente — o `ref_cfg` é um dial de
+> ajuste fino, não uma muleta para compensar treino fraco.
+>
+> O achado do `ref_cfg` alto continua válido como *fato observado* (a
+> identidade aparece mais forte em 2-3), mas não deve ser usado para
+> julgar braços nem como recomendação padrão. O protocolo de avaliação foi
+> ajustado: a coluna de julgamento é `lora 1.0`, com uma coluna extra
+> `ref_cfg 1.75` só para ver o headroom do dial.
+
+Confirma o veredito original do usuário ("arm 1 é incrível") e adiciona um
+ajuste que a bateria descobriu: o checkpoint certo é o ~500, não o 1000.
 
 ## Treino
 
@@ -43,14 +55,18 @@ python infer_easycontrol.py --mode ominicontrol_subject \
   --lora <checkpoint step500>/adapter_model.safetensors \
   --control_image <referencia> --prompt "<caption>" \
   --steps 30 --cfg 4.0 --flow_shift 3.0 \
-  --lora_strength 1.0 --ref_cfg 2.5 --seed <n>
+  --lora_strength 1.0 --ref_cfg 1.0 --seed <n>
 ```
 
-**`ref_cfg 2.5` é o achado que mais mudou o resultado prático.** Com
-`ref_cfg 1.0` (o que a bateria usava até então) a geração pega clima e
-paleta da referência, mas NÃO a identidade. Com 2-3 aparecem as marcas
-específicas: adorno de cabelo, detalhes de figurino, elementos do cenário.
-Ver `docs/ACHADO_REF_CFG_ALTO.md`.
+**Padrão: `lora_strength 1.0` e `ref_cfg 1.0`.** É assim que o adapter
+tem que funcionar bem — esse é o critério.
+
+`ref_cfg` é um dial de ajuste fino disponível se você quiser puxar mais
+identidade numa geração específica (em 1.75-2.5 as marcas de figurino e
+adornos ficam mais fortes, ver `docs/ACHADO_REF_CFG_ALTO.md`). Mas subir o
+`ref_cfg` tem custo: em valores altos a composição da referência começa a
+sobrepor o prompt (ver tabela abaixo). Não usar como padrão nem como
+critério de avaliação.
 
 Caption: manter o sufixo do schema de abril na última linha —
 `Character continuity: same character. Background continuity: new view of
