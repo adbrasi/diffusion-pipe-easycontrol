@@ -99,6 +99,19 @@ for ex in ex1 ex2 ex3; do
     mv /tmp/battery_tmp_ref15/*.png "$f"
   fi
 
+  # ref_cfg ALTO (2.5): descoberto em 2026-07-25 que a fidelidade de
+  # IDENTIDADE (adornos, detalhes de figurino) só aparece em ref_cfg 2-3.
+  # Avaliar só com ref_cfg=1.0 subestima todos os braços.
+  f="$OUT/${LABEL}_${ex}_refcfg2.5.png"
+  if [ ! -f "$f" ]; then
+    $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
+      --lora "$ADAPTER" --mode ominicontrol_subject --control_image "$ref_img" \
+      --prompt "$prompt" --negative_prompt "$NEG" \
+      --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
+      --lora_strength 1.0 --ref_cfg 2.5 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_rc25
+    mv /tmp/battery_tmp_rc25/*.png "$f"
+  fi
+
   # ref embaralhada (mesmo caption, referência de outro exemplo), força 1.0
   f="$OUT/${LABEL}_${ex}_refshuffle.png"
   if [ ! -f "$f" ]; then
