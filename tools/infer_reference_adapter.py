@@ -233,7 +233,7 @@ def expected_contract(config: dict) -> dict[str, str]:
             'position_mode': str(section.get('position_mode', 'subject')),
             'condition_token_stride': '1',
             'control_family': (
-                'krea2_omini_grounded' if model_type == 'krea2_omini_grounded'
+                model_type if model_type in ('krea2_omini_grounded', 'krea2_multiref_grounded')
                 else 'krea2_edit_dual'
             ),
             'vl_conditioning': 'qwen3vl_image_grounded',
