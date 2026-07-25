@@ -11,9 +11,14 @@ está satisfazendo a loss só com o caption? Duas métricas complementares:
    Sozinha é enganosa: ruído/instabilidade também produz distância grande.
 
 2. FIDELIDADE (ref_fidelity): quão mais parecida com a REFERÊNCIA a
-   geração-com-ref-correta é, comparada à geração-sem-ref. Positivo =
-   melhor — significa que a referência puxa a saída na direção dela, e não
-   para um lugar aleatório. Isto é o controle contra a métrica 1.
+   geração-com-ref-correta é, comparada à geração-sem-ref.
+
+   *** NÃO USAR COMO CRITÉRIO DE DECISÃO. *** Medido em 2026-07-25: como
+   ela compara paleta+estrutura contra a referência, gerações ESCURAS e
+   DEGRADADAS pontuam alto quando a referência é escura. No armD ela deu
+   pico (0.226) exatamente no checkpoint com artefato de painel duplicado e
+   imagens ilegíveis, e valor menor (0.156) no checkpoint visualmente bom.
+   Ela recompensa o defeito. Serve no máximo como triagem grosseira.
 
 Um bom adapter tem AS DUAS altas. Sensibilidade alta com fidelidade ~0 é
 instabilidade, não uso de referência.

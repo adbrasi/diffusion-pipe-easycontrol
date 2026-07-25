@@ -87,22 +87,45 @@ impressão errada de que ela é pior.
 Inferência: `--mode ominicontrol_subject --lora_strength 1.0 --ref_cfg 1.0`
 como padrão; `ref_cfg` 1.75 quando quiser puxar mais identidade.
 
+## A curva completa — e por que ela desqualifica a métrica de fidelidade
+
+Levantei os checkpoints intermediários (só inferência, sem treinar de novo):
+
+| step | sensibilidade | fidelidade | inspeção visual |
+|---|---|---|---|
+| s500 | 0.685 | **0.226** | **RUIM** — artefato de painel duplicado no ex2 em todas as colunas com referência, imagens escuras a ponto de ficarem ilegíveis, personagens deformadas no ex3 |
+| s1000 | 0.525 | 0.172 | — |
+| s1500 | 0.446 | 0.123 | — |
+| s2000 | **0.898** | 0.156 | **BOM** — limpo, laço da elfa presente, divergência clara na ref embaralhada |
+
+A curva é não-monotônica e a fidelidade tem pico justamente no checkpoint
+visualmente pior. Isso não é ruído: é um **defeito da métrica**.
+
+`tools/battery_metrics.py` calcula fidelidade como distância de paleta +
+estrutura entre a geração e a imagem de referência. A referência do ex2 é uma
+cena escura de calabouço — então **gerações escuras e degradadas pontuam alto
+por coincidência**. A métrica recompensou o artefato.
+
+**Consequência prática: a métrica de fidelidade não deve ser usada como
+critério.** A de sensibilidade continua útil (é uma diferença entre duas
+gerações, não uma comparação contra a referência), mas mesmo ela precisa de
+inspeção visual para separar "usa a referência" de "está instável".
+
+Esta é a terceira vez nesta sessão em que a métrica aponta numa direção e a
+inspeção visual corrige — as outras duas estão em
+`docs/ACHADO_REF_CFG_ALTO.md` e `docs/CFG_REFERENCIA_ANIMA.md`. O padrão é
+consistente o bastante para virar regra: **métrica serve para triagem e para
+detectar colapso grosseiro; a decisão é visual.**
+
 ## Ressalvas
 
 1. **n=1.** Um único treino de 2000 steps, uma seed, três exemplos de
-   avaliação. O salto é grande (0.372 → 0.898) e é consistente com a teoria,
-   mas não foi replicado.
-2. **Não sabemos onde é o teto.** 2000 steps foi o limite testado; pode ser
-   que 3000 seja melhor, ou que 1500 já bastasse. A curva entre 1000 e 2000
-   não foi medida (os checkpoints intermediários existem em
-   `/workspace/checkpoints/round2_2026-07-25/armD_dropout_2000/`, então dá
-   para levantar essa curva sem treinar de novo).
-3. **Este veredito é meu, não do usuário.** Ele julgou o arm1 como "incrível"
-   olhando os grids; ainda não viu o armD s2000. A avaliação humana é a que
-   vale.
-
-## Próximo passo natural
-
-Levantar a curva do armD nos checkpoints que já existem (500/1000/1500/2000)
-para achar onde ele ultrapassa o arm1 e se já saturou — custo zero de GPU
-para treinar, só inferência.
+   avaliação. Não replicado.
+2. **O teto não foi medido.** 2000 steps foi o limite testado; 3000 pode ser
+   melhor. E a curva não-monotônica sugere que o comportamento entre 500 e
+   2000 não é estável nem previsível — vale medir mais pontos antes de
+   confiar na receita.
+3. **O veredito de que o s2000 é o melhor é VISUAL, não métrico.** As
+   métricas, tomadas ao pé da letra, escolheriam o s500 — que tem artefatos.
+4. **Este veredito é meu, não do usuário.** Ele julgou o arm1 como "incrível"
+   olhando os grids; ainda não viu o armD s2000.
