@@ -37,6 +37,11 @@ SEED=76
 STEPS=30
 CFG=4.0
 SHIFT=3.0
+# MODO de inferência: precisa CASAR com a ordem do concat usada no treino.
+#   ref_first=false (target-first) -> ominicontrol_subject  [alvo | ref]
+#   ref_first=true  (ref-first)    -> ic_lora_full          [ref | alvo]
+# Passar via env: MODE=ic_lora_full tools/battery_eval.sh ...
+MODE="${MODE:-ominicontrol_subject}"
 
 # 3 exemplos fixos v2: mantém o Demon Slayer (dataset) + os 2 exemplos
 # curados pelo usuário (elf/dungeon, floresta noturna). Resolução ~0.5-0.6MP
@@ -74,7 +79,7 @@ for ex in ex1 ex2 ex3; do
   f="$OUT/${LABEL}_${ex}_noref.png"
   if [ ! -f "$f" ]; then
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
-      --lora "$ADAPTER" --mode ominicontrol_subject \
+      --lora "$ADAPTER" --mode "$MODE" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
       --lora_strength 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_noref
@@ -85,7 +90,7 @@ for ex in ex1 ex2 ex3; do
   f="$OUT/${LABEL}_${ex}_ref1.0.png"
   if [ ! -f "$f" ]; then
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
-      --lora "$ADAPTER" --mode ominicontrol_subject --control_image "$ref_img" \
+      --lora "$ADAPTER" --mode "$MODE" --control_image "$ref_img" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
       --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_ref1
@@ -100,7 +105,7 @@ for ex in ex1 ex2 ex3; do
   f="$OUT/${LABEL}_${ex}_refcfg1.75.png"
   if [ ! -f "$f" ]; then
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
-      --lora "$ADAPTER" --mode ominicontrol_subject --control_image "$ref_img" \
+      --lora "$ADAPTER" --mode "$MODE" --control_image "$ref_img" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
       --lora_strength 1.0 --ref_cfg 1.75 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_rc175
@@ -111,7 +116,7 @@ for ex in ex1 ex2 ex3; do
   f="$OUT/${LABEL}_${ex}_refshuffle.png"
   if [ ! -f "$f" ]; then
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
-      --lora "$ADAPTER" --mode ominicontrol_subject --control_image "${SHUFFLED_REF[$ex]}" \
+      --lora "$ADAPTER" --mode "$MODE" --control_image "${SHUFFLED_REF[$ex]}" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
       --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_refshuffle

@@ -3,6 +3,23 @@
 # Uso: tools/round2_orchestrate.sh <logfile_treino> <config_dir/arm_name> <output_subdir> [skip_adaln]
 # Espera o treino (já rodando em processo separado) terminar, avalia os 4
 # checkpoints com o mesmo protocolo da Rodada 1.
+#
+# ⚠️ O MODO DE INFERÊNCIA PRECISA CASAR COM O CONTRATO DO TREINO.
+# Passar via env MODE=... (default: ominicontrol_subject). Errar isso não
+# gera "resultado ruim" — gera RUÍDO PURO, e é fácil confundir com o
+# método tendo falhado. Aconteceu com o armC em 2026-07-25.
+#
+#   type = ic_lora_v3   (LoRA global, target-first)  -> ominicontrol_subject
+#   type = ic_lora_dual (routing condition-only)     -> ic_lora_dual
+#   ref_first = true    (ordem [ref|alvo])           -> ic_lora_full
+#
+# Motivo: adapters com routing condition-only NÃO podem ter o LoRA
+# fundido nos pesos — o delta tem que ser aplicado mascarado em runtime,
+# só nas rows da referência. O loader padrão mergeia em todas as rows e
+# destrói o adapter. Isso já estava documentado em
+# docs/OMINI_CONTROL_KREA2.md (lição do Krea 2) e eu repeti o erro.
+#
+# SEMPRE fazer um smoke de 1 imagem antes de rodar a bateria inteira.
 set -uo pipefail
 cd /home/claude/diffusion-pipe-easycontrol
 CKPT_STEPS="${CKPT_STEPS:-250 500 750 1000}"
