@@ -1,6 +1,9 @@
 #!/bin/bash
 # Avaliação rápida de um checkpoint da bateria 2026-07-25.
-# Uso: tools/battery_eval.sh <adapter_model.safetensors_or_dir> <label> <out_dir>
+# Uso: tools/battery_eval.sh <adapter_model.safetensors_or_dir> <label> <out_dir> [skip_adaln]
+# Passe "skip_adaln" como 4o argumento para braços que treinaram LoRA em
+# adaln_modulation (ex.: Rodada 2 Arm A) — o adaln é descartado na
+# inferência por design (absorvedor de erro, ver docs da bateria).
 #
 # Gera, para os 3 pares fixos de referência (mesma seed em todos os
 # checkpoints/braços para comparação justa): sem referência, com referência
@@ -13,6 +16,10 @@ set -euo pipefail
 ADAPTER="$1"
 LABEL="$2"
 OUT="$3"
+SKIP_ADALN_FLAG=""
+if [ "${4:-}" = "skip_adaln" ]; then
+  SKIP_ADALN_FLAG="--skip_adaln"
+fi
 mkdir -p "$OUT"
 
 PY=/workspace/.venv-diffusion-pipe/bin/python
@@ -66,7 +73,7 @@ for ex in ex1 ex2 ex3; do
       --lora "$ADAPTER" --mode ominicontrol_subject \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --seed "$SEED" --save_path /tmp/battery_tmp_noref
+      --lora_strength 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_noref
     mv /tmp/battery_tmp_noref/*.png "$f"
   fi
 
@@ -77,7 +84,7 @@ for ex in ex1 ex2 ex3; do
       --lora "$ADAPTER" --mode ominicontrol_subject --control_image "$ref_img" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" --save_path /tmp/battery_tmp_ref1
+      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_ref1
     mv /tmp/battery_tmp_ref1/*.png "$f"
   fi
 
@@ -88,7 +95,7 @@ for ex in ex1 ex2 ex3; do
       --lora "$ADAPTER" --mode ominicontrol_subject --control_image "$ref_img" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.5 --ref_cfg 1.0 --seed "$SEED" --save_path /tmp/battery_tmp_ref15
+      --lora_strength 1.5 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_ref15
     mv /tmp/battery_tmp_ref15/*.png "$f"
   fi
 
@@ -99,7 +106,7 @@ for ex in ex1 ex2 ex3; do
       --lora "$ADAPTER" --mode ominicontrol_subject --control_image "${SHUFFLED_REF[$ex]}" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" --save_path /tmp/battery_tmp_refshuffle
+      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_refshuffle
     mv /tmp/battery_tmp_refshuffle/*.png "$f"
   fi
 done

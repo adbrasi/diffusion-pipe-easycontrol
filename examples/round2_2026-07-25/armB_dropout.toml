@@ -1,0 +1,50 @@
+# RODADA 2 — ARM B: campeão vigente + condition_dropout=0.1 (era 0.0).
+# Ataca o enfraquecimento do efeito de referência observado perto do
+# step 1000 na Rodada 1 (o modelo nunca via ausência/imprecisão de
+# referência durante o treino). Baseline = vencedor do teste adaln
+# (Arm1 se Arm1 vencer o Arm A; caso Arm A vença, subir esta mesma config
+# com include_adaln=true antes de rodar). Única variável muda vs a base.
+
+output_dir = '/workspace/checkpoints/round2_2026-07-25/armB_dropout'
+dataset = 'examples/battery_2026-07-25/anima_battery_dataset.toml'
+epochs = 1000
+max_steps = 1000
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 8
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 25
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 4
+partition_method = 'parameters'
+
+[model]
+type = 'ic_lora_v3'
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors'
+vae_path = '/workspace/models/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+sigmoid_scale = 1.0
+llm_adapter_lr = 0
+
+[ic_lora_full]
+ref_first = false
+condition_dropout = 0.1   # <-- variável do experimento (Arm B: 0.0 -> 0.1)
+condition_timestep = 0.0
+shifted_logit_normal = false
+include_adaln = false   # ajustar para true se Arm A vencer o teste anterior
+
+[adapter]
+type = 'lora'
+rank = 32
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8
