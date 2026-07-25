@@ -13,6 +13,36 @@ import os
 from PIL import Image, ImageDraw
 
 label, out_dir = sys.argv[1], sys.argv[2]
+
+# Configuração de cada braço, para estampar DENTRO do grid. Sem isso o grid
+# solto (fora da pasta) vira informação órfã.
+ARM_CONFIG = {
+    'arm1_broad_llm_frozen': ('IC-LoRA v3 escopo largo',
+        'llm_adapter CONGELADO · dropout 0.0 · adaln fora · target-first · rank 32'),
+    'arm3_broad_llm_full': ('IC-LoRA v3 escopo largo',
+        'llm_adapter TREINAVEL lr=1e-4 · dropout 0.0 · adaln fora · target-first · rank 32'),
+    'armA_adaln_in': ('IC-LoRA v3 escopo largo',
+        'llm_adapter congelado · dropout 0.0 · adaln DENTRO (skip_adaln na inferencia) · target-first · rank 32'),
+    'armB_dropout': ('IC-LoRA v3 escopo largo',
+        'llm_adapter congelado · dropout 0.1 · adaln fora · target-first · rank 32'),
+    'armC_routed': ('IC-LoRA DUAL (routing condition-only)',
+        'llm_adapter congelado · dropout 0.1 · adaln fora · aparencia routada na ref · rank 32'),
+    'arm1_broad_llm_frozen_s500': ('IC-LoRA v3 escopo largo (pico historico do arm1)',
+        'llm_adapter CONGELADO · dropout 0.0 · adaln fora · target-first · rank 32 · parado em 500 steps'),
+    'armD_dropout_2000': ('IC-LoRA v3 escopo largo',
+        'llm_adapter congelado · dropout 0.1 · adaln fora · target-first · rank 32 · treino 2000 steps'),
+}
+
+
+def arm_from_outdir(out_dir):
+    """Nome do braço a partir da pasta. As pastas `_eval10_<arm>` são o mesmo
+    braço avaliado no conjunto de 10 exemplos — mapeiam para a mesma config."""
+    import os as _os
+    name = _os.path.basename(_os.path.normpath(out_dir))
+    if name.startswith('_eval10_'):
+        name = name[len('_eval10_'):]
+    return name
+
 DS = '/workspace/dataset_raw/extracted'
 OUTS = '/workspace/outputs'
 
@@ -31,9 +61,22 @@ EXAMPLES = {
 COLS = ['referencia', 'alvo real', 'sem ref', 'lora 1.0 (CRITERIO)', 'lora 1.0 + ref_cfg 1.75', 'ref EMBARALHADA']
 
 W, H, LH = 460, 258, 22
-grid = Image.new('RGB', (W * len(COLS), (H + LH) * len(EXAMPLES) + 34), 'white')
+HEAD = 56  # faixa de identificacao no topo
+_arm = arm_from_outdir(out_dir)
+_title, _cfg = ARM_CONFIG.get(_arm, (_arm, ''))
+_step = label.replace('_eval10', '').lstrip('s')
+_set = 'conjunto de 10 exemplos held-out' if '_eval10' in label else 'conjunto de 3 exemplos'
+
+grid = Image.new('RGB', (W * len(COLS), (H + LH) * len(EXAMPLES) + HEAD), 'white')
 d = ImageDraw.Draw(grid)
-d.text((8, 8), f'{label}', fill='black')
+# linha 1: qual braço + step (o que identifica o experimento)
+d.text((10, 7), f'{_arm}   |   checkpoint step {_step}   |   {_set}   |   seed 76', fill='black')
+# linha 2: qual método
+d.text((10, 23), _title, fill=(70, 70, 70))
+# linha 3: a configuração que difere dos outros braços
+d.text((10, 38), _cfg, fill=(110, 110, 110))
+# régua separando o cabeçalho das imagens
+d.line([(0, HEAD - 3), (W * len(COLS), HEAD - 3)], fill=(180, 180, 180))
 
 for row, (name, ex) in enumerate(EXAMPLES.items()):
     paths = [
@@ -43,7 +86,7 @@ for row, (name, ex) in enumerate(EXAMPLES.items()):
         f'{out_dir}/{label}_{name}_refcfg1.75.png',
         f'{out_dir}/{label}_{name}_refshuffle.png',
     ]
-    y = 34 + row * (H + LH)
+    y = HEAD + row * (H + LH)
     for cix, p in enumerate(paths):
         label_text = f"{name} - {COLS[cix]}"
         if cix == 5:
