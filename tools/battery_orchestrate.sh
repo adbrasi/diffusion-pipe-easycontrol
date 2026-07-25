@@ -1,10 +1,10 @@
 #!/bin/bash
-# Orquestra a bateria 2026-07-25 (Rodada 1, cortada para 2 braços por pedido
-# do usuário: só congelado vs lr cheio, sem o meio-termo). Espera arm1 (já
-# rodando) terminar, avalia seus 4 checkpoints, sobe arm3 direto, avalia.
+# Orquestra a bateria 2026-07-25 v2: re-roda a avaliação do arm1 (já
+# treinado) com os exemplos/resolução novos, em pasta própria, e faz o
+# mesmo para arm3 assim que cada checkpoint dele sair (treino do arm3 já
+# está rodando em processo separado, este script só espera e avalia).
 set -uo pipefail
 cd /home/claude/diffusion-pipe-easycontrol
-DS=/workspace/.venv-diffusion-pipe/bin/deepspeed
 CKPT_STEPS="250 500 750 1000"
 
 wait_for_training() {
@@ -28,34 +28,29 @@ wait_for_training() {
 
 eval_checkpoint() {
   local root="$1" arm="$2" step="$3"
-  local found
+  local found outdir
   found=$(find "$root" -path "*/step${step}/adapter_model.safetensors" 2>/dev/null | head -1)
   if [ -z "$found" ]; then
     echo "MILESTONE: ${arm} step${step} SEM CHECKPOINT (pulei)"
     return
   fi
-  bash tools/battery_eval.sh "$found" "${arm}_s${step}" /workspace/outputs/battery_2026-07-25 \
+  outdir="/workspace/outputs/battery_2026-07-25/${arm}"
+  mkdir -p "$outdir"
+  bash tools/battery_eval.sh "$found" "s${step}" "$outdir" \
     >> /workspace/.tmp/eval_${arm}_s${step}.log 2>&1
-  echo "MILESTONE: GRID PRONTO ${arm} step${step} -> /workspace/outputs/battery_2026-07-25/GRID_${arm}_s${step}.png"
+  echo "MILESTONE: GRID PRONTO ${arm} step${step} -> ${outdir}/GRID_s${step}.png"
 }
 
-echo "MILESTONE: aguardando arm1 (ja rodando) terminar (step 1000)"
-wait_for_training /workspace/.tmp/train_arm1.log 1000
-echo "MILESTONE: arm1 treino completo, avaliando checkpoints"
+echo "MILESTONE: re-rodando avaliacao do arm1 (ja treinado) com exemplos/resolucao v2"
 for s in $CKPT_STEPS; do
-  eval_checkpoint /workspace/checkpoints/battery_2026-07-25/arm1_broad_llm_frozen arm1 "$s"
+  eval_checkpoint /workspace/checkpoints/battery_2026-07-25/arm1_broad_llm_frozen arm1_broad_llm_frozen "$s"
 done
 
-echo "MILESTONE: arm2 (lr baixo) CORTADO por pedido do usuario -- indo direto pro arm3"
-
-echo "MILESTONE: subindo arm3 (llm_adapter_lr=lr base, o fix da eureka)"
-NCCL_P2P_DISABLE=1 NCCL_IB_DISABLE=1 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True $DS --num_gpus=1 train.py --deepspeed \
-  --config examples/battery_2026-07-25/arm3_broad_llm_full.toml \
-  > /workspace/.tmp/train_arm3.log 2>&1
+echo "MILESTONE: aguardando arm3 (treino ja rodando em paralelo) terminar (step 1000)"
 wait_for_training /workspace/.tmp/train_arm3.log 1000
 echo "MILESTONE: arm3 treino completo, avaliando checkpoints"
 for s in $CKPT_STEPS; do
-  eval_checkpoint /workspace/checkpoints/battery_2026-07-25/arm3_broad_llm_full arm3 "$s"
+  eval_checkpoint /workspace/checkpoints/battery_2026-07-25/arm3_broad_llm_full arm3_broad_llm_full "$s"
 done
 
-echo "MILESTONE: RODADA 1 COMPLETA (arm1 vs arm3, 2 braços x 4 checkpoints) — grids em /workspace/outputs/battery_2026-07-25/"
+echo "MILESTONE: RODADA 1 COMPLETA (arm1 vs arm3, 2 braços x 4 checkpoints, v2) — grids em /workspace/outputs/battery_2026-07-25/<arm>/"
