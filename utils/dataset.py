@@ -521,6 +521,15 @@ class DirectoryDataset:
         self.path = Path(self.directory_config['path'])
         self.mask_path = Path(self.directory_config['mask_path']) if 'mask_path' in self.directory_config else None
         self.control_path = Path(self.directory_config['control_path']) if 'control_path' in self.directory_config else None
+        # Multi-referência: cada target casa com N arquivos de controle
+        # nomeados '<stem>_1', '<stem>_2', … A ordem NUNCA vem do filesystem
+        # (Path.glob é ordem de os.scandir, arbitrária e instável entre
+        # máquinas) — vem do sufixo numérico, que o preparador do dataset
+        # escreve a partir da ordem do manifesto. Se a ordem embaralhar entre
+        # o canal VAE e o canal de grounding, o binding '<image N>' -> slot N
+        # é aprendido errado.
+        self.multi_ref = bool(self.directory_config.get('multi_ref', False))
+        self.max_refs = int(self.directory_config.get('max_refs', 3))
         # For testing. Default if a mask is missing.
         self.default_mask_file = Path(self.directory_config['default_mask_file']) if 'default_mask_file' in self.directory_config else None
         self.cache_dir = self.path / 'cache' / self.model_name
@@ -675,7 +684,26 @@ class DirectoryDataset:
 
             # Mask can have any extension, it just needs to have the same stem as the image.
             mask_file_stems = {path.stem: path for path in self.mask_path.glob('*') if path.is_file()} if self.mask_path is not None else {}
-            control_file_stems = {path.stem: path for path in self.control_path.glob('*') if path.is_file()} if self.control_path is not None else {}
+            if self.control_path is None:
+                control_file_stems = {}
+            elif self.multi_ref:
+                # agrupa '<stem>_<k>' -> [ref_1, ref_2, …] ordenado por k
+                grouped = {}
+                for path in self.control_path.glob('*'):
+                    if not path.is_file():
+                        continue
+                    base, _, index = path.stem.rpartition('_')
+                    if not base or not index.isdigit():
+                        raise RuntimeError(
+                            f'multi_ref exige nomes <stem>_<n>; achei {path.name}'
+                        )
+                    grouped.setdefault(base, []).append((int(index), path))
+                control_file_stems = {
+                    base: [p for _, p in sorted(items)][:self.max_refs]
+                    for base, items in grouped.items()
+                }
+            else:
+                control_file_stems = {path.stem: path for path in self.control_path.glob('*') if path.is_file()}
 
             def process_file(file):
                 if file.suffix != '.tar':
@@ -713,7 +741,11 @@ class DirectoryDataset:
                     if self.control_path:
                         if image_file.stem not in control_file_stems:
                             raise RuntimeError(f'No control file exists for image {image_file}')
-                        control_files.append(str(control_file_stems[image_file.stem]))
+                        entry = control_file_stems[image_file.stem]
+                        if self.multi_ref:
+                            control_files.append([str(p) for p in entry])
+                        else:
+                            control_files.append(str(entry))
             assert len(image_specs) > 0, f'Directory {self.path} had no images/videos!'
 
             d = {'image_spec': image_specs, 'caption_file': caption_files, 'mask_file': mask_files}
@@ -1121,10 +1153,20 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
             captions.extend([caption] * len(items))
             if is_edit_dataset:
                 control_file = example['control_file'][i]
-                control_items = preprocess_media_file_fn((None, control_file), None, size_bucket)
-                assert len(control_items) == 1
-                assert len(items) == 1
-                control_tensors_and_masks.append(control_items[0])
+                if isinstance(control_file, (list, tuple)):
+                    # multi-referência: as N refs viram a dimensão de batch da
+                    # chamada do VAE e o pipeline as remonta no eixo de frame.
+                    # Exige caching_batch_size = 1 (a batch já está ocupada).
+                    assert len(items) == 1
+                    for ref_path in control_file:
+                        ref_items = preprocess_media_file_fn((None, ref_path), None, size_bucket)
+                        assert len(ref_items) == 1
+                        control_tensors_and_masks.append(ref_items[0])
+                else:
+                    control_items = preprocess_media_file_fn((None, control_file), None, size_bucket)
+                    assert len(control_items) == 1
+                    assert len(items) == 1
+                    control_tensors_and_masks.append(control_items[0])
             else:
                 control_tensors_and_masks.append(None)
 
@@ -1136,7 +1178,18 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
         results = defaultdict(list)
         for i in range(0, len(tensors_and_masks), caching_batch_size):
             tensor = torch.stack([t[0] for t in tensors_and_masks[i:i+caching_batch_size]])
-            c_tensor = torch.stack([t[0] for t in control_tensors_and_masks[i:i+caching_batch_size]]) if is_edit_dataset else None
+            if not is_edit_dataset:
+                c_tensor = None
+            elif len(control_tensors_and_masks) != len(tensors_and_masks):
+                # multi-referência: N controles para 1 target. O fatiamento por
+                # caching_batch_size não vale aqui — as N refs SÃO a batch.
+                assert caching_batch_size == 1, (
+                    'multi_ref exige caching_batch_size = 1: as N referências já '
+                    'ocupam a dimensão de batch da chamada do VAE'
+                )
+                c_tensor = torch.stack([t[0] for t in control_tensors_and_masks])
+            else:
+                c_tensor = torch.stack([t[0] for t in control_tensors_and_masks[i:i+caching_batch_size]])
             if rank not in pipes:
                 pipes[rank] = mp.Pipe(duplex=False)
             parent_conn, child_conn = pipes[rank]
