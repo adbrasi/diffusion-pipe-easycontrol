@@ -78,23 +78,25 @@ for ex in ex1 ex2 ex3; do
   # sem referência (LoRA mergeado, mas sem control_image -> cai em sample_normal)
   f="$OUT/${LABEL}_${ex}_noref.png"
   if [ ! -f "$f" ]; then
+    rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
       --lora "$ADAPTER" --mode "$MODE" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_noref
-    mv /tmp/battery_tmp_noref/*.png "$f"
+      --lora_strength 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_$$
+    mv /tmp/battery_tmp_$$/*.png "$f"
   fi
 
   # com referência, força 1.0
   f="$OUT/${LABEL}_${ex}_ref1.0.png"
   if [ ! -f "$f" ]; then
+    rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
       --lora "$ADAPTER" --mode "$MODE" --control_image "$ref_img" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_ref1
-    mv /tmp/battery_tmp_ref1/*.png "$f"
+      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_$$
+    mv /tmp/battery_tmp_$$/*.png "$f"
   fi
 
   # lora 1.0 + ref_cfg 1.75 (padrão definido pelo usuário 2026-07-25):
@@ -104,23 +106,25 @@ for ex in ex1 ex2 ex3; do
   # para ver o headroom do dial, não para julgar o braço.
   f="$OUT/${LABEL}_${ex}_refcfg1.75.png"
   if [ ! -f "$f" ]; then
+    rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
       --lora "$ADAPTER" --mode "$MODE" --control_image "$ref_img" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --ref_cfg 1.75 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_rc175
-    mv /tmp/battery_tmp_rc175/*.png "$f"
+      --lora_strength 1.0 --ref_cfg 1.75 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_$$
+    mv /tmp/battery_tmp_$$/*.png "$f"
   fi
 
   # ref embaralhada (mesmo caption, referência de outro exemplo), força 1.0
   f="$OUT/${LABEL}_${ex}_refshuffle.png"
   if [ ! -f "$f" ]; then
+    rm -rf /tmp/battery_tmp_$$; mkdir -p /tmp/battery_tmp_$$
     $PY infer_easycontrol.py --dit "$DIT" --vae "$VAE" --llm "$LLM" \
       --lora "$ADAPTER" --mode "$MODE" --control_image "${SHUFFLED_REF[$ex]}" \
       --prompt "$prompt" --negative_prompt "$NEG" \
       --width "$W" --height "$H" --steps "$STEPS" --cfg "$CFG" --flow_shift "$SHIFT" \
-      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_refshuffle
-    mv /tmp/battery_tmp_refshuffle/*.png "$f"
+      --lora_strength 1.0 --ref_cfg 1.0 --seed "$SEED" $SKIP_ADALN_FLAG --save_path /tmp/battery_tmp_$$
+    mv /tmp/battery_tmp_$$/*.png "$f"
   fi
 done
 
