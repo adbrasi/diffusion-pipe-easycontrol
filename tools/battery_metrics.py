@@ -44,6 +44,13 @@ REF_IMAGE = {
     'ex1': f'{DS}/input_A/imagem000180.jpg',
     'ex2': f'{OUTS}/image1.webp',
     'ex3': f'{OUTS}/image2.png',
+    'ex4': f'{DS}/input_A/imagem000297.jpg',
+    'ex5': f'{DS}/input_A/imagem001395.jpg',
+    'ex6': f'{DS}/input_A/imagem001549.jpg',
+    'ex7': f'{DS}/input_A/imagem000409.jpg',
+    'ex8': f'{DS}/input_A/imagem000878.jpg',
+    'ex9': f'{DS}/input_A/imagem000105.jpg',
+    'ex10': f'{DS}/input_A/imagem001063.jpg',
 }
 
 
@@ -81,7 +88,7 @@ def analyse(arm_dir):
     rows = []
     for step in steps:
         sens, fid = [], []
-        for ex in ('ex1', 'ex2', 'ex3'):
+        for ex in REF_IMAGE:
             p_ok = f'{arm_dir}/{step}_{ex}_ref1.0.png'
             p_sh = f'{arm_dir}/{step}_{ex}_refshuffle.png'
             p_no = f'{arm_dir}/{step}_{ex}_noref.png'

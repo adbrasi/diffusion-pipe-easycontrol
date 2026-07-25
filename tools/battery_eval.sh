@@ -45,34 +45,10 @@ SHIFT=3.0
 # Passar via env: MODE=ic_lora_full tools/battery_eval.sh ...
 MODE="${MODE:-ominicontrol_subject}"
 
-# 3 exemplos fixos v2: mantém o Demon Slayer (dataset) + os 2 exemplos
-# curados pelo usuário (elf/dungeon, floresta noturna). Resolução ~0.5-0.6MP
-# preservando o AR original de cada um (antes era 688x384, pequeno demais).
-declare -A REF=(
-  [ex1]="$DS/input_A/imagem000180.jpg"
-  [ex2]="$OUTS/image1.webp"
-  [ex3]="$OUTS/image2.png"
-)
-declare -A PROMPT=(
-  [ex1]="$(cat "$DS/input_B/imagem000180.txt")"
-  [ex2]="$(cat "$OUTS/image1.txt")"
-  [ex3]="$(cat "$OUTS/image2.txt")"
-)
-declare -A WH=(
-  [ex1]="912 512"
-  [ex2]="784 592"
-  [ex3]="912 512"
-)
-# ref embaralhada: mesmo caption, referência de OUTRO exemplo (rotação).
-# Se a saída não mudar em relação a ref1.0, é atalho de caption; se mudar
-# refletindo a ref errada, é uso genuíno da referência.
-declare -A SHUFFLED_REF=(
-  [ex1]="${REF[ex2]}"
-  [ex2]="${REF[ex3]}"
-  [ex3]="${REF[ex1]}"
-)
+# conjunto de exemplos vem de tools/eval_examples.sh (10 exemplos, v3)
+source tools/eval_examples.sh
 
-for ex in ex1 ex2 ex3; do
+for ex in $EXAMPLES; do
   read -r W H <<< "${WH[$ex]}"
   ref_img="${REF[$ex]}"
   prompt="${PROMPT[$ex]}"

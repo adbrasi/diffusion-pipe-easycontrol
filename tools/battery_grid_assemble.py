@@ -17,9 +17,16 @@ DS = '/workspace/dataset_raw/extracted'
 OUTS = '/workspace/outputs'
 
 EXAMPLES = {
-    'ex1': dict(ref=f'{DS}/input_A/imagem000180.jpg', target=f'{DS}/input_B/imagem000180.jpg', shuffled_from='ex2'),
-    'ex2': dict(ref=f'{OUTS}/image1.webp', target=None, shuffled_from='ex3'),
-    'ex3': dict(ref=f'{OUTS}/image2.png', target=None, shuffled_from='ex1'),
+    'ex1':  dict(ref=f'{DS}/input_A/imagem000180.jpg', target=f'{DS}/input_B/imagem000180.jpg', shuffled_from='ex2'),
+    'ex2':  dict(ref=f'{OUTS}/image1.webp', target=None, shuffled_from='ex3'),
+    'ex3':  dict(ref=f'{OUTS}/image2.png', target=None, shuffled_from='ex4'),
+    'ex4':  dict(ref=f'{DS}/input_A/imagem000297.jpg', target=None, shuffled_from='ex5'),
+    'ex5':  dict(ref=f'{DS}/input_A/imagem001395.jpg', target=None, shuffled_from='ex6'),
+    'ex6':  dict(ref=f'{DS}/input_A/imagem001549.jpg', target=None, shuffled_from='ex7'),
+    'ex7':  dict(ref=f'{DS}/input_A/imagem000409.jpg', target=None, shuffled_from='ex8'),
+    'ex8':  dict(ref=f'{DS}/input_A/imagem000878.jpg', target=None, shuffled_from='ex9'),
+    'ex9':  dict(ref=f'{DS}/input_A/imagem000105.jpg', target=None, shuffled_from='ex10'),
+    'ex10': dict(ref=f'{DS}/input_A/imagem001063.jpg', target=None, shuffled_from='ex1'),
 }
 COLS = ['referencia', 'alvo real', 'sem ref', 'lora 1.0 (CRITERIO)', 'lora 1.0 + ref_cfg 1.75', 'ref EMBARALHADA']
 
