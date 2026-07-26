@@ -19,7 +19,7 @@ cd /home/claude/diffusion-pipe-easycontrol
 
 ADAPTER="$1"
 STEP="$(basename "$ADAPTER")"
-OUT="${2:-/workspace/outputs/macro_multiref/eval_${STEP}}"
+OUT="${2:-/workspace/outputs/macro_multiref/eval_${STEP}_${W:-512}}"
 CONFIG="${CONFIG:-examples/macro_multiref/run2_multiref.toml}"
 SEED="${SEED:-76}"
 # Turbo por padrao: a LoRA oficial rank 64 do Comfy-Org/Krea-2 funde no base
@@ -53,7 +53,7 @@ for entry in "${EXEMPLOS[@]}"; do
   [ -f "$destino" ] && continue
   $PY tools/infer_reference_adapter.py --config "$CONFIG" --adapter "$ADAPTER" \
     --reference "$r1" --reference "$r2" --prompt "$prompt" \
-    --seed "$SEED" --width 512 --height 512 --turbo-lora "$TURBO_LORA" \
+    --seed "$SEED" --width ${W:-512} --height ${W:-512} --turbo-lora "$TURBO_LORA" \
     --output "$destino" 2>&1 | grep -E "^Saved|Error|Traceback|turbo"
 done
 
