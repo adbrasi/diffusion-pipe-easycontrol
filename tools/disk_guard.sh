@@ -17,6 +17,19 @@ CRITICO_GB="${CRITICO_GB:-12}"
 INTERVALO="${INTERVALO:-30}"
 estado=ok
 
+# Espera o treino aparecer antes de vigiar. O launcher do deepspeed leva
+# ~10s para criar o processo `train.py --local_rank`; sem esta espera a
+# guarda checa antes dele existir, conclui "o treino acabou" e sai na
+# largada — deixando o cache crescer sem vigilancia nenhuma.
+for _ in $(seq 1 60); do
+  pgrep -f 'python.*train.py --local_rank' >/dev/null && break
+  sleep 2
+done
+if ! pgrep -f 'python.*train.py --local_rank' >/dev/null; then
+  echo "guarda de disco: nenhum treino apareceu em 120s, saindo"
+  exit 0
+fi
+
 # NUNCA medir o cache com `du` aqui. Um cache de 110 GB tem milhoes de
 # arquivos e o `du` leva minutos varrendo — o loop fica PRESO na medicao e
 # nao chega a checar o `df`. Foi exatamente assim que esta guarda falhou em
