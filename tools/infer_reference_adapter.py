@@ -138,6 +138,12 @@ def parse_args():
     parser.add_argument('--krea-y1', type=float, default=0.5)
     parser.add_argument('--krea-y2', type=float, default=1.15)
     parser.add_argument(
+        '--turbo-lora', type=Path, default=None,
+        help='LoRA turbo oficial (krea2_turbo_lora_rank_64_bf16.safetensors). '
+             'Funde no base antes do adapter e implica --krea-variant turbo '
+             '(8 steps, CFG 1.0, mu 1.15).',
+    )
+    parser.add_argument(
         '--krea-variant', choices=('auto', 'raw', 'turbo'), default='auto',
         help=(
             'Select Krea inference defaults. Auto recognizes "turbo" in the '
@@ -186,7 +192,7 @@ def resolve_sampling_args(config: dict, args) -> None:
     if model_type.startswith('krea2_'):
         variant, args.steps, args.text_guidance = resolve_krea2_inference_defaults(
             config['model'].get('diffusion_model', ''),
-            variant=args.krea_variant,
+            variant='turbo' if args.turbo_lora is not None else args.krea_variant,
             steps=args.steps,
             text_guidance=args.text_guidance,
         )
@@ -403,8 +409,67 @@ def scale_adapter(pipeline, scale: float) -> int:
     return count
 
 
-def setup_diffusion_pipeline(pipeline, adapter_path: Path, config: dict, blocks_to_swap: int | None):
+def apply_turbo_lora(pipeline, lora_path: Path) -> int:
+    """Funde a LoRA turbo oficial nos pesos base ANTES do nosso adapter.
+
+    A turbo é uma LoRA de destilação (rank 64) que troca 28 steps por 8 com
+    CFG 1.0. Ela vai nos pesos base, não no nosso adapter, então fundir é o
+    certo aqui — o alvo é congelado e a fusão é permanente para esta sessão.
+
+    Isto NÃO contradiz a regra "nunca fundir o adapter condition-only nos
+    pesos" (docs/OMINI_CONTROL_KREA2.md §1.5): aquela regra existe porque o
+    delta routado só vale nas rows da referência e porque um delta jovem
+    afunda na requantização fp8. A turbo é global e de magnitude alta.
+
+    Chaves no formato comfy: `diffusion_model.<caminho>.lora_{down,up}.weight`.
+    """
+    from safetensors.torch import load_file
+
+    tensors = load_file(str(lora_path))
+    pares = {}
+    for key, value in tensors.items():
+        if '.lora_down.weight' in key:
+            pares.setdefault(key.rsplit('.lora_down.weight', 1)[0], {})['down'] = value
+        elif '.lora_up.weight' in key:
+            pares.setdefault(key.rsplit('.lora_up.weight', 1)[0], {})['up'] = value
+        elif key.endswith('.alpha'):
+            pares.setdefault(key.rsplit('.alpha', 1)[0], {})['alpha'] = value
+
+    modulos = dict(pipeline.diffusion_model.named_modules())
+    aplicados = 0
+    for prefixo, partes in pares.items():
+        if 'down' not in partes or 'up' not in partes:
+            continue
+        nome = prefixo.removeprefix('diffusion_model.')
+        modulo = modulos.get(nome)
+        if modulo is None or not hasattr(modulo, 'weight'):
+            continue
+        down, up = partes['down'].float(), partes['up'].float()
+        escala = 1.0
+        if 'alpha' in partes:
+            escala = float(partes['alpha']) / down.shape[0]
+        base = modulo.weight
+        delta = (up @ down) * escala
+        if delta.shape != base.shape:
+            continue
+        # dequantiza -> soma -> volta ao dtype original. Em fp8 isto
+        # requantiza, mas o delta da turbo é de magnitude alta o bastante
+        # para sobreviver (ao contrário de um adapter recém-treinado).
+        with torch.no_grad():
+            novo = base.detach().to(torch.float32) + delta.to(base.device)
+            modulo.weight.data = novo.to(base.dtype)
+        aplicados += 1
+    if aplicados == 0:
+        raise RuntimeError(f'LoRA turbo nao casou com nenhum modulo: {lora_path}')
+    return aplicados
+
+
+def setup_diffusion_pipeline(pipeline, adapter_path: Path, config: dict, blocks_to_swap: int | None,
+                             turbo_lora: Path | None = None):
     pipeline.load_diffusion_model()
+    if turbo_lora is not None:
+        n = apply_turbo_lora(pipeline, turbo_lora)
+        print(f'LoRA turbo fundida em {n} modulos do base (antes do adapter)')
     pipeline.configure_adapter(config['adapter'])
     pipeline.load_adapter_weights(adapter_path)
     pipeline.diffusion_model.eval()
@@ -623,6 +688,7 @@ def main():
         adapter_file,
         config,
         args.blocks_to_swap,
+        turbo_lora=args.turbo_lora,
     )
     scaled = scale_adapter(pipeline, args.adapter_scale)
     print(f'Adapter scale applied to {scaled} PEFT modules; block swap={blocks}')
