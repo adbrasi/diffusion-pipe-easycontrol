@@ -1,0 +1,36 @@
+# SLIDER de timing de animação — modo REFERENCE (Fase 2).
+#
+# POR QUE ESTA FASE EXISTE: o slider de TEXTO (Fase 1) FALHOU. Medido em
+# 200 steps, sweep i2v em -2 vs +2: frames segurados 33.3% vs 35.8% e vídeos
+# visualmente indistinguíveis. Diagnóstico: o modo texto só consegue extrair
+# a direção que o modelo JÁ associa aos prompts — e "animated on twos" não
+# tem representação distinta suficiente no condicionamento do LTX-2.3. Não há
+# o que amplificar.
+#
+# Aqui a direção vem dos DADOS, não da crença prévia do modelo:
+#
+#   positivo = vídeos do ANIMATEKA, animação limitada real
+#              (~44% de frames duplicados quase exatos, diff mediana 0.00021)
+#   negativo = os MESMOS vídeos com os holds destruídos por interpolação
+#              (0.0% de duplicatas, diff mediana 0.00256 — 12x)
+#
+# O par tem conteúdo ALINHADO (orig[i] vs neg[i] difere 0.0003, menos que a
+# diferença entre frames vizinhos do original) e difere só na textura
+# temporal. É o que faz o slider aprender um EIXO em vez de uma troca de
+# conteúdo.
+#
+# CONVENÇÃO DE SINAL: multiplicador POSITIVO -> animação limitada (o que o
+# usuário quer). NEGATIVO -> interpolado/fluido (o defeito). Valores além de
+# +1 extrapolam para timing ainda mais escalonado.
+#
+# ANCHORS NÃO SE APLICAM aqui: o doc é explícito que `reference` e
+# `ic_reference` os ignoram, porque pares positivo/negativo do MESMO clipe já
+# se auto-regularizam contra drift em conteúdo não relacionado — o que neste
+# caso é literalmente verdade, já que os dois lados são o mesmo vídeo.
+
+mode = "reference"
+reference_modality = "video"
+pos_cache_dir = "/workspace/datasets/animateka/cache_pos"
+neg_cache_dir = "/workspace/datasets/animateka/cache_neg"
+text_cache_dir = "/workspace/datasets/animateka/cache_pos"
+sample_slider_range = [-2.0, -1.0, 0.0, 1.0, 2.0]

@@ -1,0 +1,23 @@
+# Lado POSITIVO do par: os vídeos originais do ANIMATEKA — animação limitada
+# de verdade (medido: ~44% de frames duplicados quase exatos). É o alvo.
+#
+# target_frames FIXO e frame_extraction="head" nos DOIS lados: o mpdecimate
+# encurta o negativo, então deixar o comprimento livre daria latentes de
+# shapes diferentes e o pareamento por nome falharia. Truncando ambos no mesmo
+# ponto os shapes casam — e como o alinhamento temporal se preserva (medido:
+# orig[i] vs neg[i] difere menos que frames vizinhos do orig), o frame i do
+# par continua sendo o mesmo instante.
+[general]
+batch_size = 1
+enable_bucket = true
+bucket_no_upscale = false
+caption_extension = ".txt"
+
+[[datasets]]
+resolution = [832, 480]
+target_frames = [57]
+target_fps = 24.0
+frame_extraction = "head"
+video_directory = "/workspace/datasets/animateka/videos"
+cache_directory = "/workspace/datasets/animateka/cache_pos"
+num_repeats = 1

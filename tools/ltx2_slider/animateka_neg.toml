@@ -1,0 +1,25 @@
+# Lado NEGATIVO do par: os MESMOS vídeos com a estrutura de frames segurados
+# destruída por mpdecimate+minterpolate (medido: duplicatas 44.3% -> 0.0%,
+# diff mediana entre vizinhos 0.00021 -> 0.00256). É o defeito do LTX aplicado
+# ao material do usuário.
+#
+# target_frames FIXO e frame_extraction="head" nos DOIS lados: o mpdecimate
+# encurta o negativo, então deixar o comprimento livre daria latentes de
+# shapes diferentes e o pareamento por nome falharia. Truncando ambos no mesmo
+# ponto os shapes casam — e como o alinhamento temporal se preserva (medido:
+# orig[i] vs neg[i] difere menos que frames vizinhos do orig), o frame i do
+# par continua sendo o mesmo instante.
+[general]
+batch_size = 1
+enable_bucket = true
+bucket_no_upscale = false
+caption_extension = ".txt"
+
+[[datasets]]
+resolution = [832, 480]
+target_frames = [57]
+target_fps = 24.0
+frame_extraction = "head"
+video_directory = "/workspace/datasets/animateka_neg/videos"
+cache_directory = "/workspace/datasets/animateka/cache_neg"
+num_repeats = 1
