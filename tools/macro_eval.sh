@@ -22,7 +22,10 @@ STEP="$(basename "$ADAPTER")"
 OUT="${2:-/workspace/outputs/macro_multiref/eval_${STEP}}"
 CONFIG="${CONFIG:-examples/macro_multiref/run2_multiref.toml}"
 SEED="${SEED:-76}"
-STEPS="${STEPS:-28}"
+# Turbo por padrao: a LoRA oficial rank 64 do Comfy-Org/Krea-2 funde no base
+# e troca 28 steps por 8 com CFG 1.0 (mu 1.15). Como ela vai nos pesos BASE
+# e nao no nosso adapter, nao ha conflito com o contrato condition-only.
+TURBO_LORA="${TURBO_LORA:-/workspace/models/krea2/loras/krea2_turbo_lora_rank_64_bf16.safetensors}"
 PY=/workspace/.venv-diffusion-pipe/bin/python
 A=/workspace/dataset_raw/extracted/input_A
 
@@ -50,8 +53,8 @@ for entry in "${EXEMPLOS[@]}"; do
   [ -f "$destino" ] && continue
   $PY tools/infer_reference_adapter.py --config "$CONFIG" --adapter "$ADAPTER" \
     --reference "$r1" --reference "$r2" --prompt "$prompt" \
-    --seed "$SEED" --steps "$STEPS" --width 512 --height 512 \
-    --output "$destino" 2>&1 | grep -E "^Saved|Error|Traceback"
+    --seed "$SEED" --width 512 --height 512 --turbo-lora "$TURBO_LORA" \
+    --output "$destino" 2>&1 | grep -E "^Saved|Error|Traceback|turbo"
 done
 
 $PY tools/macro_eval_grid.py "$OUT" "$STEP"
