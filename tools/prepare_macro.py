@@ -16,6 +16,7 @@ Uso:
     prepare_macro.py <dir_extraido> <dir_saida> [--max-refs 3] [--limit N]
 """
 import argparse
+import re
 import json
 import shutil
 from pathlib import Path
@@ -42,11 +43,27 @@ def iter_samples(root: Path):
             yield meta, data
 
 
+MARKER = re.compile(r'<\s*image\s*(\d+)\s*>', re.IGNORECASE)
+
+
 def caption_of(data: dict) -> str | None:
+    """Caption do Macro com os marcadores normalizados.
+
+    O Macro escreve `<image 1>`. Tiramos os sinais `<`/`>` e deixamos
+    `image 1`, por dois motivos medidos no run de validação de 50 steps:
+
+    1. O modelo RENDERIZOU `<image 2>` como texto dentro da imagem (uma saída
+       virou colagem com "Inage <2" escrito). Os sinais fazem o marcador
+       parecer glifo a desenhar em vez de referência a resolver.
+    2. `image 1` casa com o rótulo que o canal de grounding passa a emitir
+       (`image 1:` antes de cada bloco de visão), então os dois canais falam
+       o MESMO vocabulário e o modelo não precisa aprender a ponte
+       `<image 1>` -> `Picture 1`.
+    """
     for key in ('instruction', 'prompt'):
         value = data.get(key)
         if isinstance(value, str) and value.strip():
-            return value.strip()
+            return MARKER.sub(r'image \1', value.strip())
     return None
 
 

@@ -39,9 +39,15 @@ from utils.common import AUTOCAST_DTYPE, is_main_process
 VISION_BLOCK = '<|vision_start|><|image_pad|><|vision_end|>'
 
 
-def build_vl_image_prompt(num_images):
-    """Named vision placeholders, one per reference (EditPlus / ostris layout)."""
-    return ''.join(f'Picture {i + 1}: {VISION_BLOCK}' for i in range(num_images))
+def build_vl_image_prompt(num_images, label='Picture'):
+    """Named vision placeholders, one per reference (EditPlus / ostris layout).
+
+    ``label`` exists for the multi-reference path: when the captions address
+    the references as "image 1"/"image 2", labelling the vision blocks
+    "Picture 1:" forces the model to bridge two vocabularies for the same
+    thing. Passing ``label='image'`` makes both channels speak one.
+    """
+    return ''.join(f'{label} {i + 1}: {VISION_BLOCK}' for i in range(num_images))
 
 
 def prepare_vl_image(image_path, max_pixels):
@@ -117,6 +123,10 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
         self.vl_prompt_style = section.get('vl_prompt_style', 'picture_n')
         if self.vl_prompt_style not in ('picture_n', 'plain'):
             raise ValueError("vl_prompt_style must be 'picture_n' or 'plain'")
+        # Rótulo dos blocos de visão. Default 'Picture' = contrato ostris.
+        # O caminho multi-ref usa 'image' para casar com as captions, que
+        # endereçam as referências como "image 1"/"image 2".
+        self.vl_image_label = section.get('vl_image_label', 'Picture')
         # When set, the VL copy is capped by LONGEST SIDE (area resample),
         # conradlocke's grounding_px semantics, instead of the ostris area
         # budget above.
@@ -265,7 +275,7 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
                     if self.vl_prompt_style == 'plain':
                         text = VISION_BLOCK * len(images) + caption
                     else:
-                        text = build_vl_image_prompt(len(images)) + caption
+                        text = build_vl_image_prompt(len(images), self.vl_image_label) + caption
 
                 # llama_template must be passed explicitly: with images present
                 # the Qwen3-VL tokenizer would otherwise switch to its

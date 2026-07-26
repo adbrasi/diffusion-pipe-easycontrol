@@ -1,0 +1,84 @@
+# KREA 2 MULTI-REFERÊNCIA — run 1.
+#
+# Base: o contrato do krea2_omini_grounded (width-shift, refs a t=0, LoRA
+# condition-only routada nos blocks, txtfusion global treinável, grounding
+# Qwen3-VL) estendido para N referências com OFFSET CUMULATIVO por slot.
+#
+# Três desvios deliberados do probe original, cada um com motivo:
+#
+# 1. vl_prompt_style = 'picture_n'  (o probe usou 'plain')
+#    Emite "Picture 1: <vis>Picture 2: <vis>…", dando ao Qwen3-VL uma âncora
+#    explícita por índice. Com uma referência só isso era indiferente; com N
+#    é o canal que carrega a ordem.
+#
+# 2. caption_dropout = 0.1  (o probe rodou com 0)
+#    A auditoria do Ideogram4 (commit ddd90a8) é explícita: caption_dropout
+#    NUNCA esteve ativo nos pilotos, e só a referência era dropada — "o
+#    inverso do necessário". Se o binding '<image N>' -> slot N é aprendido
+#    por correlação texto<->span, isto tem que estar no probe, não depois.
+#    (condition_dropout continua proibido no caminho grounded por construção:
+#    zerar o VAE sem tirar a imagem do Qwen3-VL é dropout parcial incoerente.)
+#
+# 3. rank_pattern txtfusion = 128  (o probe usou rank uniforme 64)
+#    O canal semântico carrega ~1,13% da energia do adapter e o rank efetivo
+#    colapsou a ~1/64 em 250 steps. Com N referências, LER seletivamente é a
+#    tarefa inteira — e o modo de falha documentado do routing condition-only
+#    é justamente "enriquece o que é escrito e não ensina ninguém a ler"
+#    (armC do Anima). Fortalecer o canal de leitura deixa de ser refinamento.
+#
+# Steps: 4000, não 250. O precedente do projeto para aprender uma convenção
+# NOVA de caption é o dataset de abril do Anima: ~21k pares, ~1950 steps a
+# batch 8. 250 steps validaram "copie esta referência", que é outra tarefa.
+
+output_dir = '/workspace/checkpoints/macro_multiref/val50'
+dataset = 'examples/macro_multiref/macro50_dataset.toml'
+epochs = 1000
+max_steps = 50
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+save_every_n_steps = 50
+checkpoint_every_n_minutes = 60
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1      # OBRIGATÓRIO: as N refs ocupam a batch do VAE
+blocks_to_swap = 8
+
+[model]
+type = 'krea2_multiref_grounded'
+diffusion_model = '/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors'
+vae = '/workspace/models/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[krea2_multiref_grounded]
+max_refs = 3
+slot_axis = 'width'          # A/B futuro: 'frame' (contrato público do Edit)
+position_mode = 'width_shift'
+reference_position_offset = 1.0
+reference_timestep = 'zero'
+condition_dropout = 0.0      # proibido no caminho grounded
+condition_only_lora = true
+vl_prompt_style = 'picture_n'
+vl_image_max_pixels = 147456 # 384*384 — corta o cache ~4x contra 768
+caption_dropout = 0.1
+txtfusion_rank = 128         # canal de leitura reforçado (ver cabeçalho)
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false
