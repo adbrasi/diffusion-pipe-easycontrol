@@ -175,9 +175,78 @@ Os dois datasets usam `target_frames` FIXO e `frame_extraction = "head"`: o
 `mpdecimate` encurta o negativo, então deixar o comprimento livre daria
 latentes de shapes diferentes e o pareamento por nome falharia.
 
-## Em aberto
+## FASE 2 — RESULTADO: FUNCIONOU
 
-- A Fase 2 ainda não foi treinada (negativos em geração).
+600 steps, 261 pares, 1h27 (4.3 s/step), loss 0.33 -> 0.18.
+
+Diferença mediana entre frames consecutivos nas amostras do step 600
+(mesma seed, mesmo prompt, mesma imagem inicial, só o multiplicador muda):
+
+| multiplicador | diff mediana | |
+|---|---|---|
+| **-2.0** | 0.01203 | mais movimento por frame (fluido) |
+| -1.0 | 0.00489 | |
+| 0.0 | 0.00108 | base |
+| +1.0 | 0.00081 | |
+| **+2.0** | **0.00052** | menos movimento por frame (escalonado) |
+
+**MONOTÔNICO, faixa de 23x.** O eixo existe e responde na direção correta.
+
+O eixo **emergiu entre os steps 400 e 600**: no 400 a curva era irregular
+(0.0039 / 0.0023 / 0.0011 / 0.0023 / 0.0019) e no 200 era ruído. Parar em 400
+teria dado um falso negativo.
+
+Sinal independente da métrica: o **tamanho dos arquivos** cai monotonicamente
+(1.5 MB em -2.0 -> 1.2 MB em +2.0). Menos mudança entre frames = menos dados
+para o codec.
+
+Nota sobre métricas: o `dup%` (fração de frames quase idênticos), que serviu
+para caracterizar o DATASET, é inútil no material GERADO — um modelo de difusão
+praticamente nunca produz frames exatamente iguais, sempre há ruído residual.
+Para as saídas, a diff mediana é a métrica que capta o eixo.
+
+## Contraste entre as duas fases
+
+| | Fase 1 (texto) | Fase 2 (reference) |
+|---|---|---|
+| loss inicial | 0.0003 | **0.33** (1000x) |
+| resultado do sweep | indistinguível | monotônico, 23x |
+| custo/step | 16 s | **2.2-4.3 s** |
+| passes com backward | 6 + ref de 5 linhas | 2 |
+
+A loss inicial é o diagnóstico barato: no modo texto ela É essencialmente
+`‖gs·direction‖²` (a LoRA ainda é zero). 0.0003 dizia que o conceito não
+estava no modelo — e não estava.
+
+## BUG ENCONTRADO NO TRAINER (corrigido)
+
+`ltx2_train_slider.py` descartava **todos** os pares de vídeo com
+"No text cache for ...". Causa: `_LATENT_BASENAME_RE` segue a convenção de
+IMAGEM. Todo modo de `frame_extraction` — inclusive `"full"` — anexa o token de
+intervalo de frames ao `item_key` (`image_video_dataset.py:3562`), e o dataset
+de vídeo compensa resolvendo o cache de texto com `tokens[:-3]` (:3712),
+enquanto imagens usam `tokens[:-2]` (:2794). O slider gerava o stem
+`c_000_00000-057` e procurava `c_000_00000-057_ltx2_te.safetensors`, que nunca
+existe para vídeo. Corrigido com fallback que remove o token de intervalo.
+
+## Configuração final (com os números medidos)
+
+```
+blocks_to_swap = 0          # MEDIDO: 0 -> 2.21 s/step | 20 -> 8.4 s/step
+gradient_checkpointing = 1  # sempre: libera VRAM sem tráfego CPU<->GPU
+--use_precached_sample_prompts --use_precached_sample_latents
+  + --sample_prompts_cache / --sample_latents_cache explícitos
+  (o modo reference não usa --dataset_config, então não resolve o path sozinho)
+--ltx2_first_frame_conditioning_p 0.9   # i2v é o uso real
+--lora_target_preset video_sa_ca_ff     # t2v degrada o áudio do base
+network_dim 16, lr 1e-4, AdamW8bit, 600 steps
+```
+
+Cache do Gemma: precisa de `--gemma_load_in_4bit` + `--batch_size 1` no
+caching (o script carrega o LTX 22B **e** o Gemma juntos; bf16 e 8-bit dão OOM
+em 32 GB).
+
+## Em aberto
 - Se o eixo funcionar, vale reconsiderar `batch_all_targets = true` num refino
   curto — o argumento do doc (a média entre formulações cancela ruído
   específico de contexto) continua válido, só é caro para o run principal.
