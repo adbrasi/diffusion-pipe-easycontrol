@@ -36,7 +36,7 @@
 # certos. Se estabilizar em 500, para em 500.
 
 output_dir = '/workspace/checkpoints/macro_multiref/run2'
-dataset = 'examples/macro_multiref/macro_dataset.toml'
+dataset = 'examples/macro_multiref/macro_ref2_dataset.toml'
 epochs = 1000
 max_steps = 2000
 micro_batch_size_per_gpu = 1
@@ -64,7 +64,7 @@ timestep_sample_method = 'logit_normal'
 flux_shift = true
 
 [krea2_multiref_grounded]
-max_refs = 3
+max_refs = 2
 slot_axis = 'width'          # A/B futuro: 'frame' (contrato público do Edit)
 position_mode = 'width_shift'
 reference_position_offset = 1.0
