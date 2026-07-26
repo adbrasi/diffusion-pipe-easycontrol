@@ -583,7 +583,11 @@ def main():
         # both the conditional and the unconditional prompt.
         # lista na MESMA ordem dos slots VAE — se os dois canais divergirem,
         # o binding '<image N>' -> slot N aprendido no treino nao vale mais
-        sample_kwargs['control_files'] = [[str(p) for p in args.references]]
+        # `prepare_sample_test` já embrulha em [control_files] (dimensão de
+        # batch), então aqui vai a lista das N referências direta — na MESMA
+        # ordem dos slots VAE. Se os dois canais divergirem, o binding
+        # '<image N>' -> slot N aprendido no treino não vale mais.
+        sample_kwargs['control_files'] = [str(p) for p in args.references]
     pipeline.prepare_sample_test(
         args.prompt,
         negative_prompt=args.negative_prompt,
