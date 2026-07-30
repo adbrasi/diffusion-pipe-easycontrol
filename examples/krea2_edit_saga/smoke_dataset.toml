@@ -1,0 +1,14 @@
+# Smoke: só o inscene (473 pares) — passa por todos os estágios sem custo.
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/datasets/prepared/inscene/target'
+control_path = '/workspace/datasets/prepared/inscene/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1

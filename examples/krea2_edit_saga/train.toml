@@ -1,0 +1,62 @@
+# KREA2 edit saga 2026-07-29 — treino principal.
+#
+# Base: receita validada krea2_multiref_grounded (docs/KREA2_MULTIREF_RECEITA.md),
+# aqui com max_refs=1 (todos os datasets são pares A->B).
+# - width_shift + refs a t=0 + LoRA condition-only routada + grounding Qwen3-VL
+# - caption_dropout=0.1 (uncond do CFG; condition_dropout é proibido no grounded)
+# - txtfusion_rank=128 (canal de leitura reforçado — tarefa é semântica: editar)
+# - rank 64 (usuário pediu >32; dezenas de milhares de imagens)
+
+output_dir = '/workspace/checkpoints/krea2_edit_saga'
+dataset = 'examples/krea2_edit_saga/dataset.toml'
+epochs = 1000
+max_steps = 22500            # 3 épocas × 30.000 pares / batch efetivo 4
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_steps = 500
+checkpoint_every_n_minutes = 120
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1       # OBRIGATÓRIO com multi_ref
+blocks_to_swap = 0           # usuário pediu velocidade; VRAM medida 20,1G com swap 8, cabe sem
+
+[model]
+type = 'krea2_multiref_grounded'
+diffusion_model = '/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors'
+vae = '/workspace/models/krea2/split_files/vae/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[krea2_multiref_grounded]
+max_refs = 1
+slot_axis = 'width'
+position_mode = 'width_shift'
+reference_position_offset = 1.0
+reference_timestep = 'zero'
+condition_dropout = 0.0      # proibido no caminho grounded
+condition_only_lora = true
+vl_prompt_style = 'picture_n'
+vl_image_label = 'image'
+vl_image_max_pixels = 147456 # 384² — grounding; cache é o gargalo, medir no smoke
+caption_dropout = 0.1
+txtfusion_rank = 128
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

@@ -101,6 +101,9 @@ def _elo_sequence_snapshot(prefix: str | None, name: str, outputs) -> None:
     _elo_save(prefix, f'{name}.row_mean', work.mean(dim=-1))
     _elo_save(prefix, f'{name}.row_std', work.std(dim=-1))
     _elo_save(prefix, f'{name}.row_norm', torch.linalg.vector_norm(work, dim=-1))
+    import os as _os_full
+    if name in _os_full.environ.get('ELO_FULL', '').split(','):
+        _elo_save(prefix, f'{name}.full', combined)
     if name == 'layer00_initial':
         _elo_save(prefix, f'{name}.timestep_features', timestep_features)
         _elo_save(prefix, f'{name}.tvec_selected', tvec[:, indices])
@@ -112,6 +115,20 @@ def _elo_sequence_snapshot(prefix: str | None, name: str, outputs) -> None:
 def _install_elo_hooks(model: torch.nn.Sequential, prefix: str | None) -> None:
     if not prefix:
         return
+    import os as _os_inj
+    inject = _os_inj.environ.get('ELO_INJECT')
+    if inject:
+        import numpy as _np_inj
+        fixed = torch.from_numpy(_np_inj.load(inject))
+
+        def pre_hook(_module, args):
+            inputs = args[0]
+            combined = inputs[0]
+            new_combined = fixed.to(device=combined.device, dtype=combined.dtype)
+            print(f'[ELO] injetado {inject} no bloco 0 ({tuple(new_combined.shape)})', flush=True)
+            return ((new_combined, *inputs[1:]),)
+
+        model[1].register_forward_pre_hook(pre_hook)
     for index, layer in enumerate(model):
         name = (
             'layer00_initial' if index == 0
@@ -439,12 +456,7 @@ def encode_reference(pipeline, path: Path, width: int, height: int, fit: str) ->
     pixels = pipeline.prepare_reference_media(pixels)
     vae = pipeline.get_vae()
     vae.load_model_if_needed()
-    import os as _elo_os2
-    if _elo_os2.environ.get('ELO_REF_FP32'):
-        print('[ELO] encode da referencia SEM pre-cast bf16 (pixels fp32, como o node)', flush=True)
-        latents = pipeline.vae_encode(pixels.to('cuda', torch.float32)).float().cpu()
-    else:
-        latents = pipeline.vae_encode(pixels.to('cuda', pipeline.dtype)).float().cpu()
+    latents = pipeline.vae_encode(pixels.to('cuda', pipeline.dtype)).float().cpu()
     if fit == 'native_latent':
         target_h = height // pipeline.spatial_compression
         target_w = width // pipeline.spatial_compression
