@@ -1,0 +1,86 @@
+# KREA2 edit saga — FASE 2: adaptação de resolução para 1024px.
+#
+# Continua do step 11.343 (1,5 época a 512px). Progressive resolution: a
+# tarefa, o vocabulário das captions e o binding referência->alvo já estão
+# aprendidos e são independentes de resolução; o que muda é a coordenada RoPE
+# da referência (width_shift põe a ref em w=[32,64) a 512 e w=[64,128) a 1024)
+# e a densidade de detalhe fino.
+#
+# Evidência de que adaptar basta (em vez de retreinar): o adapter de 512 JÁ
+# produz resultado bom em 1024 no runner — o usuário aprovou 6 seeds. Ele
+# precisa de ajuste, não de reaprendizado.
+#
+# Diferenças para a fase 1 (examples/krea2_edit_saga/train.toml):
+#
+# 1. resolutions = [1024] (no dataset_1024.toml). O cache de TEXTO (656 GB) é
+#    indexado por aspect ratio, não por resolução, então é 100% reaproveitado;
+#    só os latentes (15 GB -> ~60 GB) são regerados.
+#
+# 2. lr 1e-4 -> 7.5e-5 (redução de 25%, pedida pelo usuário). Adaptar
+#    resolução com o LR original arrisca desfazer o que já foi aprendido;
+#    reduzir demais tornaria a adaptação lenta. 25% é o meio-termo escolhido.
+#
+# 3. save_every_n_steps 500 -> 250. Mais pontos de avaliação no início: em
+#    ~500 steps (~3,3 h) já dá para ver se a curva melhora contra o step11000
+#    atual. Se piorar, para-se cedo em vez de gastar 33 h.
+#
+# 4. blocks_to_swap 0 -> 16. A 512 a sequência era 2.267 tokens e cabia em
+#    23,7 GB sem swap; a 1024 são 8.411 tokens (~3,7x). Sem swap dá OOM. O
+#    supervisor sobe o swap sozinho se ainda faltar (escada 16->24->32).
+#
+# 5. max_steps 22500 -> 16500 (~5.157 steps a 1024, ~34 h). Não é o fim da
+#    3ª época a 512: é o orçamento de adaptação. Estender depois é um resume.
+
+output_dir = '/workspace/checkpoints/krea2_edit_saga'
+dataset = 'examples/krea2_edit_saga/dataset_1024.toml'
+epochs = 1000
+max_steps = 16500
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50            # curto: os pesos já estão treinados, é adaptação
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 120
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1       # OBRIGATÓRIO com multi_ref
+blocks_to_swap = 16
+
+[model]
+type = 'krea2_multiref_grounded'
+diffusion_model = '/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors'
+vae = '/workspace/models/krea2/split_files/vae/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[krea2_multiref_grounded]
+max_refs = 1
+slot_axis = 'width'
+position_mode = 'width_shift'
+reference_position_offset = 1.0
+reference_timestep = 'zero'
+condition_dropout = 0.0
+condition_only_lora = true
+vl_prompt_style = 'picture_n'
+vl_image_label = 'image'
+vl_image_max_pixels = 147456   # 384² — grounding inalterado, o cache depende disto
+caption_dropout = 0.1
+txtfusion_rank = 128
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 7.5e-5
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

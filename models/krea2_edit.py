@@ -333,6 +333,12 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
             'control_family': 'krea2_edit_dual',
             'vl_conditioning': 'qwen3vl_image_grounded',
             'vl_image_max_pixels': str(self.vl_image_max_pixels),
+            # O rótulo entra LITERALMENTE no texto que vai ao Qwen3-VL
+            # (build_vl_image_prompt -> "image 1: <vision>"). O default do
+            # código é 'Picture' e o multiref usa 'image'; sem gravar isto, um
+            # consumidor do adapter tem de adivinhar, e errar significa prompt
+            # fora da distribuição de treino, silenciosamente.
+            'vl_image_label': str(self.vl_image_label),
             'vl_prompt_layout': (
                 'plain_vision_blocks' if self.vl_prompt_style == 'plain'
                 else 'picture_n_vision_blocks'

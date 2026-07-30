@@ -186,6 +186,10 @@ def main():
     ap.add_argument('--samples', required=True, help='json com os 3 exemplos fixos')
     ap.add_argument('--sample-every', type=int, default=500)
     ap.add_argument('--min-free-gb', type=float, default=30.0)
+    ap.add_argument('--resume', action='store_true',
+                    help='Retomar de um checkpoint existente em vez de comecar do zero. '
+                         'OBRIGATORIO ao continuar um treino (ex.: mudanca de resolucao); '
+                         'sem isto a primeira execucao ignora o global_step* e recomeca.')
     args = ap.parse_args()
 
     LOG_DIR.mkdir(parents=True, exist_ok=True)
@@ -197,7 +201,14 @@ def main():
         f'sample_every={args.sample_every} exemplos={len(samples)}')
 
     trainer = Trainer(args.config)
-    trainer.launch(resume=False)
+    if args.resume:
+        run_dir_now = newest_run_dir(output_base)
+        latest = (run_dir_now / 'latest') if run_dir_now else None
+        if latest is None or not latest.exists():
+            log('ERRO: --resume pedido mas nao ha checkpoint (latest) em ' + str(output_base))
+            sys.exit(3)
+        log(f'retomando de {latest.read_text().strip()} em {run_dir_now}')
+    trainer.launch(resume=args.resume)
     time.sleep(30)  # não competir com a largada do launcher
 
     sampled = set()

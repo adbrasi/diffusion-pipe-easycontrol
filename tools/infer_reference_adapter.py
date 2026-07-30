@@ -202,6 +202,11 @@ def parse_args():
              '(8 steps, CFG 1.0, mu 1.15).',
     )
     parser.add_argument(
+        '--extra-lora', action='append', default=None, metavar='CAMINHO[:FORCA]',
+        help='LoRA adicional fundida nos pesos base ANTES do adapter, no mesmo '
+             'caminho da turbo. Repetivel. Ex.: --extra-lora estilo.safetensors:0.8',
+    )
+    parser.add_argument(
         '--krea-variant', choices=('auto', 'raw', 'turbo'), default='auto',
         help=(
             'Select Krea inference defaults. Auto recognizes "turbo" in the '
@@ -472,7 +477,7 @@ def scale_adapter(pipeline, scale: float) -> int:
     return count
 
 
-def apply_turbo_lora(pipeline, lora_path: Path) -> int:
+def apply_turbo_lora(pipeline, lora_path: Path, strength: float = 1.0) -> int:
     """Funde a LoRA turbo oficial nos pesos base ANTES do nosso adapter.
 
     A turbo é uma LoRA de destilação (rank 64) que troca 28 steps por 8 com
@@ -512,7 +517,7 @@ def apply_turbo_lora(pipeline, lora_path: Path) -> int:
         if 'alpha' in partes:
             escala = float(partes['alpha']) / down.shape[0]
         base = modulo.weight
-        delta = (up @ down) * escala
+        delta = (up @ down) * escala * float(strength)
         if delta.shape != base.shape:
             continue
         # dequantiza -> soma -> volta ao dtype original. Em fp8 isto
@@ -527,12 +532,88 @@ def apply_turbo_lora(pipeline, lora_path: Path) -> int:
     return aplicados
 
 
+def _parse_extra_lora(item):
+    """'caminho[:forca]' -> (caminho, forca). Tolera ':' no caminho."""
+    texto = str(item)
+    caminho, sep, forca = texto.rpartition(':')
+    if not sep:
+        return texto, 1.0
+    try:
+        return caminho, float(forca)
+    except ValueError:
+        return texto, 1.0
+
+
+@torch.no_grad()
+def _fuse_loras_accumulated(pipeline, itens):
+    """Funde N LoRAs somando os deltas em fp32 e requantizando UMA vez.
+
+    Em fp8 (o dtype do treino) requantizar a cada LoRA e destrutivo e nao
+    comutativo: trocar a ordem das LoRAs mudaria a imagem. Acumular primeiro
+    torna o resultado independente da ordem e preserva o delta.
+    """
+    from safetensors.torch import load_file
+
+    modulos = dict(pipeline.diffusion_model.named_modules())
+    acumulado = {}
+    for caminho, forca in itens:
+        tensores = load_file(str(caminho))
+        pares = {}
+        for chave, valor in tensores.items():
+            for sufixo, slot in (('.lora_down.weight', 'down'), ('.lora_up.weight', 'up'),
+                                 ('.lora_A.weight', 'down'), ('.lora_B.weight', 'up')):
+                if chave.endswith(sufixo):
+                    pares.setdefault(chave[: -len(sufixo)], {})[slot] = valor
+            if chave.endswith('.alpha'):
+                pares.setdefault(chave.rsplit('.alpha', 1)[0], {})['alpha'] = valor
+        casados = aplicados = 0
+        for prefixo, partes in pares.items():
+            if 'down' not in partes or 'up' not in partes:
+                continue
+            casados += 1
+            nome = prefixo.removeprefix('diffusion_model.')
+            modulo = modulos.get(nome)
+            if modulo is None or not hasattr(modulo, 'weight'):
+                continue
+            down, up = partes['down'].float(), partes['up'].float()
+            escala = float(partes['alpha']) / down.shape[0] if 'alpha' in partes else 1.0
+            delta = (up @ down) * escala * float(forca)
+            if delta.shape != modulo.weight.shape:
+                continue
+            acumulado[nome] = acumulado.get(nome, 0.0) + delta.cpu()
+            aplicados += 1
+        if aplicados == 0:
+            raise RuntimeError(
+                f'LoRA extra nao casou com nenhum modulo do DiT: {caminho}. '
+                f'Esperado formato comfy (.lora_down/.lora_up) ou PEFT (.lora_A/.lora_B).')
+        if aplicados < casados:
+            print(f'AVISO: {Path(caminho).name}: {aplicados}/{casados} pares casaram; '
+                  f'o resto foi ignorado')
+        print(f'LoRA extra acumulada (forca {forca}): {Path(caminho).name} -> {aplicados} modulos')
+    for nome, delta in acumulado.items():
+        peso = modulos[nome].weight
+        peso.data = (peso.detach().to(torch.float32) + delta.to(peso.device)).to(peso.dtype)
+    print(f'{len(itens)} LoRA(s) extra fundidas em {len(acumulado)} modulos '
+          f'(1 requantizacao por modulo)')
+    return len(acumulado)
+
+
 def setup_diffusion_pipeline(pipeline, adapter_path: Path, config: dict, blocks_to_swap: int | None,
-                             turbo_lora: Path | None = None):
+                             turbo_lora: Path | None = None, extra_loras=None):
     pipeline.load_diffusion_model()
     if turbo_lora is not None:
         n = apply_turbo_lora(pipeline, turbo_lora)
         print(f'LoRA turbo fundida em {n} modulos do base (antes do adapter)')
+    # LoRAs adicionais (estilo etc.) vao nos pesos BASE, como a turbo, e antes
+    # do adapter — sao globais, e o adapter condition-only tem de ficar por
+    # cima, routado, nao fundido.
+    #
+    # ACUMULA em fp32 e requantiza UMA VEZ por modulo. Chamar apply_turbo_lora
+    # em cadeia requantizaria para fp8 a cada LoRA (3 bits de mantissa), o que
+    # perde delta e faz o resultado depender da ORDEM das LoRAs.
+    itens = [(Path(c), f) for c, f in (_parse_extra_lora(x) for x in (extra_loras or []))]
+    if itens:
+        _fuse_loras_accumulated(pipeline, itens)
     pipeline.configure_adapter(config['adapter'])
     pipeline.load_adapter_weights(adapter_path)
     pipeline.diffusion_model.eval()
@@ -800,6 +881,7 @@ def main():
         config,
         args.blocks_to_swap,
         turbo_lora=args.turbo_lora,
+        extra_loras=args.extra_lora,
     )
     import os as _elo_os
     _install_elo_hooks(sequential, _elo_os.environ.get('ELO_DUMP'))
