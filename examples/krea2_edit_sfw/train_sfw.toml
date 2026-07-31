@@ -1,0 +1,88 @@
+# Dataset 2 (SFW) — treino DO ZERO em 1024px.
+#
+# Nao e continuacao da saga anterior: comeca de pesos LoRA novos. Continuar do
+# adapter da fase 1 traria de volta o vies que motivou este dataset — o vies
+# esta nos pesos, nao no dataset.
+#
+# Diferencas para examples/krea2_edit_saga/train_1024.toml:
+#
+# 1. output_dir novo (/workspace/checkpoints/krea2_sfw). Nunca escrever no
+#    diretorio da fase 1: o supervisor localiza o run pelo mtime e misturar os
+#    dois faria ele retomar do checkpoint errado.
+#
+# 2. lr 7.5e-5 -> 1e-4. O 7.5e-5 era uma reducao de 25% especifica para
+#    ADAPTAR resolucao sem desfazer o que ja estava aprendido. Aqui nao ha
+#    nada aprendido para preservar, entao volta o valor da fase 1, que foi o
+#    validado para treino do zero.
+#
+# 3. warmup_steps 50 -> 200. O 50 bastava porque os pesos ja estavam
+#    treinados; do zero, um warmup curto com lr 1e-4 arrisca instabilidade nos
+#    primeiros steps.
+#
+# 4. max_steps = 8250. Sao ~11.000 pares; com micro_batch 1 x grad_accum 4,
+#    uma epoca = 2.750 steps. 8.250 = 3 epocas (~78 h a 34 s/step). E um teto,
+#    nao uma meta: cada checkpoint vai para o HF e a parada limpa e um
+#    `touch <run_dir>/save_quit` — da para encerrar assim que os samples
+#    convencerem, sem perder nada.
+#
+# 5. blocks_to_swap = 8 — medido no run de 1024 da fase 1: 29 GB de 32,6 e
+#    ~34 s/step. O supervisor sobe sozinho (8->16->24->32) se houver OOM.
+#
+# Todo o resto (arquitetura, rank, dtype, grounding a 384^2) e identico a
+# fase 1 de proposito: o node ComfyUI `K2 Training Base` foi calibrado contra
+# exatamente esse contrato, e mudar qualquer um desses campos quebraria a
+# equivalencia com o runner que custou 6 h para acertar.
+
+output_dir = '/workspace/checkpoints/krea2_sfw'
+dataset = 'examples/krea2_edit_sfw/dataset_sfw.toml'
+epochs = 1000
+max_steps = 8250
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 200
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 120
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1       # OBRIGATORIO com multi_ref
+blocks_to_swap = 8
+
+[model]
+type = 'krea2_multiref_grounded'
+diffusion_model = '/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors'
+vae = '/workspace/models/krea2/split_files/vae/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+diffusion_model_dtype = 'float8'
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[krea2_multiref_grounded]
+max_refs = 1
+slot_axis = 'width'
+position_mode = 'width_shift'
+reference_position_offset = 1.0
+reference_timestep = 'zero'
+condition_dropout = 0.0
+condition_only_lora = true
+vl_prompt_style = 'picture_n'
+vl_image_label = 'image'
+vl_image_max_pixels = 147456   # 384^2 — o cache depende disto
+caption_dropout = 0.1
+txtfusion_rank = 128
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

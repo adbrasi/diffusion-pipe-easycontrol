@@ -22,6 +22,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -93,6 +94,33 @@ def stable(path: Path, wait=5):
     s1 = size()
     time.sleep(wait)
     return size() == s1
+
+
+def prune_resume_states(run_dir: Path, keep=3):
+    """Mantem so os N estados de otimizador mais recentes.
+
+    Os `global_step*` do DeepSpeed pesam ~2,3 GB cada e servem APENAS para
+    retomar aquele ponto exato. Os adapters (`step*`) sao outra coisa e nunca
+    sao tocados aqui. Sem esta poda o disco cresce ~3,5 GB/h e a guarda de
+    espaco aborta o treino no meio (aconteceu em 2026-07-31: 28 estados = 64 GB).
+    Mantemos 3 e nao 1 para haver margem se o mais recente tiver sido escrito
+    durante uma parada abrupta.
+    """
+    if run_dir is None:
+        return 0
+    estados = sorted(run_dir.glob('global_step*'), key=lambda d: d.stat().st_mtime,
+                     reverse=True)
+    removidos = 0
+    for antigo in estados[keep:]:
+        try:
+            shutil.rmtree(antigo)
+            removidos += 1
+        except Exception as e:
+            log(f'nao consegui remover {antigo.name}: {e!r}')
+    if removidos:
+        log(f'poda: {removidos} estados de otimizador removidos, {keep} mantidos '
+            f'(adapters intactos) — {free_gb():.0f} GB livres')
+    return removidos
 
 
 class Trainer:
@@ -211,7 +239,21 @@ def main():
     trainer.launch(resume=args.resume)
     time.sleep(30)  # não competir com a largada do launcher
 
+    # Checkpoints que JA existem quando o supervisor sobe nao devem ser
+    # re-sampleados. Sem isto, retomar um treino faz o supervisor varrer os
+    # step* antigos e pausar o treino para gerar samples de cada um — no run
+    # de 512 seriam 22 checkpoints x 3 samples antes de treinar um step.
+    # Tambem consideramos ja sampleado o que tem pasta em SAMPLES_OUT.
     sampled = set()
+    for existente in step_checkpoints(newest_run_dir(output_base)):
+        sampled.add(existente)
+    for pasta in SAMPLES_OUT.glob('step*'):
+        m = re.fullmatch(r'step(\d+)', pasta.name)
+        if m:
+            sampled.add(int(m.group(1)))
+    if sampled:
+        log(f'{len(sampled)} checkpoints pre-existentes marcados como ja sampleados '
+            f'(o maior: step{max(sampled)}); so os NOVOS serao sampleados')
     recoveries = 0
     while True:
         time.sleep(60)
@@ -243,6 +285,8 @@ def main():
                 sys.exit(1)
 
         # sampling nos checkpoints múltiplos de sample_every (e no final)
+        if ckpts:
+            prune_resume_states(run_dir)
         pending = [n for n in sorted(ckpts) if n not in sampled
                    and (n % args.sample_every == 0 or n == max_steps)]
         for n in pending:

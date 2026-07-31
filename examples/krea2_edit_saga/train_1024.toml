@@ -30,11 +30,19 @@
 #
 # 5. max_steps 22500 -> 16500 (~5.157 steps a 1024, ~34 h). Não é o fim da
 #    3ª época a 512: é o orçamento de adaptação. Estender depois é um resume.
+#
+# 6. 2026-07-31: max_steps 16500 -> 14000. O usuário aprovou os samples do
+#    11.500/11.750 e decidiu encerrar esta fase em 14.000 para liberar a GPU
+#    e o disco para o dataset 2 (SFW). Como 14000 % save_every_n_steps == 0,
+#    o trainer sai com o checkpoint `step14000` sem salvamento duplicado, e o
+#    supervisor reconhece `done_final` -> samples -> SAGA COMPLETA (exit 0),
+#    sem relançar. O supervisor lê max_steps na largada: mudar este valor
+#    exige RELANÇAR o supervisor, não basta editar o arquivo.
 
 output_dir = '/workspace/checkpoints/krea2_edit_saga'
 dataset = 'examples/krea2_edit_saga/dataset_1024.toml'
 epochs = 1000
-max_steps = 16500
+max_steps = 14000
 micro_batch_size_per_gpu = 1
 gradient_accumulation_steps = 4
 pipeline_stages = 1
@@ -45,7 +53,7 @@ checkpoint_every_n_minutes = 120
 activation_checkpointing = true
 save_dtype = 'bfloat16'
 caching_batch_size = 1       # OBRIGATÓRIO com multi_ref
-blocks_to_swap = 16
+blocks_to_swap = 8            # medido: com 16 deu 25,5 GB de 32,6 e 34,9 s/step; a folga permite metade
 
 [model]
 type = 'krea2_multiref_grounded'

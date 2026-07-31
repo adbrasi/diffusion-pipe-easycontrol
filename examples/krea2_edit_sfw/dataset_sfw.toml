@@ -1,0 +1,45 @@
+# Dataset 2 (SFW) — pares A->B, N=1 referencia, 1024px.
+#
+# Motivo de existir: o adapter da fase 1 foi treinado em ~30k pares dominados
+# por NSFW (recortados 6.937 + parents 4.815 + parte do comikontext) e ficou
+# enviesado. Esta selecao foi definida pelo usuario:
+#
+#   poxima_cena_v2  ~6.000  todos (a melhor fonte, SFW)
+#   recortados       2.500  amostra aleatoria (seed 42)
+#   comikontext      2.500  amostra aleatoria EXCLUINDO tudo abaixo do par
+#                           000800 — regra que vale so para esta fonte
+#
+# A arvore e montada por tools/build_sfw_dataset.py, que faz HARDLINK das
+# fontes ja normalizadas em /workspace/datasets/prepared/ (mesmo filesystem,
+# custo zero de disco) para uma arvore separada. Separada de proposito: as
+# pastas de prepared/ eram lidas pelo treino da fase 1, e arquivo novo ali
+# faria o trainer cachear pares no meio do run.
+#
+# A selecao exata de cada fonte fica em <fonte>/selecao.txt, para auditoria.
+resolutions = [1024]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/datasets/sfw/poxima/target'
+control_path = '/workspace/datasets/sfw/poxima/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/datasets/sfw/recortados/target'
+control_path = '/workspace/datasets/sfw/recortados/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/datasets/sfw/comik/target'
+control_path = '/workspace/datasets/sfw/comik/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
