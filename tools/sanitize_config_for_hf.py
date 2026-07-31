@@ -22,6 +22,15 @@ AVISO = (
     '# NOTA: o identificador do modelo base foi substituido por **** nesta\n'
     '# copia publicada, a pedido do autor. Todos os hiperparametros estao\n'
     '# exatamente como usados no treino.\n'
+    '#\n'
+    '# Esta copia e DOCUMENTACAO, nao e para rodar. O verificador de contrato\n'
+    '# compara `model.type` da config com o `model_type` gravado no adapter;\n'
+    '# com o **** aqui eles nao batem e a inferencia falha com um erro de\n'
+    '# contrato que nao tem nada a ver com o problema real. Para rodar, use a\n'
+    '# config do repositorio de codigo, com os identificadores reais.\n'
+    '#\n'
+    '# O nome do ARQUIVO do modelo base nao precisa bater: e conferencia mole\n'
+    '# (so um WARNING). O que precisa bater e a geometria do contrato.\n'
 )
 
 
