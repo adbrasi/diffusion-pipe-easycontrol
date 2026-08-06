@@ -64,6 +64,7 @@ MODEL_CLASSES = {
     'krea2_ominicontrol2': ('models.krea2_ominicontrol2', 'Krea2OminiControl2Pipeline'),
     'krea2_omini_grounded': ('models.krea2_omini_grounded', 'Krea2OminiGroundedPipeline'),
     'krea2_multiref_grounded': ('models.krea2_multiref', 'Krea2MultiRefGroundedPipeline'),
+    'krea2_apex': ('models.krea2_apex', 'Krea2ApexPipeline'),
 }
 
 
@@ -215,8 +216,12 @@ def parse_args():
     )
     parser.add_argument('--blocks-to-swap', type=int, default=None, help='Override block swapping from the TOML.')
     parser.add_argument(
-        '--reference-fit', choices=('crop', 'stretch', 'exact', 'native_latent'), default='crop',
-        help='How to map the reference to the requested output size.',
+        '--reference-fit', choices=('crop', 'stretch', 'exact', 'native_latent', 'frame_fit'), default=None,
+        help=(
+            'How to map the reference to the requested output size. Default: '
+            "'frame_fit' for krea2_apex (the node fit branch: AR-preserving, "
+            "crop-to-grid /16, bicubic+antialias), 'crop' otherwise."
+        ),
     )
     parser.add_argument('--allow-contract-mismatch', action='store_true')
     parser.add_argument(
@@ -293,6 +298,24 @@ def expected_contract(config: dict) -> dict[str, str]:
         })
         if 'ominicontrol' in model_type:
             expected['condition_only_lora'] = str(bool(control.get('condition_only_lora', True))).lower()
+    elif model_type == 'krea2_apex':
+        section = config.get(model_type, {})
+        expected.update({
+            # The whole point of apex is that these are NOT free parameters:
+            # they are the comfyui-krea2edit geometry contract.
+            'reference_model_timestep': (
+                'target' if section.get('reference_timestep', 'target') == 'target' else '0.0'
+            ),
+            'position_mode': 'frame_fit',
+            'condition_token_stride': '1',
+            'control_family': 'krea2_apex',
+            'geometry_contract': 'krea2_frame_fit_v1',
+            'ref_axis': 'frame',
+            'ref_offsets': 'centered_fractional',
+            'ref_fit': 'ar_preserve_crop_to_grid_16_bicubic',
+            'vl_conditioning': 'qwen3vl_image_grounded',
+            'lora_targets': 'blocks+txtfusion+txtmlp',
+        })
     elif model_type in ('krea2_edit', 'krea2_omini_grounded', 'krea2_multiref_grounded'):
         section = config.get(model_type, {})
         expected.update({
@@ -412,6 +435,15 @@ def load_reference_pixels(path: Path, width: int, height: int, fit: str) -> torc
     else:
         image = image.convert('RGB')
     requested = (width, height)
+    if fit == 'frame_fit':
+        # krea2_apex: identical pixel prep to training (and to the node's `fit`
+        # branch). The result may be SMALLER than the requested size on one
+        # axis; the frame_fit RoPE placement centers it with fractional offsets.
+        from models.krea2_apex import fit_reference_pixels
+        import torchvision.transforms.functional as TF
+        chw = TF.pil_to_tensor(image).to(torch.float32) / 255.0
+        pixels = fit_reference_pixels(chw, height, width) * 2.0 - 1.0
+        return pixels.unsqueeze(0)
     if fit == 'exact':
         if image.size != requested:
             raise ValueError(f'Reference is {image.size}, expected exactly {requested}')
@@ -816,6 +848,19 @@ def main():
         config['model']['diffusion_model_dtype'] = torch.bfloat16
         print('[ELO] diagnostic override: diffusion_model_dtype=bfloat16', flush=True)
     pipeline = create_pipeline(config)
+    if args.reference_fit is None:
+        args.reference_fit = 'frame_fit' if config['model']['type'] == 'krea2_apex' else 'crop'
+        print(f'reference_fit={args.reference_fit} (default for {config["model"]["type"]})')
+    if config['model']['type'] == 'krea2_apex':
+        # Training jitters the grounding side per step; inference must not be
+        # random. Pin it to vl_longest_side, which is the node's grounding_px.
+        pipeline.live_text_encoding = False
+        if pipeline.vl_grounding_jitter is not None:
+            pipeline.vl_grounding_jitter = None
+            print(
+                f'krea2_apex inference: grounding jitter disabled, '
+                f'vl_longest_side={pipeline.vl_longest_side} (node grounding_px)'
+            )
     if args.conrad_contract:
         if config['model']['type'] != 'krea2_edit':
             raise ValueError('--conrad-contract requires model type krea2_edit')
@@ -835,7 +880,7 @@ def main():
         )
     need_unconditional = args.text_guidance != 1.0
     sample_kwargs = {}
-    if config['model']['type'] in ('krea2_edit', 'krea2_omini_grounded', 'krea2_multiref_grounded', 'ideogram4_omini_grounded') and not args.disable_vl_reference:
+    if config['model']['type'] in ('krea2_edit', 'krea2_apex', 'krea2_omini_grounded', 'krea2_multiref_grounded', 'ideogram4_omini_grounded') and not args.disable_vl_reference:
         # Dual conditioning: the reference grounds the Qwen3-VL embeddings of
         # both the conditional and the unconditional prompt.
         # lista na MESMA ordem dos slots VAE — se os dois canais divergirem,

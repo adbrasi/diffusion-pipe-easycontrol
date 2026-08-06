@@ -39,6 +39,12 @@ UNCOND_FRACTION = 0.0
 # fraction of fetches that swap the caption embedding for a per-sample
 # GROUNDED unconditional (empty caption, reference kept in both branches).
 CAPTION_DROPOUT = 0.0
+# Set by train.py from model.live_text_encoding. When true, NO text embedding
+# cache is built: __getitem__ returns the raw caption + control file and the
+# text encoder stays resident on the GPU, encoding each batch in the training
+# process (see Krea2ApexPipeline.encode_text_live). That is what makes per-step
+# grounding jitter and per-step caption dropout possible at all.
+LIVE_TEXT_ENCODING = False
 
 
 def shuffle_with_seed(l, seed=None):
@@ -247,6 +253,17 @@ class SizeBucketDataset:
         self.grounded_uncond_datasets = []
         self.num_repeats = self.directory_config['num_repeats']
         self.shuffle_skip = max(directory_config.get('cache_shuffle_num', 0), 1) # Should be provided in DirectoryDataset
+        # Live text encoding needs the control file at __getitem__ time, but the
+        # iteration_order dataset must NOT change (its fingerprint gates the
+        # latent cache). Side table instead.
+        self.control_by_spec = {}
+        if LIVE_TEXT_ENCODING and 'control_file' in metadata_dataset.column_names:
+            self.control_by_spec = {
+                tuple(image_spec): control_file
+                for image_spec, control_file in zip(
+                    metadata_dataset['image_spec'], metadata_dataset['control_file']
+                )
+            }
         if self.num_repeats <= 0:
             raise ValueError(f'num_repeats must be >0, was {self.num_repeats}')
 
@@ -337,6 +354,23 @@ class SizeBucketDataset:
         entry = self.iteration_order[idx]
 
         ret = self.latent_dataset[entry['latents_idx']]
+
+        if LIVE_TEXT_ENCODING:
+            # No embeddings here: the raw caption and the reference path travel
+            # to the training process, which encodes them (and applies the
+            # caption regime) per step. _collate keeps non-tensor values as
+            # plain lists, so both come out as list[str].
+            if self.captions_dict:
+                key = entry['image_spec'][-1]
+                if key in self.captions_dict:
+                    ret['caption'] = self.captions_dict[key][entry['caption_number']]
+                else:
+                    print(f'WARNING: image {key} did not have entry in captions_dict. Using empty caption.')
+                    ret['caption'] = ''
+            else:
+                ret['caption'] = entry['caption']
+            ret['control_file'] = self.control_by_spec.get(tuple(entry['image_spec']), None)
+            return ret
 
         drop_fraction = max(UNCOND_FRACTION, CAPTION_DROPOUT)
         use_uncond = drop_fraction > 0 and random.random() < drop_fraction
@@ -1121,7 +1155,8 @@ class Dataset:
             ds.cache_text_embeddings(map_fn, i, regenerate_cache=regenerate_cache, caching_batch_size=caching_batch_size)
 
 
-def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, regenerate_cache, trust_cache, caching_batch_size):
+def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, regenerate_cache, trust_cache, caching_batch_size,
+              preprocess_control_file_fn=None):
     # Dataset map() starts a bunch of processes. Make sure torch uses a limited number of threads
     # to avoid CPU contention.
     # TODO: if we ever change Datasets map to use spawn instead of fork, this might not work.
@@ -1135,6 +1170,11 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
         ds.cache_metadata(regenerate_cache=regenerate_cache, trust_cache=trust_cache)
 
     pipes = {}
+
+    # Models can prepare CONTROL files with a different geometry than the target
+    # (krea2_apex: AR-preserving fit-inside + crop-to-grid, instead of
+    # convert_crop_and_resize's center-crop + stretch to the full grid).
+    control_preprocess_fn = preprocess_control_file_fn or preprocess_media_file_fn
 
     def latents_map_fn(example, rank):
         is_edit_dataset = ('control_file' in example)
@@ -1159,11 +1199,11 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
                     # Exige caching_batch_size = 1 (a batch já está ocupada).
                     assert len(items) == 1
                     for ref_path in control_file:
-                        ref_items = preprocess_media_file_fn((None, ref_path), None, size_bucket)
+                        ref_items = control_preprocess_fn((None, ref_path), None, size_bucket)
                         assert len(ref_items) == 1
                         control_tensors_and_masks.append(ref_items[0])
                 else:
-                    control_items = preprocess_media_file_fn((None, control_file), None, size_bucket)
+                    control_items = control_preprocess_fn((None, control_file), None, size_bucket)
                     assert len(control_items) == 1
                     assert len(items) == 1
                     control_tensors_and_masks.append(control_items[0])
@@ -1189,7 +1229,15 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
                 )
                 c_tensor = torch.stack([t[0] for t in control_tensors_and_masks])
             else:
-                c_tensor = torch.stack([t[0] for t in control_tensors_and_masks[i:i+caching_batch_size]])
+                control_slice = [t[0] for t in control_tensors_and_masks[i:i+caching_batch_size]]
+                if preprocess_control_file_fn is not None and len(control_slice) > 1:
+                    # AR-preserving control preprocessing gives per-sample shapes;
+                    # they only collate when they happen to be identical.
+                    assert all(t.shape == control_slice[0].shape for t in control_slice), (
+                        'This model fits control files per sample, so references in one caching '
+                        'batch can have different shapes. Use caching_batch_size = 1.'
+                    )
+                c_tensor = torch.stack(control_slice)
             if rank not in pipes:
                 pipes[rank] = mp.Pipe(duplex=False)
             parent_conn, child_conn = pipes[rank]
@@ -1208,7 +1256,7 @@ def _cache_fn(datasets, queue, preprocess_media_file_fn, num_text_encoders, rege
     for ds in datasets:
         ds.cache_latents(latents_map_fn, regenerate_cache=regenerate_cache, trust_cache=trust_cache, caching_batch_size=caching_batch_size)
 
-    for text_encoder_idx in range(num_text_encoders):
+    for text_encoder_idx in range(0 if LIVE_TEXT_ENCODING else num_text_encoders):
         def text_embedding_map_fn(example, rank):
             if rank not in pipes:
                 pipes[rank] = mp.Pipe(duplex=False)
@@ -1273,6 +1321,10 @@ class DatasetManager:
                     self.regenerate_cache,
                     self.trust_cache,
                     self.caching_batch_size,
+                    (
+                        self.model.get_preprocess_control_file_fn()
+                        if hasattr(self.model, 'get_preprocess_control_file_fn') else None
+                    ),
                 )
             )
             process.start()
@@ -1296,9 +1348,24 @@ class DatasetManager:
                 if (self.model.name == 'sdxl' and model is self.vae) or self.keep_models_loaded:
                     # If full fine tuning SDXL, we need to keep the VAE weights around for saving the model.
                     model.to('cpu')
+                elif LIVE_TEXT_ENCODING and model is not self.vae:
+                    # Live encoding: the text encoders are used EVERY step from
+                    # now on. 'meta' would destroy them.
+                    continue
                 else:
                     model.to('meta')
             mm.unload_all_models()  # Comfy managed models
+            if LIVE_TEXT_ENCODING:
+                # unload_all_models() just evicted the Comfy-managed text
+                # encoders too; bring them back and pin them. Nothing else in
+                # the training loop calls free_memory, so they stay.
+                for text_encoder in self.text_encoders:
+                    if isinstance(text_encoder, nn.Module):
+                        text_encoder.to('cuda')
+                        continue
+                    text_encoder.load_model_if_needed()
+                    if hasattr(text_encoder, 'load_model'):
+                        text_encoder.load_model()
 
         dist.barrier()
         if is_main_process():
@@ -1308,8 +1375,9 @@ class DatasetManager:
         for ds in self.datasets:
             ds.cache_metadata(trust_cache=True)
             ds.cache_latents(None, trust_cache=True)
-            for i in range(1, len(self.text_encoders)+1):
-                ds.cache_text_embeddings(None, i)
+            if not LIVE_TEXT_ENCODING:
+                for i in range(1, len(self.text_encoders)+1):
+                    ds.cache_text_embeddings(None, i)
 
     @torch.no_grad()
     def _handle_task(self, task):
@@ -1454,6 +1522,11 @@ class PipelineDataLoader:
 
     def _pull_batches_from_dataloader(self):
         for batch in self.dataloader:
+            if LIVE_TEXT_ENCODING:
+                # Runs in the MAIN process (this generator is advanced by the
+                # training loop, not by a forked DataLoader worker), so CUDA is
+                # legal here.
+                batch = self.model.encode_text_live(batch)
             features, label = self.model.prepare_inputs(batch, timestep_quantile=self.eval_quantile)
             target, mask = label
             # The target depends on the noise, so we must broadcast it from the first stage to the last.

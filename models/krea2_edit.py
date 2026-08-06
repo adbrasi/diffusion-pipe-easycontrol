@@ -24,6 +24,7 @@ embedding keeps the reference grounding and guidance contrasts the prompt only
 """
 
 import math
+import random
 
 import torch
 from torch import nn
@@ -227,8 +228,13 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
                 parameter.data = parameter.data.to(adapter_config['dtype'])
 
     def _jittered_grounding_side(self, file):
-        import hashlib
         lo, hi = self.vl_grounding_jitter
+        if getattr(self, 'live_text_encoding', False):
+            # Live encoding: a REAL jitter, resampled every step. With the text
+            # cache on (below) the same file must always hash to the same side,
+            # otherwise the cached embedding and the config disagree.
+            return random.randint(lo, hi)
+        import hashlib
         digest = int(hashlib.sha256(str(file).encode()).hexdigest(), 16)
         return lo + digest % (hi - lo + 1)
 

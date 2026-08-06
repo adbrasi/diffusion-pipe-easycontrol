@@ -54,8 +54,8 @@ class Krea2ReferencePipeline(Krea2Pipeline):
         self.condition_token_stride = int(reference.get('condition_token_stride', 1))
         if not 0 <= self.condition_dropout <= 1:
             raise ValueError('condition_dropout must be between 0 and 1')
-        if self.position_mode not in ('spatial', 'subject', 'width_shift'):
-            raise ValueError("position_mode must be 'spatial', 'subject' or 'width_shift'")
+        if self.position_mode not in ('spatial', 'subject', 'width_shift', 'frame_fit'):
+            raise ValueError("position_mode must be 'spatial', 'subject', 'width_shift' or 'frame_fit'")
         if self.condition_token_stride < 1:
             raise ValueError('condition_token_stride must be >= 1')
 
@@ -125,7 +125,24 @@ class Krea2ReferencePipeline(Krea2Pipeline):
                 f'{tuple(reference.shape[:3])} != {tuple(noisy_target.shape[:3])}'
             )
         expected = tuple(size // self.condition_token_stride for size in noisy_target.shape[-2:])
-        if reference.shape[-2:] != expected:
+        if self.position_mode == 'frame_fit':
+            # frame_fit places a SMALLER-OR-EQUAL reference grid at the centered
+            # fractional offset inside the target grid (krea2_apex / node `fit`
+            # branch). The reference is AR-preserved and snapped to /16 pixels,
+            # so its latent side is even but not necessarily equal to the
+            # target's. Only reject what the geometry genuinely cannot place.
+            ref_h, ref_w = reference.shape[-2:]
+            if ref_h > expected[0] or ref_w > expected[1]:
+                raise ValueError(
+                    f'Krea2 frame_fit reference latent {tuple(reference.shape[-2:])} exceeds the '
+                    f'target grid {expected}; the fit preprocess must never upscale past the target.'
+                )
+            if ref_h % 2 or ref_w % 2:
+                raise ValueError(
+                    f'Krea2 frame_fit reference latent {tuple(reference.shape[-2:])} must be a '
+                    f'multiple of the patch size (2) on both axes; regenerate the VAE cache.'
+                )
+        elif reference.shape[-2:] != expected:
             raise ValueError(
                 f'Krea2 reference latent shape {tuple(reference.shape[-2:])} does not match '
                 f'expected compact shape {expected}; regenerate the VAE cache.'
@@ -351,6 +368,17 @@ class Krea2ReferenceInitialLayer(nn.Module):
         )
         if self.position_mode == 'subject':
             reference_pos[..., 0] = self.reference_position_offset
+        elif self.position_mode == 'frame_fit':
+            # krea2_apex / comfyui-krea2edit `fit` geometry: the reference lives
+            # on the frame axis (like 'subject') AND is CENTERED inside the
+            # target grid with FRACTIONAL offsets. Integer floor would place an
+            # odd-gap reference half a token off its true center; RoPE is
+            # continuous, so half-token positions are exact and free.
+            off_h = max(0.0, (target_grid_h - reference_grid_h) / 2.0)
+            off_w = max(0.0, (target_grid_w - reference_grid_w) / 2.0)
+            reference_pos[..., 0] = self.reference_position_offset
+            reference_pos[..., 1] = reference_pos[..., 1] + off_h
+            reference_pos[..., 2] = reference_pos[..., 2] + off_w
         elif self.position_mode == 'width_shift':
             # OminiControl paper convention for non-aligned tasks: the condition
             # lives "beside" the target in the SAME 2D plane (delta on the width

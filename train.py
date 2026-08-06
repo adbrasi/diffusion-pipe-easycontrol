@@ -441,6 +441,9 @@ if __name__ == '__main__':
     elif model_type == 'krea2_multiref_grounded':
         from models import krea2_multiref
         model = krea2_multiref.Krea2MultiRefGroundedPipeline(config)
+    elif model_type == 'krea2_apex':
+        from models import krea2_apex
+        model = krea2_apex.Krea2ApexPipeline(config)
     else:
         raise NotImplementedError(f'Model type {model_type} is not implemented')
 
@@ -448,6 +451,24 @@ if __name__ == '__main__':
     # per-sample GROUNDED unconditional (empty caption, reference kept in both
     # branches) for this fraction of fetches. The pipeline exposes the knob.
     dataset_util.CAPTION_DROPOUT = float(getattr(model, 'caption_dropout', 0.0))
+    # Live text encoding: no text cache at all, the text encoder stays resident
+    # and encodes each batch in the training process. The pipeline must expose
+    # encode_text_live() for this to be legal.
+    dataset_util.LIVE_TEXT_ENCODING = bool(config['model'].get('live_text_encoding', False))
+    if dataset_util.LIVE_TEXT_ENCODING:
+        if not hasattr(model, 'encode_text_live'):
+            raise ValueError(
+                f'live_text_encoding = true but model type {model_type} does not implement '
+                'encode_text_live()'
+            )
+        # The per-step caption regime lives in encode_text_live; the dataset-side
+        # cached-uncond swap must not fire on top of it.
+        dataset_util.CAPTION_DROPOUT = 0.0
+        if is_main_process():
+            print(
+                'live_text_encoding=true: text embedding cache DISABLED, text encoder stays on GPU, '
+                'grounding jitter and caption dropout resampled per step'
+            )
     if dataset_util.CAPTION_DROPOUT > 0 and is_main_process():
         print(f'caption_dropout={dataset_util.CAPTION_DROPOUT}: caching per-sample grounded uncond embeddings')
 
