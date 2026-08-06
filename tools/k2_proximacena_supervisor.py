@@ -36,12 +36,14 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-RUN_ID = 'k2_proximacena_v2'
+import os
+
+RUN_ID = os.environ.get('K2SUP_RUN_ID', 'k2_proximacena_v2')
 REPO_ROOT = Path('/workspace/projects/diffusion-pipe-easycontrol')
 PYTHON = '/venv/main/bin/python'
 DEEPSPEED = '/venv/main/bin/deepspeed'
 TURBO_LORA = '/workspace/models/krea2/loras/krea2_turbo_lora_rank_64_bf16.safetensors'
-HF_REPO = 'AdwolfCzar/k2-proximacena-grounded-v2-full'
+HF_REPO = os.environ.get('K2SUP_HF_REPO', 'AdwolfCzar/k2-proximacena-grounded-v2-full')
 LOG_DIR = Path(f'/workspace/logs/{RUN_ID}')
 STATE_DIR = Path(f'/workspace/state/{RUN_ID}')
 SAMPLES_OUT = Path(f'/workspace/outputs/{RUN_ID}_samples')
@@ -179,6 +181,9 @@ def run_samples(config, step_dir: Path, samples, seed=76):
         if out.exists():
             ok += 1
             continue
+        # Turbo (decisão do usuário 2026-08-05): destilado para inferência; na
+        # bisseção o turbo 8 steps rendeu micro-textura nítida onde o raw 28
+        # steps/guidance 5.5 saiu liso/plástico neste runner.
         cmd = [PYTHON, 'tools/infer_reference_adapter.py',
                '--config', config, '--adapter', str(step_dir),
                '--reference', s['reference'], '--prompt', s['prompt'],
@@ -193,7 +198,7 @@ def run_samples(config, step_dir: Path, samples, seed=76):
             (out_dir / f'sample{i}_error.log').write_text(
                 (r.stdout or '') + '\n' + (r.stderr or ''))
     (out_dir / 'sampling_inputs.json').write_text(json.dumps(
-        {'seed': seed, 'turbo_lora': TURBO_LORA, 'steps': 8, 'variant': 'turbo',
+        {'seed': seed, 'variant': 'raw', 'steps': 28, 'text_guidance': 5.5,
          'samples': samples}, indent=2))
     log(f'samples {step_dir.name}: {ok}/{len(samples)} ok -> {out_dir}')
     return ok
@@ -321,8 +326,18 @@ def main():
                 time.sleep(30)
                 continue
             else:
-                log(f'treino MORREU rc={rc} sem OOM reconhecido (ultimo step={last_step}) '
-                    f'— ver {trainer.log_path}. Supervisor segue só para drenar uploads.')
+                recoveries += 1
+                if recoveries > MAX_RECOVERIES:
+                    log(f'treino MORREU rc={rc} {recoveries}x seguidas — desistindo; '
+                        f'supervisor segue só para drenar uploads. Ver {trainer.log_path}')
+                else:
+                    log(f'treino MORREU rc={rc} sem OOM reconhecido (ultimo step={last_step}) '
+                        f'— relançando com resume ({recoveries}/{MAX_RECOVERIES}). '
+                        f'Ver {trainer.log_path}')
+                    time.sleep(30)
+                    trainer.launch(resume=bool(run_dir and (run_dir / 'latest').exists()))
+                    time.sleep(30)
+                    continue
 
         # sampling nos checkpoints múltiplos de sample_every (e no final)
         pending = [n for n in sorted(ckpts) if n not in sampled
