@@ -262,3 +262,9 @@ Dry-run validou16jobs de avaliação (2braços×4saves×2resoluções),continua�
 B_beta1_fixed_fp8_512_micro2_probe salvou step500; adapter local: /workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe/20260930_21-33-41/step500/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$3.67, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 22:12 UTC — Campanha
+
+A_native_fp8_512_micro2_probe salvou step625; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step625/adapter_model.safetensors. Sync HF contínuo ativo.
+
+Custo Krea acumulado estimado desde16:09UTC:US$3.76, inclui setup/cache/ociosidade, não é extrato.
