@@ -433,3 +433,9 @@ Custo estimado acumulado desde06:05 UTC: US$3.08 (4.97h × US$0.62/h; inclui set
 `train_B_epoch1` salvou step5000 (20,000 amostras vistas). Adapter: `/workspace/checkpoints/anima_nextscene/E2_B/20260930_09-54-22/step5000`. Treino segue até o fim da época.
 
 Custo estimado acumulado desde06:05 UTC: US$3.26 (5.26h × US$0.62/h; inclui setup, cache e ociosidade).
+
+### E2 — 2026-09-30 11:32 UTC
+
+Concluído `train_B_epoch1` em 98.2min. Último step: 5685; época completa.
+
+Custo estimado acumulado desde06:05 UTC: US$3.38 (5.45h × US$0.62/h; inclui setup, cache e ociosidade).
