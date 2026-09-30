@@ -15,6 +15,9 @@ while True:
    api.upload_folder(repo_id=repo,folder_path=p.parent,path_in_repo=dest)
    state[str(p)]=dest;statep.write_text(json.dumps(state,indent=2));print('Uploaded',dest,flush=True)
   api.upload_folder(repo_id=repo,folder_path='/workspace/nextscene_artifacts',path_in_repo='artifacts',ignore_patterns=['*.tmp'])
+  comfy_outputs=Path('/workspace/comfy/ComfyUI/output/NextScene')
+  if comfy_outputs.exists():
+   api.upload_folder(repo_id=repo,folder_path=comfy_outputs,path_in_repo='artifacts/ComfyUI/outputs',ignore_patterns=['*.tmp'])
   api.upload_file(repo_id=repo,path_or_fileobj='/workspace/diffusion-pipe-easycontrol/docs/NEXTSCENE_RUN_LOG.md',path_in_repo='NEXTSCENE_RUN_LOG.md')
  except Exception:traceback.print_exc()
  time.sleep(60)

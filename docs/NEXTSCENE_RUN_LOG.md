@@ -707,3 +707,10 @@ A97,6/B96,9min; avaliações~70,5min. Total4h35m37s (~US$2,85 da campanha).
 Estimativa acumulada desde06:05UTC agora:US$4.46, incluindo ociosidade
 após a conclusão; não é extrato de cobrança. Nenhum vencedor escolhido
 por essas métricas sem revisão visual completa.
+
+
+## 2026-09-30 13:56 UTC — Treinos parados; nodes ComfyUI prontos
+
+A pedido do usuário, worker parado e autostart=false. Nenhum treino ativo; E2 A/B preservados em epoch1 (5685 steps). Symlinks dos três modelos e 20 checkpoints E1/E2 criados no ComfyUI existente. Dois custom nodes em comfyui_nextscene/, sem alteração do core: adapter com contrato/alpha e referência via condicionamento nativo/ModelPatcher. Smoke GPU A/B 512² ×20 steps passou; 280 lineares por adapter. Controles null/ref guidance 1.5/negativo zero/strength zero/batch 2 passaram. PNGs íntegros; frontend carregou os 18 nodes sem erros e serializou prompt válido, também executado com sucesso. RoPE target bit-idêntico à nativa e coordenadas disjoint iguais ao treino.
+
+ComfyUI supervisor comfy_nextscene ativo em localhost:18818, Caddy no endpoint externo existente 8818; acesso autenticado HTTP200 e sem token HTTP401. Outputs /workspace/comfy/ComfyUI/output/NextScene/; sincronização externa ao HF privado ampliada para essa pasta. Nenhum sampling pessoal enviado ao GitHub. Usuário pediu encerrar o trabalho de workflow e entregar os nodes imediatamente; workflows opcionais já estão no workspace. Tempos de smoke: B5.43s primeira carga, A2.35s com cache; controles 256²/4steps ~0.5s cada. Custo acumulado desde06:05UTC atéagora ~US$4.86, estimativa aUS$0.62/h incluindo ociosidade, não extrato.
