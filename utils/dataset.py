@@ -1527,16 +1527,22 @@ class PipelineDataLoader:
                 # training loop, not by a forked DataLoader worker), so CUDA is
                 # legal here.
                 batch = self.model.encode_text_live(batch)
-            features, label = self.model.prepare_inputs(batch, timestep_quantile=self.eval_quantile)
-            # The target depends on the noise, so we must broadcast it from the first stage to the last.
-            # NOTE: I had to patch the pipeline parallel TrainSchedule so that the LoadMicroBatch commands
-            # would line up on the first and last stage so that this doesn't deadlock.
-            # Some pipelines also return stochastic loss weights. Preserve all
-            # label fields and synchronize every tensor (including those weights).
-            label = tuple(self._broadcast_target(item) if torch.is_tensor(item) else item for item in label)
+            batches = [batch]
+            pieces = self.gradient_accumulation_steps
+            if self.model.prepare_inputs_per_microbatch:
+                # Native reference grids can differ within one target bucket.
+                # Split before padding text or stacking those grids.
+                size = len(batch['latents']) // pieces
+                batches = [{key: value[start:start + size] if value is not None else None
+                            for key, value in batch.items()}
+                           for start in range(0, len(batch['latents']), size)]
+                pieces = 1
             self.num_batches_pulled += 1
-            for micro_batch in split_batch((features, label), self.gradient_accumulation_steps):
-                yield micro_batch
+            for batch in batches:
+                features, label = self.model.prepare_inputs(batch, timestep_quantile=self.eval_quantile)
+                # Targets depend on noise; synchronize every tensor label field.
+                label = tuple(self._broadcast_target(item) if torch.is_tensor(item) else item for item in label)
+                yield from split_batch((features, label), pieces)
 
     def _broadcast_target(self, target):
         model_engine = self.model_engine

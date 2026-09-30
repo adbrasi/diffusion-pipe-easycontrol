@@ -10,7 +10,7 @@ import toml
 ROOT = Path('/workspace/k2ab')
 REPO = Path(__file__).resolve().parents[1]
 manifest = json.loads((ROOT / 'artifacts/data_manifest.json').read_text())
-buckets = [2 ** (-1 + index / 3) for index in range(7)]
+buckets = [round(2 ** (-1 + index / 3), 3) for index in range(7)]
 groups = {bucket: [] for bucket in buckets}
 for row in manifest['pairs']:
     with Image.open(row['target']) as image:
@@ -44,7 +44,7 @@ for arm in ('A_native', 'B_beta1_fixed'):
             directory = dataset['directory'][0]
             directory['path'] = str(ROOT / 'smoke/target')
             directory['control_path'] = str(ROOT / ('smoke/control' if arm.startswith('A') else 'smoke/refs'))
-            config.update(max_steps=10, save_every_n_steps=5, checkpoint_every_n_steps=5,
+            config.update(max_steps=10, save_every_n_steps=5, checkpoint_every_n_epochs=1,
                           warmup_steps=5)
         config['output_dir'] = str(ROOT / 'checkpoints' / (arm + '_' + mode))
         dataset_path = config_dir / f'{arm}_{mode}_dataset.toml'

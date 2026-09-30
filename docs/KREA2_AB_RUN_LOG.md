@@ -19,3 +19,15 @@ HF privado AdwolfCzar/krea2-ab-runs criado e sync contínuo via supervisor k2ab_
 Worktree /workspace/k2ab/native_worktree em 79e7a3a com submodule ComfyUI stock fb2315f1; demais submodules reutilizados via symlink, root/B continua 0ba903bd. TE real: relL2=0 nas três referências PNG. Forward/contrato/routing: 12 testes passando no worktree atualizado. Outros testes: 28 passaram, uma fixture histórica sem position_mode foi corrigida e seu arquivo passou (2/2). Prova dos ranks/routing do B incluída no teste novo.
 
 Subconjunto contém seis buckets AR (0.5/0.63/0.79/1.26/1.59/2.0; sem imagens quadradas elegíveis). Smoke com quatro pares por bucket, 24 pares; 10 steps, saves/resume states em 5/10; BF16, swap16, micro1×accum4. Worker serial supervisor k2ab_worker iniciado. Configs e monitor de GPU em /workspace/k2ab/artifacts; nenhum probe de 500 enfileirado antes dos smokes.
+
+## 2026-09-30 16:56 UTC — Smokes e resumes aprovados
+
+Bug GPU no A: collator recebe batches de acumulação (4 amostras) ANTES do split em micro1, e ref tem grids distintos. Prepare_inputs_per_microbatch passou a preparar cada microbatch antes de empilhar refs/pad de texto. Evita tanto stack inválido quanto padding de texto diferente do stock. Teste reproduz referência variável e texto de comprimentos diferentes; demais pipelines preservam caminho antigo. Gate completo: 30 testes passaram.
+
+A10: 25.03s/step mediano, pico31759MiB (swap16). A resume até12 com swap20:25.33s/step, pico26293MiB, LR1e-4 preservado. B10:35.75s/step, pico27216MiB (swap20); B resume até12:36s/step, pico30176MiB, LR1e-4. Ambos 512 chaves permitidas; B224 block linears routados +32 fusion linears r128. A stock LoraLoaderModelOnly:256 patches, ZERO chaves não carregadas; sampling Turbo certa/trocada completo. B Turbo runner completo,8steps CFG1, CPU seed76 igual ao stock. Tempo previsto só compute500: A3h29/B4h58; eficiência e custo serão registrados com tempos reais, sem troca para float8.
+
+Runner Turbo corrigido para aplicar também os 7 diff_b oficiais (antes ignorados);264 LoRAs+7bias=271 módulos/patches. Nova opção noise-device=cpu preserva default histórico cuda e permite seeds iguais ao Comfy stock. Avaliação em lote reutiliza DiT e encoder, sem reload do arquivo por imagem. Stock usa ManualSigmas nativo com os exatos timesteps do runner, evitando diferença de schedule do ModelSamplingFlux por resolução.
+
+Heldout:13 pares neutros revisados visualmente,1024px com AR do target, seed76, incluindo hat/night binocular/red mecha. Review A/B em /workspace/k2ab/artifacts/heldout_neutral_review.jpg. Rating automático rejeitou frames noturnos neutros: mantidos após inspeção visual; captions explicitamente sexualizadas excluídas. Zero interseção de stems entre treino e TODOS os24heldout originais. Método de referência ablation em andamento. Outputs e métricas smokes em /workspace/k2ab/artifacts/smoke; evidência de integração, não ranking de qualidade.
+
+Custo Krea estimado desde16:09UTC até16:56UTC:US$0.49 (47min aUS$0.62/h, inclui setup/ociosidade); acumulado da instância desde06:05UTC:US$6.73. Não é extrato da Vast.

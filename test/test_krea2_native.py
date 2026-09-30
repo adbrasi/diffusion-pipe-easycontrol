@@ -124,6 +124,32 @@ def test_multiref_fusion_rank_preserves_condition_routing():
     assert torch.count_nonzero(delta[:, 3:]) > 0
 
 
+def test_microbatch_preparation_keeps_reference_grids_and_text_lengths():
+    from utils.dataset import PipelineDataLoader
+
+    pipe = object.__new__(kn.Krea2NativePipeline)
+    pipe.model_config = {'timestep_sample_method': 'uniform'}
+    pipe.caption_dropout = 0.
+    references = [torch.randn(16, 1, height, 8) for height in (6, 8, 10, 12)]
+    batch = dict(latents=torch.randn(4, 16, 1, 8, 8), mask=None,
+        control_latents=references,
+        text_embeds_0=[torch.randn(length, 96) for length in (3, 5, 7, 9)],
+        attention_mask_0=[torch.ones(length) for length in (3, 5, 7, 9)])
+    loader = object.__new__(PipelineDataLoader)
+    loader.model = pipe
+    loader.dataloader = [batch]
+    loader.gradient_accumulation_steps = 4
+    loader.eval_quantile = .5
+    loader.num_batches_pulled = 0
+    loader._broadcast_target = lambda value: value
+    items = list(loader._pull_batches_from_dataloader())
+    assert len(items) == 4
+    for index, (features, labels) in enumerate(items):
+        assert features[2].shape[1] == (3, 5, 7, 9)[index]
+        assert torch.equal(features[-1][0], references[index])
+        assert labels[0].shape[0] == 1
+
+
 @pytest.mark.skipif(not os.environ.get('KREA2_STOCK_COMFY'), reason='set KREA2_STOCK_COMFY=/path/to/ComfyUI')
 @pytest.mark.parametrize('method', ['index_timestep_zero', 'index'])
 def test_forward_parity_against_stock_comfy(tmp_path, method):

@@ -147,6 +147,8 @@ def parse_args():
         help='Denoising steps. Defaults to Raw=28, Turbo=8, and non-Krea=20.',
     )
     parser.add_argument('--seed', type=int, default=0)
+    parser.add_argument('--noise-device', choices=('cpu', 'cuda'), default='cuda',
+                        help='Use cpu to match stock ComfyUI seeded noise.')
     parser.add_argument(
         '--text-guidance', type=float, default=None,
         help=(
@@ -559,6 +561,17 @@ def apply_turbo_lora(pipeline, lora_path: Path, strength: float = 1.0) -> int:
             novo = base.detach().to(torch.float32) + delta.to(base.device)
             modulo.weight.data = novo.to(base.dtype)
         aplicados += 1
+    for key, value in tensors.items():
+        if not key.endswith('.diff_b'):
+            continue
+        name = key.removeprefix('diffusion_model.').removesuffix('.diff_b')
+        module = modulos.get(name)
+        if module is None or module.bias is None or module.bias.shape != value.shape:
+            raise RuntimeError(f'Turbo bias patch does not match the base: {key}')
+        with torch.no_grad():
+            module.bias.data = (module.bias.detach().float() + value.to(module.bias.device).float()
+                                * float(strength)).to(module.bias.dtype)
+        aplicados += 1
     if aplicados == 0:
         raise RuntimeError(f'LoRA turbo nao casou com nenhum modulo: {lora_path}')
     return aplicados
@@ -684,11 +697,12 @@ def denoise(
     krea_max_res,
     krea_y1,
     krea_y2,
+    noise_device='cuda',
 ):
     from diffusers import FlowMatchEulerDiscreteScheduler
 
-    generator = torch.Generator(device='cuda').manual_seed(seed)
-    latent = torch.randn(target_shape, generator=generator, device='cuda')
+    generator = torch.Generator(device=noise_device).manual_seed(seed)
+    latent = torch.randn(target_shape, generator=generator, device=noise_device).to('cuda')
     import os as _elo_os
     _elo_noise_path = _elo_os.environ.get('ELO_PAIRED_NOISE')
     _elo_dump = _elo_os.environ.get('ELO_DUMP')
@@ -974,6 +988,7 @@ def main():
         args.krea_max_res,
         args.krea_y1,
         args.krea_y2,
+        args.noise_device,
     )
     offload_diffusion(pipeline, sequential)
     decode_and_save(pipeline, latent, args.output)

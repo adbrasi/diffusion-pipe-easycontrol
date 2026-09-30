@@ -123,6 +123,7 @@ class PreprocessNativeControlFile:
 
 
 class Krea2NativePipeline(Krea2EditPipeline):
+    prepare_inputs_per_microbatch = True
     name = 'krea2_native'
     config_section = 'krea2_native'
     adapter_allowed_key_substrings = ('.blocks.', '.txtfusion.')
@@ -162,6 +163,13 @@ class Krea2NativePipeline(Krea2EditPipeline):
 
     def encode_caption_for_cache(self, text_encoder, caption, control_file):
         return native_tokenize(text_encoder, caption, control_file, grounded=self.vl_grounding)
+
+    def prepare_inputs(self, inputs, timestep_quantile=None):
+        # The collator leaves variable-size reference grids as a list.
+        # micro1 keeps their native spatial dimensions intact.
+        if isinstance(inputs['control_latents'], list):
+            inputs = dict(inputs, control_latents=torch.stack(inputs['control_latents']))
+        return super().prepare_inputs(inputs, timestep_quantile=timestep_quantile)
 
     def get_call_text_encoder_fn(self, text_encoder):
         te_idx = next((i for i, te in enumerate(self.text_encoders) if te == text_encoder), None)

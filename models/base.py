@@ -174,6 +174,7 @@ class CommonPipeline:
     spatial_compression = 8
     channels = 16
     is_video_vae = False
+    prepare_inputs_per_microbatch = False
 
     def __init__(self, *args, **kwargs):
         # sampling only
