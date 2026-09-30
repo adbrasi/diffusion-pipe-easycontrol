@@ -256,3 +256,9 @@ Usuário ampliou CADA braço até1000steps e pediu sampling a cada250 na resolu�
 Sampling: Turbo8/CFG1/mu1.15, dois casos (noite/binóculo e mecha), somente LoRA treinada/referência certa, checkpoints250/500/750/1000. Bucket512 tem688×384;1024 significa dobra das dimensões=1376×768, mantendo AR e~1MP.4imagens por avaliação no total, sem shuffle/versão sem adapter/Raw. Manifest1024 separado,mesmo prompt/ref/seed.512 existente reaproveitado;1024 também será feito para250/500 já disponíveis. Outputs maiores em eval/<arm>_step<N>/resolution_1024/Turbo;512 continua eval/<arm>_step<N>/Turbo.
 
 Dry-run validou16jobs de avaliação (2braços×4saves×2resoluções),continuação do run correto, geometria exatamente2×,seeds/prompts/ref iguais,Turbo+adapteronly em todos. Compilação ok; primeiro1024 real fica atrás do segmento B ativo na fila GPU serial,sem declarar paridade/VRAM1024 antes de executá-lo. Grids identificam treino512/sampling512ou1024,checkpoint,batch. Configs/manifest snapshots versionados em docs/krea2_results/2026-09-30/micro2_1000steps.
+
+## 2026-09-30 22:04 UTC — Campanha
+
+B_beta1_fixed_fp8_512_micro2_probe salvou step500; adapter local: /workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe/20260930_21-33-41/step500/adapter_model.safetensors. Sync HF contínuo ativo.
+
+Custo Krea acumulado estimado desde16:09UTC:US$3.67, inclui setup/cache/ociosidade, não é extrato.
