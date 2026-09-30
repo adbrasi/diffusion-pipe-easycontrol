@@ -172,3 +172,35 @@ vira azul; garota escura vira loira). Algumas trocas de ref afetam estilo/paleta
 atrator de cópia grosseiro neste checkpoint. **Ainda não resolve o objetivo.**
 Aguardar B e baseline strength0; continuar curto até1.000 se ambos ainda fracos.
 Média de n12/uma seed não estabelece ranking.
+
+### E1 B250 e controles sem LoRA (06:57 UTC)
+
+| checkpoint | GT_true | ref_gain | null_gain | copy_gap | copy_rate | CCIP |
+|---|---:|---:|---:|---:|---:|---:|
+| base aligned (strength0) | 0,4577 | 0,1307 | 0,2063 | −0,0155 | 0,0833 | 0,4167 |
+| A250 | 0,5099 | 0,0263 | 0,0265 | −0,1497 | 0 | 0,4167 |
+| base disjoint_w (strength0) | 0,4146 | 0,0179 | −0,0202 | −0,2304 | 0 | 0,1667 |
+| B250 | 0,5191 | 0,0543 | 0,0428 | −0,1235 | 0 | 0,4167 |
+
+n12/seed76 para todos. B250 melhora GT (+0,1045), uso de ref (+0,0364) e CCIP
+contra seu próprio baseline. A250 fica mais bonito/próximo de B, mas perde muito
+ref_gain contra o baseline. Isso é direção inicial a favor de B, **não ranking
+conclusivo** nem identidade resolvida.
+
+**Olho corrige a leitura dos baselines:** aligned sem adapter é em geral
+quadriculado/degradado e reproduz estrutura de A; o ref_gain alto dele não é
+sucesso. O único copy flag é o comic `02_ds3_006895`, A↔B dHash21, portanto não
+é falso positivo de B quase igual a A. Disjoint sem adapter gera formas planas,
+paleta esverdeada e personagens genéricos. Treino melhora os dois em qualidade.
+B250 preserva melhor o look 3D/roupa listrada no exemplo da sala de aula, mas
+continua perdendo hat/mecha vermelho/cabelo de outros casos. Seguir ambos até500.
+
+Grids locais/HF sob `artifacts/E1/B250/`, `baseline_A/`, `baseline_B/`.
+Todos os outputs true/shuffled/null individuais são salvos, não só thumbs do grid.
+
+Benchmark extra: micro2 **sem** activation checkpointing passou a512 quadrado:
+0,379s/step, 5,28 amostras/s, pico29.178MiB (contra0,516/3,88 com checkpointing).
+Margem menor; não mudei a comparação E1 no meio. Os adapters de30steps nas duas
+modalidades têm cosine0,920/relL2 0,401 nos B da LoRA: não são bit-equivalentes
+(RNG/caminho numérico podem divergir). Candidato de eficiência para run de produção,
+com novo smoke nos buckets reais; checkpointing continua necessário na alta resolução.
