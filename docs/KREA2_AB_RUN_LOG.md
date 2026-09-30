@@ -336,3 +336,9 @@ Verificação funcional mockada: uma create_pipeline/setup para4PNGs,dimensões6
 B250/B500 têm4PNGs cada,512/1024;1024 real passou no runner. Primeiro job combinado B500 apenas completou1024 faltante,tempo180.59s; não é benchmark de4imagens com uma carga,aguardar B750. B250 combinado com4PNGs existentes encerrou sem preparação de modelo.
 
 Inspeção B500: noite ainda de costas em ambasresoluções;512 eleva o binóculo acima da cabeça,1024 altera contagem para4personagens. Mecha muda perfil/composição mas ainda difere no desenho;512 mantém vermelho/preto melhor que A1000amarelo,porém são checkpoints diferentes,não comparar como seleçãofinal. DINOgt B500512=.5885 e1024=.5195,copy_rate=.5/0 respectivamente;copy_rate0 não significa ação correta. Grids/JPEG e metrics versionados para review. B500→750 resume501,LR1e-4 confirmado,~3.15s/step; A1000 concluído e preservado. Continua monitoramento até ambos1000.
+
+## 2026-09-30 22:51 UTC — Campanha
+
+B_beta1_fixed_fp8_512_micro2_probe salvou step625; adapter local: /workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe/20260930_21-33-41/step625/adapter_model.safetensors. Sync HF contínuo ativo.
+
+Custo Krea acumulado estimado desde16:09UTC:US$4.16, inclui setup/cache/ociosidade, não é extrato.
