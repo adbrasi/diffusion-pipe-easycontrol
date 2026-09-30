@@ -316,3 +316,9 @@ Custo Krea acumulado estimado desde16:09UTC:US$3.96, inclui setup/cache/ociosida
 A1000 salvo às22:31:54UTC,512keys auditadas,saída normal,LR1e-4. Mesmo run iniciado20:41,2000amostras,~1.34épocas,sem A74.4PNGs Turbo completos em512/1024. Inspeção visual: cena noturna agora FRONTAL,binóculo no centro e ambiente/paleta noturnos conservados nas duas resoluções; em512 também conserva logo do uniforme. Identidade/detalhes dos personagens diferem de B (e faces não eram visíveis na referência A de costas). Mecha agora perfil pedido,porém amarelo/gold em vez de vermelho: herança de cor/desenho segue falhando. Não declarar sucesso global nem vencedor com n=2/seed76.
 
 DINOgt A1000/512=.6628 e1024=.6022,contra A750 .4520/.5205. dHashcopy_rate=0 em ambos,noitecopy_gap=.1510/.0274; transição750→1000 mostra por que não extrapolar fracasso definitivo de checkpoint intermediário. CCIP512=.5,1024=1,sem tomar isso como prova automática de identidade. Grids/JPEG e metricsJSON A1000 nas duas resoluções versionados para review; adapter/HF em sincronização contínua. B500 preservado,runner em avaliação B250/1024 antes de B500/1024 e continuação500→1000.
+
+## 2026-09-30 22:36 UTC — Campanha
+
+Novo B_beta1_fixed/FP8/512/micro2 salvou step500, 1000 amostras; nenhum peso do A74 utilizado. Avaliando apenas Turbo antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$4.01, inclui setup/cache/ociosidade, não é extrato.
