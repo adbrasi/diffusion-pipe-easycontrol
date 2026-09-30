@@ -342,3 +342,9 @@ Inspeção B500: noite ainda de costas em ambasresoluções;512 eleva o binócul
 B_beta1_fixed_fp8_512_micro2_probe salvou step625; adapter local: /workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe/20260930_21-33-41/step625/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$4.16, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 22:57 UTC — Campanha
+
+Novo B_beta1_fixed/FP8/512/micro2 salvou step750, 1500 amostras; nenhum peso do A74 utilizado. Avaliando apenas Turbo antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$4.22, inclui setup/cache/ociosidade, não é extrato.
