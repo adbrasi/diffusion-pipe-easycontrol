@@ -102,7 +102,8 @@ def main():
         summary = {'dir': str(d), 'n': len(per), **{k: mean(k) for k in ('gt_true', 'ref_gain', 'copy_gap', 'ccip_true')},
                    'copy_rate': mean('copy')}
         (d / 'metrics.json').write_text(json.dumps({'summary': summary, 'pairs': per}, indent=2))
-        prefix = 'FP8 512 | ' if 'fp8_512' in d.parts else ''
+        prefix = ('FP8 512 | micro2 | ' if 'fp8_512_micro2' in d.parts else
+                  'FP8 512 | micro4 | ' if 'fp8_512' in d.parts else '')
         g = labeled_grid(rows, [row['stem'] for row in per], f'{prefix}{d.parent.name} | {d.name}')
         g.save(d / 'grid.png')
         print(json.dumps(summary))

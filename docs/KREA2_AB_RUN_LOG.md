@@ -142,3 +142,11 @@ Corrigido: status failed/concluído é terminal; captura de falha grava JSON e e
 Fallback autorizado por AGENTS/handoff: microbatch2 REAL,accum1,512,scaledFP8,sem swap. Dois braços novos do zero,sem A74,smokes ou A125carregados,para A/B homogêneo.500steps×2=1000amostras por braço (não2000). Novo namespace fp8_512_micro2; experimento4 arquivado. Primeiro smoke10 +resume12 em ambos,com duas legendas EXISTENTES mais longas por cada um dos6buckets AR. Não alterar captions da fonte. Depois A500→B500,grids/metrics a cada125.
 
 Custo Krea acumulado estimado desde16:09UTC:US$2.73,inclui a falha/ociosidade; não é extrato Vast.
+
+## 2026-09-30 20:40 UTC — Stress smoke micro2 aprovado e probe fresco liberado
+
+Smokes10 em12pares (2legendas existentes mais longas por cada6buckets),micro2×accum1,512,scaledFP8,swap0: A mediana2.8470s/step=0.7025amostras/s,pico25747MiB; B 3.2925s/step=0.6070amostras/s,pico25985MiB. Picos incluem776MiB da sessão Comfy do usuário,que não foi interrompida. Nenhum erro fatal. Ambos resume10→12,LR1e-4,512keys auditadas. StockLoader A real:256patches,zero unloaded keys.
+
+Teste operacional: lançar controlador antigo em estado failed termina com código0 e não agenda/commita; não há restart loop. Novo controller distingue namespaces/batches e idempotência por estágio. Micro2 usa o mesmo contrato de inferência já validado nos52PNGs A125/micro4,sem outro portão manual duplicado; geração Turbo/Raw e métricas continuam a cada125. Probes micro2 começam do zero,500steps=1000amostras cada,~0.67época,sem nenhum adapter antigo ou smoke carregado. Captions fonte SHA256 inalterado. Marcadores de parada anteriores revogados pela autorização de retomada; caminho antigoA74 continua apenas arquivo.
+
+Artefatos novos: /workspace/k2ab/artifacts/fp8_512_micro2; checkpoints em /workspace/k2ab/checkpoints/{A_native,B_beta1_fixed}_fp8_512_micro2_probe. Ordem A500→B500; backups HF ativos.

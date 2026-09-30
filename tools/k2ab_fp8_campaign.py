@@ -93,12 +93,15 @@ def main():
             for variant in ('Turbo', 'Raw'):
                 metrics += ['--dir', str(out / variant)]
             run_job(name+'_metrics', metrics, state)
-            if arm_index == 0 and step == 125:
+            if arm_index == 0 and step == 125 and MICRO_BATCH == 4:
                 # Smoke12 showed a checkerboard in the native zero-timestep
                 # contract, including stock without an adapter. Require our
                 # visual inspection of the first trained save before spending
                 # on the rest of A. This is an operator gate, not a user
                 # permission request; the user's A/B authorization stands.
+                # The micro2 recovery uses the already-validated identical
+                # inference contract; its sampling/metrics still run at every
+                # save, but it does not wait for a duplicate operator marker.
                 gate = ART / 'A125_sampling_review.ok'
                 state.update(status='awaiting_A125_sampling_review')
                 ops.atomic(ops.STATE, state)
