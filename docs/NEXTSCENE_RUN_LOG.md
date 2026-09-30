@@ -487,3 +487,9 @@ Custo estimado acumulado desde06:05 UTC: US$3.49 (5.63h × US$0.62/h; inclui set
 Concluído `eval_A_step5000_seed76` em 3.5min. 
 
 Custo estimado acumulado desde06:05 UTC: US$3.53 (5.69h × US$0.62/h; inclui setup, cache e ociosidade).
+
+### E2 — 2026-09-30 11:46 UTC
+
+Iniciando `eval_A_epoch1_seed76`. Log local: `/workspace/nextscene_artifacts/E2/eval_A_epoch1_seed76.log`.
+
+Custo estimado acumulado desde06:05 UTC: US$3.53 (5.69h × US$0.62/h; inclui setup, cache e ociosidade).
