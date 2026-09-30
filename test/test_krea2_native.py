@@ -1,0 +1,107 @@
+"""CPU tests for the krea2_native contract (stock ComfyUI Krea 2 edit path).
+
+The forward-parity test needs a checkout of the ComfyUI you run
+(>= c9602625) in KREA2_STOCK_COMFY; it is skipped otherwise.
+"""
+
+import math
+import os
+import subprocess
+import sys
+
+import pytest
+import torch
+from PIL import Image
+
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if ROOT not in sys.path:
+    sys.path.insert(0, ROOT)
+
+
+def _import():
+    if not torch.cuda.is_available() and 'comfy' not in sys.modules:
+        sys.path.insert(0, os.path.join(ROOT, 'submodules', 'ComfyUI'))
+        saved, sys.argv = sys.argv, ['pytest', '--cpu']
+        try:
+            import comfy.options
+            comfy.options.enable_args_parsing()
+            import comfy.model_management  # noqa: F401
+        finally:
+            sys.argv = saved
+            sys.path.pop(0)
+    import utils.common  # noqa: F401
+    from models import krea2_native
+    return krea2_native
+
+
+kn = _import()
+
+
+def _node_sizes(w, h):
+    # Verbatim arithmetic of comfy_extras/nodes_qwen.py::TextEncodeQwenImageEditPlus
+    s = math.sqrt(384 * 384 / (w * h))
+    vl = (round(w * s), round(h * s))
+    s = math.sqrt(1024 * 1024 / (w * h))
+    ref = (round(w * s / 8.0) * 8, round(h * s / 8.0) * 8)
+    return vl, ref
+
+
+@pytest.mark.parametrize('w,h', [(1920, 1080), (512, 768), (1000, 1000), (333, 1777), (4096, 2160)])
+def test_sizes_match_node_arithmetic(w, h):
+    vl, ref = _node_sizes(w, h)
+    assert kn.native_vl_size(w, h) == vl
+    assert kn.native_ref_size(w, h) == ref
+
+
+def test_text_layout_and_template():
+    assert kn.native_text('the same girl now sits', 1) == \
+        'Picture 1: <|vision_start|><|image_pad|><|vision_end|>the same girl now sits'
+    assert kn.native_text('x', 2).count('<|vision_start|>') == 2 and 'Picture 2: ' in kn.native_text('x', 2)
+    assert kn.native_text('x', 1, grounded=False) == 'x'
+    assert kn.QWEN_EDIT_PLUS_TEMPLATE.startswith('<|im_start|>system\nDescribe the key features of the input image')
+    assert kn.QWEN_EDIT_PLUS_TEMPLATE.endswith('<|im_start|>assistant\n')
+
+
+def test_reference_preprocess_is_node_resize(tmp_path):
+    g = torch.Generator().manual_seed(0)
+    arr = (torch.rand(300, 520, 3, generator=g) * 255).to(torch.uint8).numpy()
+    path = tmp_path / 'ref.png'
+    Image.fromarray(arr).save(path)
+    got = kn.PreprocessNativeControlFile()((None, str(path)), None, size_bucket=(512, 512))[0][0]
+    w, h = kn.native_ref_size(520, 300)
+    assert got.shape == (3, 1, h, w)
+    assert got.min() >= -1 and got.max() <= 1
+    # identical to comfy.utils.common_upscale(area) on the LoadImage tensor, mapped to [-1,1]
+    import comfy.utils
+    img = torch.from_numpy(arr).float().div(255).unsqueeze(0).movedim(-1, 1)
+    ref = comfy.utils.common_upscale(img, w, h, 'area', 'disabled')[0] * 2 - 1
+    assert torch.allclose(got[:, 0], ref, atol=1e-6)
+    vl = kn.native_vl_image(str(path))
+    assert vl.shape[1:3] == tuple(reversed(kn.native_vl_size(520, 300)))
+
+
+def test_config_guards_reject_the_broken_setups():
+    base = {'model': {'type': 'krea2_native', 'diffusion_model_dtype': 'float8'}}
+    with pytest.raises(ValueError, match='re-quantizes'):
+        kn.Krea2NativePipeline(dict(base))
+    geo = {'model': {'type': 'krea2_native'}, 'krea2_native': {'position_mode': 'width_shift'}}
+    with pytest.raises(ValueError, match='stock ComfyUI contract'):
+        kn.Krea2NativePipeline(geo)
+
+
+def test_reference_latents_may_have_their_own_grid():
+    p = object.__new__(kn.Krea2NativePipeline)
+    ref = torch.randn(1, 16, 1, 128, 96)
+    tgt = torch.randn(1, 16, 1, 64, 64)
+    assert kn.Krea2NativePipeline.prepare_reference_latents(p, ref, tgt) is ref
+
+
+@pytest.mark.skipif(not os.environ.get('KREA2_STOCK_COMFY'), reason='set KREA2_STOCK_COMFY=/path/to/ComfyUI')
+@pytest.mark.parametrize('method', ['index_timestep_zero', 'index'])
+def test_forward_parity_against_stock_comfy(tmp_path, method):
+    tool = os.path.join(ROOT, 'tools', 'krea2_native_parity.py')
+    dump = str(tmp_path / f'{method}.pt')
+    subprocess.run([sys.executable, tool, 'stock', '--comfy', os.environ['KREA2_STOCK_COMFY'],
+                    '--out', dump, '--method', method], check=True)
+    out = subprocess.run([sys.executable, tool, 'fork', '--dump', dump], capture_output=True, text=True)
+    assert out.returncode == 0 and 'PARITY OK' in out.stdout, out.stdout + out.stderr

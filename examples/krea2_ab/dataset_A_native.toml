@@ -1,0 +1,17 @@
+# Krea 2 A/B — dataset do braço A (krea2_native).
+# Mesmo conjunto de pares do braço B: next-scene filtrado (tools/nextscene_pairs.py),
+# SEM pico-banana, held-out retirado antes do cache.
+# target/ = cena 2 (+ .txt ou captions.json com tiers); control/ = cena 1 com o mesmo stem.
+# A referência é pré-processada pela regra do node (~1 MP, área, /8) e IGNORA o bucket
+# do alvo -> caching_batch_size = 1 e micro_batch_size_per_gpu = 1 (shapes por amostra).
+resolutions = [1024]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/k2ab/data/target'
+control_path = '/workspace/k2ab/data/control'
+num_repeats = 1
