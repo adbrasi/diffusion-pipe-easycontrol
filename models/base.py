@@ -292,6 +292,49 @@ class CommonPipeline:
         return img
 
 
+class ScaledFP8Linear(nn.Linear):
+    """Frozen Linear holding a ComfyUI fp8_scaled weight exactly (qdata + scale).
+
+    forward dequantizes with comfy_kitchen's own per-tensor kernel, so the base
+    the adapter trains on is bit-identical to the one ComfyUI samples with.
+    Subclasses nn.Linear so PEFT can wrap it; the weight never requires grad.
+    """
+
+    @staticmethod
+    def accepts(module):
+        w = getattr(module, 'weight', None)
+        if w is None or w.__class__.__name__ != 'QuantizedTensor':
+            return False
+        return type(w._params).__qualname__.startswith('TensorCoreFP8Layout')
+
+    @classmethod
+    def from_comfy(cls, module):
+        w = module.weight
+        bias = getattr(module, 'bias', None)
+        out_features, in_features = w.shape
+        with accelerate.init_empty_weights():
+            new = cls(in_features, out_features, bias=bias is not None)
+        new.weight = nn.Parameter(w._qdata.detach().clone(), requires_grad=False)
+        new.register_buffer('weight_scale', w._params.scale.detach().clone().float(), persistent=False)
+        new.orig_dtype = w._params.orig_dtype
+        if bias is not None:
+            b = bias.dequantize() if bias.__class__.__name__ == 'QuantizedTensor' else bias
+            new.bias = nn.Parameter(b.detach().clone(), requires_grad=False)
+        return new
+
+    def dequantized_weight(self, dtype):
+        try:
+            import comfy_kitchen as ck
+            w = ck.dequantize_per_tensor_fp8(self.weight, self.weight_scale, self.orig_dtype)
+        except Exception:
+            w = self.weight.to(self.orig_dtype) * self.weight_scale.to(self.orig_dtype)
+        return w.to(dtype)
+
+    def forward(self, x):
+        bias = None if self.bias is None else self.bias.to(x.dtype)
+        return F.linear(x, self.dequantized_weight(x.dtype), bias)
+
+
 class BasePipeline(CommonPipeline):
     def __init__(self, *args, **kwargs):
         super().__init__()
@@ -529,11 +572,25 @@ class ComfyPipeline(CommonPipeline):
 
     def dequantize(self, model, diffusion_model_dtype, name_prefix=''):
         operations = comfy.ops.disable_weight_init
+        keep_fp8_scale = self.model_config.get('base_quant', None) == 'fp8_scaled'
         for mod_name, module in model.named_children():
             full_mod_name = f'{name_prefix}{mod_name}'
+            if keep_fp8_scale and ScaledFP8Linear.accepts(module):
+                # fp8_scaled checkpoint kept EXACTLY as ComfyUI runs it: stored
+                # fp8 qdata + per-tensor scale, dequantized per forward with the
+                # same comfy_kitchen kernel. Never re-quantized (the old
+                # diffusion_model_dtype='float8' path below dropped the scale and
+                # zeroed up to ~27% of Krea 2 block weights).
+                model._modules[mod_name] = ScaledFP8Linear.from_comfy(module)
+                continue
             is_quantized = False
             for p_name, p in module.named_parameters(recurse=False):
                 if p.__class__.__name__ == 'QuantizedTensor':
+                    if diffusion_model_dtype == torch.float8_e4m3fn and not getattr(self, '_warned_fp8_rescale', False):
+                        self._warned_fp8_rescale = True
+                        print('!' * 80 + "\nWARNING: diffusion_model_dtype='float8' on a *_fp8_scaled checkpoint "
+                              "re-quantizes WITHOUT the weight_scale (lossy, zeroes small weights).\n"
+                              "Use [model] base_quant = 'fp8_scaled' to train on the exact ComfyUI base.\n" + '!' * 80)
                     module.register_parameter(p_name, nn.Parameter(p.dequantize()))
                     p = getattr(module, p_name)
                     is_quantized = True

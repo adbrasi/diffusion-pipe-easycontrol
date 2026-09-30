@@ -159,3 +159,11 @@ def test_forward_parity_against_stock_comfy(tmp_path, method):
                     '--out', dump, '--method', method], check=True)
     out = subprocess.run([sys.executable, tool, 'fork', '--dump', dump], capture_output=True, text=True)
     assert out.returncode == 0 and 'PARITY OK' in out.stdout, out.stdout + out.stderr
+
+
+def test_reference_pixels_target_uses_bucket_preprocess():
+    p = object.__new__(kn.Krea2NativePipeline)
+    p.reference_pixels = 'target'
+    assert kn.Krea2NativePipeline.get_preprocess_control_file_fn(p) is None
+    p.reference_pixels = 'node_1mp'
+    assert isinstance(kn.Krea2NativePipeline.get_preprocess_control_file_fn(p), kn.PreprocessNativeControlFile)

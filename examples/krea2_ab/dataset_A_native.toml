@@ -2,9 +2,9 @@
 # Mesmo conjunto de pares do braço B: next-scene filtrado (tools/nextscene_pairs.py),
 # SEM pico-banana, held-out retirado antes do cache.
 # target/ = cena 2 (+ .txt ou captions.json com tiers); control/ = cena 1 com o mesmo stem.
-# A referência é pré-processada pela regra do node (~1 MP, área, /8) e IGNORA o bucket
-# do alvo -> caching_batch_size = 1 e micro_batch_size_per_gpu = 1 (shapes por amostra).
-resolutions = [1024]
+# Probe a 512: reference_pixels='target' (ref no bucket do alvo) -> shapes iguais, batch real.
+# Acabamento a 1024 pode usar reference_pixels='node_1mp' (regra exata do node, micro batch 1).
+resolutions = [512]
 enable_ar_bucket = true
 min_ar = 0.5
 max_ar = 2.0

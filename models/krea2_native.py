@@ -26,7 +26,10 @@ Everything below mirrors that path; see docs/KREA2_ANALISE_METODO_2026-09.md.
 
 Base numerics: NEVER train with diffusion_model_dtype='float8' through
 models/base.py (it re-quantizes WITHOUT the fp8_scaled weight_scale and zeroes
-up to ~27% of block weights). Use 'bfloat16' (+ blocks_to_swap).
+up to ~27% of block weights). Use [model] base_quant = 'fp8_scaled' with the
+*_fp8_scaled checkpoint: qdata + scale kept and dequantized per forward exactly
+like ComfyUI (models/base.py::ScaledFP8Linear) — same speed/VRAM class as the
+quanto fp8 used by ai-toolkit / krea2edit-trainer.
 
 Text-encoder parity: the Qwen3-VL implementation must be the one of the ComfyUI
 the user runs (DeepStack/MRoPE changed after 2026-06-23). Validate with
@@ -137,17 +140,28 @@ class Krea2NativePipeline(Krea2EditPipeline):
             if key in section and section[key] != value:
                 raise ValueError(f'krea2_native fixes {key}={value!r} (stock ComfyUI contract)')
             section[key] = value
-        if config['model'].get('diffusion_model_dtype') == 'float8':
+        if str(config['model'].get('diffusion_model_dtype', '')) in ('float8', 'float8_e4m3fn', 'torch.float8_e4m3fn'):
             raise ValueError(
                 "krea2_native: diffusion_model_dtype='float8' re-quantizes the fp8_scaled base without "
-                "its weight_scale (see docs/KREA2_ANALISE_METODO_2026-09.md §1.1). Use 'bfloat16' "
-                "with blocks_to_swap."
+                "its weight_scale (see docs/KREA2_ANALISE_METODO_2026-09.md §1.1). Use base_quant = 'fp8_scaled' "
+                "(exact ComfyUI numerics, fast) or 'bfloat16'."
             )
         super().__init__(config)
         self.vl_grounding = bool(section.get('vl_grounding', True))
+        # 'node_1mp' = exact TextEncodeQwenImageEditPlus rule (~1MP, own grid;
+        #   per-sample shapes -> micro batch 1). Use for 1024 training/finishing.
+        # 'target' = reference crop-fit to the target bucket (same shape as the
+        #   target -> real micro batches). At inference the node sends ~1MP with
+        #   a ~1MP target, i.e. ref grid ~= target grid: 'target' keeps that same
+        #   relation at 512 probes. Positions/timestep are identical either way.
+        self.reference_pixels = section.get('reference_pixels', 'node_1mp')
+        if self.reference_pixels not in ('node_1mp', 'target'):
+            raise ValueError("reference_pixels must be 'node_1mp' or 'target'")
         self.vl_prompt_style = 'qwen_edit_plus'
 
     def get_preprocess_control_file_fn(self):
+        if self.reference_pixels == 'target':
+            return None  # default control preprocessing: crop-fit to the target size bucket
         return PreprocessNativeControlFile()
 
     def prepare_reference_latents(self, reference, noisy_target, timestep_quantile=None):
@@ -209,7 +223,8 @@ class Krea2NativePipeline(Krea2EditPipeline):
             ),
             'vl_prompt_layout': 'qwen_edit_plus_picture_n' if self.vl_grounding else 'none',
             'vl_image_max_pixels': str(VL_TOTAL_PIXELS) if self.vl_grounding else '0',
-            'reference_pixels': 'area_1mp_round8_own_grid',
+            'reference_pixels': ('area_1mp_round8_own_grid' if self.reference_pixels == 'node_1mp'
+                                 else 'crop_fit_target_bucket'),
         })
         return meta
 

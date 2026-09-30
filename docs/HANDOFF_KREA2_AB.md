@@ -30,19 +30,25 @@ imagem" e sem degradar a qualidade.
 | braço | contrato | inferência |
 |---|---|---|
 | **A — nativo** | `krea2_native`: ref no frame 1 (grid próprio a partir de 0), t=0, ~1 MP, texto do `TextEncodeQwenImageEditPlus`, LoRA global (blocks + txtfusion) | ComfyUI **stock**: `LoraLoaderModelOnly` + `TextEncodeQwenImageEditPlus` + `FluxKontextMultiReferenceLatentMethod('index_timestep_zero')` |
-| **B — beta1 corrigido** | `krea2_multiref_grounded` como o beta1 (routing, width_shift, t=0, grounding 384² "image 1:", txtfusion r128), com base bf16 exata, `caption_dropout` 0 e dados limpos | runner `tools/infer_reference_adapter.py` (ou node CtxRush v2 **sem** `K2 Training Base`) |
+| **B — beta1 corrigido** | `krea2_multiref_grounded` como o beta1 (routing, width_shift, t=0, grounding 384² "image 1:", txtfusion r128), com base fp8_scaled com escala (`base_quant`), `caption_dropout` 0 e dados limpos | runner `tools/infer_reference_adapter.py` (ou node CtxRush v2 **sem** `K2 Training Base`) |
 | C — reserva | A + deslocamento da ref por hook `post_input` (~15 linhas, sem trocar o forward) | só se A copiar |
 
-Tudo igual entre A e B: pares, legendas, 1024 px, 500 steps × 4 amostras, lr 1e-4,
-AdamW8bitKahan, rank 64, `flux_shift`, base bf16, seed. Os 500 steps são o pedido do
-usuário para o primeiro olhar, com checkpoints em 250 e 500.
+Tudo igual entre A e B: pares, legendas, **512 px**, 500 steps com **micro batch 4 real**
+(sem gradient accumulation; se não couber, micro 2), lr 1e-4, AdamW8bitKahan, rank 64,
+`flux_shift`, **base `fp8_scaled` com escala** (`base_quant='fp8_scaled'`), seed. Os 500 steps
+são o pedido do usuário para o primeiro olhar, com saves a cada 125. **Leia `AGENTS.md`.**
+
+> Correção (revisão do usuário): a primeira versão deste handoff pedia bf16 com block swap,
+> 1024 px e accum 4. Estava errado: é lento e caro, e o accum só mudava o que conta como step.
+> A causa da degradação do beta1 não era quantizar, era quantizar SEM a escala.
+> `ScaledFP8Linear` mantém o fp8 + a escala do checkpoint, bit-idêntico ao ComfyUI.
 
 ## 2. Setup
 
 ```bash
 git pull   # branch claude/elegant-ptolemy-8kywqy
-# Modelos (Comfy-Org/Krea-2): base bf16 EXATA — nunca diffusion_model_dtype='float8'
-huggingface-cli download Comfy-Org/Krea-2 diffusion_models/krea2_raw_bf16.safetensors \
+# Modelos (Comfy-Org/Krea-2): a MESMA base fp8_scaled do ComfyUI, treinada com base_quant='fp8_scaled'
+huggingface-cli download Comfy-Org/Krea-2 diffusion_models/krea2_raw_fp8_scaled.safetensors \
   text_encoders/qwen3vl_4b_bf16.safetensors vae/qwen_image_vae.safetensors \
   loras/krea2_turbo_lora_rank_64_bf16.safetensors --local-dir /workspace/models/krea2
 ```
@@ -90,17 +96,16 @@ huggingface-cli download Comfy-Org/Krea-2 diffusion_models/krea2_raw_bf16.safete
 NCCL_P2P_DISABLE=1 deepspeed --num_gpus=1 train.py --deepspeed --config examples/krea2_ab/A_native.toml
 NCCL_P2P_DISABLE=1 deepspeed --num_gpus=1 train.py --deepspeed --config examples/krea2_ab/B_beta1_fixed.toml
 ```
-- Smoke de 10 steps em cada braço: s/step, VRAM, audit das chaves, resume.
-- `blocks_to_swap` é o primeiro dial; bf16 exato ocupa ~26 GB só de pesos.
-  **Não** volte ao float8 para ganhar velocidade: é o bug que causou a degradação.
-- Se o bf16 + swap ficar lento demais: avalie manter o `fp8_scaled` **com a escala** (sem
-  passar pelo `dequantize()` → `.to(float8)` do `models/base.py`). Isso exige provar que o
-  gradiente da LoRA bate com o do bf16 num bloco antes de usar.
+- Smoke de 10 steps em cada braço: **amostras/s**, VRAM, audit das chaves, resume, e o log
+  confirmando que as Linears dos blocos viraram `ScaledFP8Linear`.
+- Sem block swap (fp8 ~13 GB de pesos; o conradlocke mede r64 a 512 em ~28 GB com o TE
+  residente, e aqui o TE fica em cache). Se micro 4 der OOM, micro 2, **não** accumulation.
+- **Nunca** `diffusion_model_dtype='float8'` (re-quantiza sem escala).
 - Parar com `touch <run_dir>/save_quit`, nunca SIGTERM. Conferir o LR no log em qualquer resume.
 
 ## 6. Avaliação (a decisão)
 
-- 12–16 pares held-out, 1024 px, mesma seed, em **Turbo** (8 passos, CFG 1, é o uso real
+- 12–16 pares held-out, **512 px no probe** (o mesmo do treino; a 1024 só depois de haver vencedor), mesma seed, em **Turbo** (8 passos, CFG 1, é o uso real
   do usuário) e **Raw** (~28 passos, CFG ~4–5,5).
 - **Braço A:** renderizar no ComfyUI stock via API. Workflow: blueprint + `LoraLoaderModelOnly`;
   para Raw, o negativo é `TextEncodeQwenImageEditPlus` com prompt vazio + a mesma imagem.
