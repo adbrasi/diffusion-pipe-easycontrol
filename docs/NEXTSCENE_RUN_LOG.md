@@ -403,3 +403,9 @@ Custo estimado acumulado desde06:05 UTC: US$2.37 (3.82h × US$0.62/h; inclui set
 Iniciando `train_B_epoch1`. Log local: `/workspace/nextscene_artifacts/E2/train_B_epoch1.log`.
 
 Custo estimado acumulado desde06:05 UTC: US$2.37 (3.82h × US$0.62/h; inclui setup, cache e ociosidade).
+
+### E2 — 2026-09-30 10:11 UTC
+
+`train_B_epoch1` salvou step1000 (4,000 amostras vistas). Adapter: `/workspace/checkpoints/anima_nextscene/E2_B/20260930_09-54-22/step1000`. Treino segue até o fim da época.
+
+Custo estimado acumulado desde06:05 UTC: US$2.55 (4.11h × US$0.62/h; inclui setup, cache e ociosidade).
