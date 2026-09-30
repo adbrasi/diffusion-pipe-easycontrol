@@ -571,3 +571,9 @@ Custo estimado acumulado desde06:05 UTC: US$3.75 (6.05h × US$0.62/h; inclui set
 Concluído `eval_A_step1000_seed142` em 3.5min. 
 
 Custo estimado acumulado desde06:05 UTC: US$3.79 (6.11h × US$0.62/h; inclui setup, cache e ociosidade).
+
+### E2 — 2026-09-30 12:11 UTC
+
+Iniciando `eval_A_step2000_seed142`. Log local: `/workspace/nextscene_artifacts/E2/eval_A_step2000_seed142.log`.
+
+Custo estimado acumulado desde06:05 UTC: US$3.79 (6.11h × US$0.62/h; inclui setup, cache e ociosidade).
