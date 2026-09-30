@@ -292,3 +292,9 @@ Inspeção A500/1024: saída limpa de checkerboard; cena noturna preserva ambien
 Checkpoint A750 e4PNGs completos,512/1024,somente adapter treinado/Turbo. Inspeção visual:512 quase reproduz A nos dois casos (noite ainda de costas; mecha ainda cena larga de fogo, em vez do perfil pedido). dHash copy_rate=1.0 em n=2,copy_gap=.4367,DINOgt=.4520. Em1024 mecha muda para perfil,mas estilo/identidade divergem; noite continua próxima de A. dHash1024=0 não contradiz cópia visual do cenário: métricas isoladas não bastam. DINOgt1024=.5205,copy_gap=.1853,CCIP=.5; mesma seed/dois exemplos,sem generalizar para dataset inteiro.
 
 Há sinal de polo de cópia no A nativo t_ref0 conforme hipótese do handoff. Manter a autorização atual1000 por braço para comparação homogênea; não iniciar automaticamente variante reference_timestep='target' nem modificar LR/captions. A750→1000 retomado no mesmo run. Grids em /workspace/k2ab/artifacts/fp8_512_micro2/eval/A_native_step750/Turbo/grid.png e resolution_1024/Turbo/grid.png.
+
+## 2026-09-30 22:26 UTC — Campanha
+
+A_native_fp8_512_micro2_probe salvou step875; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step875/adapter_model.safetensors. Sync HF contínuo ativo.
+
+Custo Krea acumulado estimado desde16:09UTC:US$3.90, inclui setup/cache/ociosidade, não é extrato.
