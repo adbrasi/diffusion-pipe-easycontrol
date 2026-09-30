@@ -156,3 +156,9 @@ Artefatos novos: /workspace/k2ab/artifacts/fp8_512_micro2; checkpoints em /works
 Novo A_native/FP8/512/micro2 salvou step125, 250 amostras; nenhum peso do A74 utilizado. Avaliando antes do próximo segmento.
 
 Custo Krea acumulado estimado desde16:09UTC:US$2.87, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 20:47 UTC — Campanha
+
+A_native_fp8_512_micro2_probe salvou step125; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step125/adapter_model.safetensors. Sync HF contínuo ativo.
+
+Custo Krea acumulado estimado desde16:09UTC:US$2.88, inclui setup/cache/ociosidade, não é extrato.
