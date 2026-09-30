@@ -6,7 +6,7 @@ api=HfApi();repo='AdwolfCzar/anima-nextscene-runs';statep=Path('/workspace/nexts
 state=json.loads(statep.read_text()) if statep.exists() else {}
 while True:
  try:
-  for p in sorted(Path('/workspace/checkpoints/anima_nextscene').glob('*/*/step*/adapter_model.safetensors')):
+  for p in sorted(Path('/workspace/checkpoints/anima_nextscene').glob('*/*/*/adapter_model.safetensors')):
    if time.time()-p.stat().st_mtime<15 or str(p) in state:continue
    from safetensors import safe_open
    with safe_open(p,framework='pt') as f:

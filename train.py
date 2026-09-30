@@ -943,6 +943,9 @@ if __name__ == '__main__':
 
     train_dataloader = dataset_util.PipelineDataLoader(train_data, model_engine, model_engine.gradient_accumulation_steps(), model)
     steps_per_epoch = len(train_dataloader) // model_engine.gradient_accumulation_steps()
+    if is_main_process():
+        print(f'Training schedule: {steps_per_epoch} steps/epoch, '
+              f'{global_batch_size} samples/step, {config["epochs"]} epoch(s)', flush=True)
 
     scheduler_type = config.get('lr_scheduler', 'constant')
     if scheduler_type == 'constant':

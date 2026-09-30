@@ -31,7 +31,7 @@ APPEARANCE = re.compile(r'\b(?:wearing|dressed|clad|outfit|hair|haired|skin|eyes
                         r'lighting|palette|shading|rendered|style|background)\b', re.I)
 
 
-def action_caption(caption):
+def action_caption(caption, same_subject=False):
     text = re.split(r'\b(?:Character|Background|Style) continuity:', caption, maxsplit=1)[0].strip()
     subject = SUBJECT.search(text)
     if not subject:
@@ -74,13 +74,17 @@ def action_caption(caption):
             chunk = re.split(r'\b(?:in|inside|during)\b', chunk, maxsplit=1)[0].strip()
             framing.append(chunk.strip())
     noun = subject.group().lower()
-    noun = noun if noun in ['cat', 'dog', 'bird', 'dragon', 'robot'] else 'character'
+    noun = noun if same_subject or noun in ['cat', 'dog', 'bird', 'dragon', 'robot'] else 'character'
     # Deictic "the character" omits appearance without asserting SAME identity.
-    short = (', '.join(framing) + '. ' if framing else '') + 'The ' + noun + ' is ' + ', '.join(actions) + '.'
+    prefix = 'The same ' if same_subject else 'The '
+    auxiliary = ' are ' if same_subject and noun in ['men', 'women', 'people', 'children'] else ' is '
+    short = (', '.join(framing) + '. ' if framing else '') + prefix + noun + auxiliary + ', '.join(actions) + '.'
     return short if len(short.split()) < len(caption.split()) else None
 
 
-def build_tiers(target):
+def build_tiers(target, short_repeats=1, same_subject=False):
+    if short_repeats < 1:
+        raise ValueError('short_repeats must be positive')
     captions, full_words, short_words = {}, [], []
     samples = []
     for p in sorted(Path(target).iterdir()):
@@ -92,8 +96,8 @@ def build_tiers(target):
         full = cap.read_text().strip()
         if not full:
             continue
-        short = action_caption(full)
-        captions[p.name] = [full] + ([short] if short else [])
+        short = action_caption(full, same_subject=same_subject)
+        captions[p.name] = [full] + ([short] * short_repeats if short else [])
         full_words.append(len(full.split()))
         if short:
             short_words.append(len(short.split()))
@@ -101,7 +105,8 @@ def build_tiers(target):
                 samples.append({'image': p.name, 'full': full, 'short': short})
     (Path(target) / 'captions.json').write_text(json.dumps(captions, indent=2, ensure_ascii=False))
     return {'pairs': len(captions), 'short_tier_pairs': len(short_words),
-            'cached_caption_samples': len(full_words) + len(short_words),
+            'cached_caption_samples': len(full_words) + short_repeats * len(short_words),
+            'short_repeats': short_repeats, 'same_subject': same_subject,
             'median_full_words': statistics.median(full_words) if full_words else None,
             'median_short_words': statistics.median(short_words) if short_words else None,
             'samples': samples}
@@ -111,7 +116,9 @@ if __name__ == '__main__':
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument('--target', required=True)
     ap.add_argument('--report', required=True)
+    ap.add_argument('--short-repeats', type=int, default=1)
+    ap.add_argument('--same-subject', action='store_true', help='use "The same <subject>" for continuity training')
     a = ap.parse_args()
-    report = build_tiers(a.target)
+    report = build_tiers(a.target, short_repeats=a.short_repeats, same_subject=a.same_subject)
     Path(a.report).write_text(json.dumps(report, indent=2))
     print(json.dumps({k: v for k, v in report.items() if k != 'samples'}))

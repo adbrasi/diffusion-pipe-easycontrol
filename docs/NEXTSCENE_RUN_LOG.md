@@ -290,3 +290,54 @@ vencedor visual robusto. A1000 terminou treino; avaliação e B1000 na fila.
 
 Validação pré-push:23testes relevantes passaram; scripts operacionais com
 sintaxe verificada. Grid/manifest da exportação são verificados antes do commit.
+
+### E2 — receita corrigida e uma época por braço (2026-09-30)
+
+A revisão externa considera E1 cedo demais para julgar o método. Correção
+importante da contagem: E1 realmente usou o probe de2.048pares,4.183amostras
+de captions/repeats por época;1.000steps/4.000amostras são ~0,96época desse
+recorte, não0,25. O número0,25 refere-se ao corpus completo antigo de16.263
+amostras, que não foi usado em E1. E2 aumenta cobertura para os8.761pares
+completos além da receita nova. E1 é evidência inicial de qualidade e uso
+parcial de referência, não refutação; sem vencedor/identidade resolvida.
+E1 terminou1.000steps nos dois braços, com n12/seed76.
+
+**Pedido do usuário:** uma época do dataset completo por braço, do zero.
+E2 usa8761pares-base filtrados; ds4repetido2; `[full, short, short]` nos pares
+com curta, somentefull nos demais. Amostras efetivas:22757,
+~5690steps/época antes do ajuste de buckets. Não limitar a5.000:
+uma época inteira prevalece sobre o número sugerido pelo agente de pesquisa.
+
+Mesmos parâmetros nos dois braços excetooutput_dir/rope_layout: LR1e-4,
+diff_weight=false, rank64, ref_dropout0,1, high_noise_prob0,2, micro2×accum2,
+seed42 e warmup100. Diretórios E2 separados; nenhum peso/optimizer deE1 reutilizado.
+Curtas agora usam `The same <sujeito>`, preservando o substantivo extraído.
+Fallback heurístico permanece: chave VLM expirada; não inferiu continuidade
+visual nem resolveu ambiguidades de múltiplos sujeitos. Dataset/caches isolados
+em `/workspace/ns_E2/`; E1 preservado.
+
+**Smokes7buckets:** micro2×accum2 semactivationcheckpointing deuOOM em ambos
+oslayouts (~31,3GiB). Portanto ambos E2 usamactivationcheckpointing=true.
+Smokes AC percorreram uma época de28pares/7buckets,14steps em cada braço.
+Losses finitos; adapters560keys finitas,0llm_adapter/adaln. Medianas A/B:
+1.019/1.019s/step.23testes relevantes passaram.
+Smoke de sampling comtargetAR (2pares/4denoisingsteps) passou antes do run completo;
+outputs comdimensões640×400, métricas/grids salvos em `E2/smoke/AR_sampling/`.
+
+Plano supervisionado: treinar Aepoch1→Bepoch1 sem sampling entre os braços;
+guardar adapters1000/2000/3000/4000/5000 eepoch1, estados de retomada a cada10min;
+depois avaliar1000/2000/3000/5000/epoch1 em24heldouts, seeds76/142,512pixelbudget,
+20denoisingsteps, targetAR, ref correta/shuffled/null.24pares existentes revisados
+visualmente; prompts idênticos nos braços. Diretório `/workspace/nextscene_artifacts/E2/`.
+
+Sync HF corrigido para incluir também adapters `epoch1`, além de `step*`.
+Campanha durável versionada em `tools/nextscene_gpu_ops/e2_campaign.py`, interrompe
+etapas dependentes se uma fase falhar, retoma somente o estado do próprio E2.
+Registra checkpoints/tempos/custo no log e fazcommit/push automaticamente.
+Estimativa acumulada desde06:05UTC neste momento: US$1.24 aUS$0,62/h
+(inclui setup, downloads/cache e ociosidade; não é extrato de cobrança Vast).
+
+A comparação E1→E2 muda receita e cobertura do dataset em conjunto; não permite
+atribuir o ganho a uma mudança individual. Além disso E1 usa n12/cropquadrado e
+E2 n24/targetAR: comparar médias cruas entre protocolos exige cuidado. Os dois
+braços dentro deE2 continuam diferindo somente no layout RoPE.

@@ -1,0 +1,48 @@
+output_dir = "/workspace/checkpoints/anima_nextscene/E2_smoke_B_noac"
+dataset = "examples/anima_nextscene/gpu_20260930/dataset_E2_smoke.toml"
+epochs = 1
+micro_batch_size_per_gpu = 2
+gradient_accumulation_steps = 2
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 0
+save_every_n_steps = 10
+checkpoint_every_n_minutes = 10
+activation_checkpointing = false
+save_dtype = "bfloat16"
+caching_batch_size = 8
+partition_method = "parameters"
+map_num_proc = 8
+seed = 42
+save_every_n_epochs = 1
+
+[model]
+type = "anima_nextscene"
+transformer_path = "/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors"
+vae_path = "/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors"
+llm_path = "/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors"
+dtype = "bfloat16"
+timestep_sample_method = "logit_normal"
+sigmoid_scale = 1.0
+
+[nextscene]
+rope_layout = "disjoint_w"
+ref_temporal_index = 1
+ref_dropout = 0.1
+lora_cross_attn = true
+diff_weight = false
+high_noise_prob = 0.2
+ref_hflip_prob = 0.0
+ref_noise_prob = 0.0
+
+[adapter]
+type = "lora"
+rank = 64
+dtype = "bfloat16"
+
+[optimizer]
+type = "adamw_optimi"
+lr = 0.0001
+betas = [ 0.9, 0.99,]
+weight_decay = 0.01
+eps = 1e-8
