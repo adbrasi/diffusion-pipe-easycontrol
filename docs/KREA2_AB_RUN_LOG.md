@@ -61,3 +61,9 @@ Usuário pediu parar qualquer treinamento enquanto Claude prepara mudanças. Cam
 - Estado recuperável da campanha anotado como stopped_by_user. A marca `done` do job010 indica saída normal após parada manual, não conclusão de500; não reativar controlador automaticamente a partir desse job.
 
 Custo Krea acumulado estimado desde16:09UTC: **US$1.01**, inclui setup/cache/ociosidade/teste; não é extrato Vast.
+
+### Integração com as mudanças de Claude, sem retomar execução
+
+Push inicial da parada foi rejeitado porque Claude já havia publicado8a263fc (base fp8_scaled com escala,512px,batch real e AGENTS.md). Fiz fetch, rebase do commit de parada/exportação/grid sobre esse código, li AGENTS.md inteiro e envieicecd51b. **Não executei o novo treino/receita/testes**: a parada do usuário continua vigente. Adapter A74 pertence à receita BF161024/micro1×accum4 antiga e ao worktree38c94bf, não à nova receita de Claude.
+
+Correções operacionais durante o teste: o audit stock não aceita --comfy, removi o argumento e repeti com sucesso. Reexportação determinística dos tensors usa serialização de metadata cuja ordem pode alterar o SHA256: a auditoria HF detectou o arquivo anterior, republiquei o adapter atual e confirmei SHA256 local=HF. Sem diferença nos pesos e sem retomar treino.
