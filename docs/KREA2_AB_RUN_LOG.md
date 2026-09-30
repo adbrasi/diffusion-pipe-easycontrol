@@ -230,3 +230,9 @@ Custo Krea acumulado estimado desde16:09UTC:US$3.31, inclui setup/cache/ociosida
 B_beta1_fixed_fp8_512_micro2_probe salvou step125; adapter local: /workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe/20260930_21-33-41/step125/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$3.43, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 21:47 UTC — Campanha
+
+Novo B_beta1_fixed/FP8/512/micro2 salvou step250, 500 amostras; nenhum peso do A74 utilizado. Avaliando apenas Turbo antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$3.50, inclui setup/cache/ociosidade, não é extrato.
