@@ -110,3 +110,9 @@ Custo Krea acumulado estimado desde16:09UTC:US$1.73, inclui diagnóstico/setup/o
 Novo A_native/FP8/512 salvou step125, 500 amostras; nenhum peso do A74 utilizado. Avaliando antes do próximo segmento.
 
 Custo Krea acumulado estimado desde16:09UTC:US$1.87, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 19:10 UTC — Campanha
+
+A_native_fp8_512_probe salvou step125; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_probe/20260930_18-57-31/step125/adapter_model.safetensors. Sync HF contínuo ativo.
+
+Custo Krea acumulado estimado desde16:09UTC:US$1.87, inclui setup/cache/ociosidade, não é extrato.
