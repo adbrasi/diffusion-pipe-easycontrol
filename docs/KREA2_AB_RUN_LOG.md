@@ -31,3 +31,11 @@ Runner Turbo corrigido para aplicar também os 7 diff_b oficiais (antes ignorado
 Heldout:13 pares neutros revisados visualmente,1024px com AR do target, seed76, incluindo hat/night binocular/red mecha. Review A/B em /workspace/k2ab/artifacts/heldout_neutral_review.jpg. Rating automático rejeitou frames noturnos neutros: mantidos após inspeção visual; captions explicitamente sexualizadas excluídas. Zero interseção de stems entre treino e TODOS os24heldout originais. Método de referência ablation em andamento. Outputs e métricas smokes em /workspace/k2ab/artifacts/smoke; evidência de integração, não ranking de qualidade.
 
 Custo Krea estimado desde16:09UTC até16:56UTC:US$0.49 (47min aUS$0.62/h, inclui setup/ociosidade); acumulado da instância desde06:05UTC:US$6.73. Não é extrato da Vast.
+
+## 2026-09-30 17:07 UTC — Probe A iniciado
+
+A500 do zero iniciado após gates e smokes; native worktree atualizado para38c94bf com stockfb2315f1,13testes nativos passaram. Config runtime /workspace/k2ab/artifacts/configs/A_native_probe.toml:swap20;demais parâmetros da receita preservados. Cache concluído;373steps/época,1492amostras após arredondamento dos buckets;500steps≈1.34época. OITO pares dos1500não entram no loader por divisibilidade/AR. Probe B terá os mesmos targets/captions/buckets.
+
+Ablation com/sem FluxKontextMultiReferenceLatentMethod: saídas diferentes,MAEpixel0.2842,same seed/prompt, prova de caminho VAE ativo. Arquivos /workspace/k2ab/artifacts/smoke/A_native_no_method. Smokes foram pontuados em apenas UM par e não servem para selecionar método; grids de4colunas locais. A30testes+worktreeA13testes passaram.
+
+Controller serial supervisor k2ab_campaign:segueA500→B500→A250/500stock→T2Ibase→B250/500runner→metrics. C só após revisão visual/evidência; não enfileirado. Stop_campaign interrompe agendamento futuro; trainer ativo deve sair via save_quit. Mantém dois optimizerstates recentes e latest;smokes5/10states obsoletos removidos depois do resume12validado. Checkpoints/outputs preservados. Cache A só será removido se o disco não comportarB (reprodutível,dados/configs mantidos). HFupload contínuo ativo.
