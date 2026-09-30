@@ -204,3 +204,33 @@ Margem menor; não mudei a comparação E1 no meio. Os adapters de30steps nas du
 modalidades têm cosine0,920/relL2 0,401 nos B da LoRA: não são bit-equivalentes
 (RNG/caminho numérico podem divergir). Candidato de eficiência para run de produção,
 com novo smoke nos buckets reais; checkpointing continua necessário na alta resolução.
+
+### E1 step500 e grids solicitados (07:10 UTC)
+
+n12, seed76, mesmos prompts/config do step250.
+
+| checkpoint | GT_true | ref_gain | null_gain | copy_gap | copy_rate | CCIP |
+|---|---:|---:|---:|---:|---:|---:|
+| A500 | 0.5678 | 0.0677 | 0.0798 | -0.1148 | 0.0000 | 0.4167 |
+| B500 | 0.5331 | 0.0673 | 0.0216 | -0.0944 | 0.0000 | 0.2500 |
+
+Qualidade/framing melhoram, mas identidade continua fraca: perfil/hat e mecha
+ainda viram identidade/paleta genérica. B500 preserva estilo 3D/roupa listrada
+no caso da sala de aula, enquanto shuffled/null perdem esse estilo. Esse ganho
+isolado não resolve o conjunto; não há vencedor robusto aos500. Continuação
+pareada até750/1000, com avaliação e atualização dos grids a cada250steps,
+foi enfileirada. Nenhum treino final iniciado.
+
+Pedido do usuário: A, B e resultado de **todos** os testes já concluídos.
+Montados6grids E1 de3colunas, uma comparação geral de8colunas/12pares,
+versões512px, controles shuffled/null e smoke10 separado (seed42/caption
+completa). Os benchmarks de memória/throughput não geraram imagens.
+
+Local: `/workspace/nextscene_artifacts/comparacoes/README.md` e
+`TODOS_E1_A_B_resultados{,_full}.png`. HF privado:
+https://huggingface.co/AdwolfCzar/anima-nextscene-runs/blob/main/artifacts/comparacoes/TODOS_E1_A_B_resultados.png
+
+A/B são recortados exatamente como o evaluator (512 quadrado); outputs512
+são preservados integralmente. O crop corta os frames largos, portanto uma
+validação posterior em buckets de aspecto é apropriada, sem alterar E1 atual.
+Scripts de montagem arquivados em `artifacts/setup/ops/`.
