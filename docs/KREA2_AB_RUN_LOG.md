@@ -366,3 +366,9 @@ Visual B750:512 dois personagens frontais,terceiro ainda de costas;1024 três fr
 B_beta1_fixed_fp8_512_micro2_probe salvou step875; adapter local: /workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe/20260930_21-33-41/step875/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$4.34, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 23:15 UTC — Campanha
+
+Novo B_beta1_fixed/FP8/512/micro2 salvou step1000, 2000 amostras; nenhum peso do A74 utilizado. Avaliando apenas Turbo antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$4.41, inclui setup/cache/ociosidade, não é extrato.
