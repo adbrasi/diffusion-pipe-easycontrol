@@ -119,13 +119,15 @@ def _load_krea2_clip(te_path):
 def run_te_stock(args):
     """Conditioning from the REAL node code of the ComfyUI you run."""
     _comfy_cpu_import(args.comfy)
-    sys.path.insert(0, ROOT)
     from comfy_extras.nodes_qwen import TextEncodeQwenImageEditPlus
-    from models.krea2_native import load_comfy_image  # PIL decode, same as the fork (avoid PyAV/JPEG drift)
+    from PIL import Image, ImageOps
     clip = _load_krea2_clip(args.te)
     out = []
     for image, prompt in zip(args.image, args.prompt):
-        cond = TextEncodeQwenImageEditPlus.execute(clip, prompt, None, load_comfy_image(image)).args[0]
+        pil = ImageOps.exif_transpose(Image.open(image)).convert('RGB')
+        pixels = torch.frombuffer(bytearray(pil.tobytes()), dtype=torch.uint8)
+        pixels = pixels.reshape(1, pil.height, pil.width, 3).float() / 255.0
+        cond = TextEncodeQwenImageEditPlus.execute(clip, prompt, None, pixels).args[0]
         out.append(cond[0][0].float().cpu())
     torch.save({'cond': out, 'image': args.image, 'prompt': args.prompt}, args.out)
     print(f'te-stock: {[tuple(c.shape) for c in out]} -> {args.out}')

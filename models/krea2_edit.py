@@ -202,6 +202,8 @@ class Krea2EditPipeline(Krea2ReferencePipeline):
                 lora_dropout=adapter_config['dropout'],
                 bias='none',
                 target_modules=targets,
+                rank_pattern=adapter_config.get('rank_pattern', {}),
+                alpha_pattern=adapter_config.get('alpha_pattern', {}),
             )
         elif adapter_type == 'lokr':
             peft_config = peft.LoKrConfig(

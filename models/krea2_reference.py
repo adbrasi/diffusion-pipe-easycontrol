@@ -393,7 +393,7 @@ class Krea2ReferenceInitialLayer(nn.Module):
             batch, target_length + reference_length,
             dtype=torch.bool, device=text_attention_mask.device,
         )
-        valid_keys = torch.cat([text_attention_mask, image_mask], dim=1)
+        valid_keys = torch.cat([text_attention_mask.bool(), image_mask], dim=1)
         if self.independent_condition:
             attention_mask = valid_keys[:, None, None, :].expand(
                 batch, 1, combined.shape[1], combined.shape[1]

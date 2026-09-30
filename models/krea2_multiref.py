@@ -151,7 +151,7 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
             batch, target_length + reference_length,
             dtype=torch.bool, device=text_attention_mask.device,
         )
-        valid_keys = torch.cat([text_attention_mask, image_mask], dim=1)
+        valid_keys = torch.cat([text_attention_mask.bool(), image_mask], dim=1)
         if self.independent_condition:
             attention_mask = valid_keys[:, None, None, :].expand(
                 batch, 1, combined.shape[1], combined.shape[1]
@@ -229,19 +229,12 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         ]
         if not full_names:
             raise RuntimeError('rank do txtfusion pedido mas nenhum Linear de txtfusion existe')
-        super().configure_adapter(adapter_config)
         pattern = {name: self.txtfusion_rank for name in full_names}
-        self.peft_config.rank_pattern = pattern
-        self.peft_config.alpha_pattern = dict(pattern)
-        # reconstrói com o padrão aplicado (o get_peft_model do pai já rodou
-        # com rank uniforme; PEFT não permite mutar depois)
-        import peft
-        self.lora_model = peft.get_peft_model(self.diffusion_model, self.peft_config)
+        adapter_config = dict(adapter_config, rank_pattern=pattern, alpha_pattern=dict(pattern))
+        super().configure_adapter(adapter_config)
         if is_main_process():
             print(f'[{self.name}] rank {self.txtfusion_rank} em {len(pattern)} linears do txtfusion')
             self.lora_model.print_trainable_parameters()
-        for name, parameter in self.diffusion_model.named_parameters():
-            parameter.original_name = name
 
     def get_call_vae_fn(self, vae):
         """As N referências chegam como batch do VAE; remonta no eixo de frame.

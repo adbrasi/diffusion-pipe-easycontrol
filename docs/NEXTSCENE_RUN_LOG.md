@@ -721,3 +721,8 @@ ComfyUI supervisor comfy_nextscene ativo em localhost:18818, Caddy no endpoint e
 ## 2026-09-30 15:58 UTC — Veredito visual do usuário: A/aligned
 
 Após os testes manuais no ComfyUI com referências e prompts próprios, o usuário declarou: “A aligned é melhor que B disjuinted”, e confirmou: “este é o meu veredito”. Registrar A/aligned como a escolha visual do usuário entre os dois braços. Essa escolha orienta os próximos testes manuais. Fonte: avaliação do usuário; esta mensagem não especificou checkpoint, seed ou parâmetros, nem incluiu os outputs da comparação. Os resultados anteriores de B/disjoint_w permanecem disponíveis para análise. Treinamentos continuam parados conforme solicitado.
+
+
+## 2026-09-30 16:09 UTC — Anima encerrado; vencedor A/aligned
+
+Após muitas imagens geradas, o usuário confirmou o veredito definitivo A/aligned. Treino final adiado para outro dia e dataset será refeito pelo usuário. Os 30 adapters (incluindo smokes, E1 e E2) foram conferidos por SHA256 contra o HF privado AdwolfCzar/anima-nextscene-runs, todos iguais. Preservados adapters, configs, logs, outputs/grids e dados filtrados. Limpeza autorizada removeu caches de treino, global_step* (optimizer/resume), clone duplicado ds_git, caches de download e base/TE Anima; liberou 63.88GiB. Manifest em /workspace/nextscene_artifacts/anima_cleanup_manifest.json. VAE Qwen retido em /workspace/models/krea2/vae/ para uso compartilhado, symlink ComfyUI atualizado. Base/TE Anima podem ser baixados novamente quando o projeto for retomado; estados de optimizer excluídos.

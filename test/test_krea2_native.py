@@ -96,6 +96,34 @@ def test_reference_latents_may_have_their_own_grid():
     assert kn.Krea2NativePipeline.prepare_reference_latents(p, ref, tgt) is ref
 
 
+def test_multiref_fusion_rank_preserves_condition_routing():
+    import comfy.ops
+    from comfy.ldm.krea2.model import SingleStreamDiT
+    from models.condition_lora import ConditionOnlyLoRARouter
+    from models.krea2_multiref import Krea2MultiRefGroundedPipeline
+
+    pipe = object.__new__(Krea2MultiRefGroundedPipeline)
+    pipe.diffusion_model = SingleStreamDiT(features=128, tdim=32, txtdim=32,
+        heads=4, kvheads=2, multiplier=2, layers=1, txtlayers=3,
+        txtheads=2, txtkvheads=2, operations=comfy.ops.disable_weight_init)
+    for parameter in pipe.diffusion_model.parameters():
+        torch.nn.init.normal_(parameter, std=.02)
+    pipe.txtfusion_rank = 8
+    pipe.condition_only_lora = True
+    pipe.condition_lora_router = ConditionOnlyLoRARouter(True)
+    pipe.configure_adapter(dict(type='lora', rank=4, alpha=4, dropout=0., dtype=torch.float32))
+    for name, module in pipe.diffusion_model.named_modules():
+        if hasattr(module, 'lora_A'):
+            assert module.lora_A['default'].weight.shape[0] == (8 if 'txtfusion' in name else 4)
+    module = pipe.condition_lora_router._installed[0]
+    pipe.condition_lora_router.set_reference_span(3, 5)
+    module.lora_B['default'].weight.data.fill_(.1)
+    value = torch.randn(1, 5, module.in_features)
+    delta = module(value) - module.base_layer(value)
+    assert torch.count_nonzero(delta[:, :3]) == 0
+    assert torch.count_nonzero(delta[:, 3:]) > 0
+
+
 @pytest.mark.skipif(not os.environ.get('KREA2_STOCK_COMFY'), reason='set KREA2_STOCK_COMFY=/path/to/ComfyUI')
 @pytest.mark.parametrize('method', ['index_timestep_zero', 'index'])
 def test_forward_parity_against_stock_comfy(tmp_path, method):

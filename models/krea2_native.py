@@ -38,10 +38,9 @@ import math
 import torch
 from PIL import Image, ImageOps
 
-import comfy.utils
-
 from models.krea2_edit import Krea2EditPipeline, VISION_BLOCK
 from models.krea2_reference import Krea2ReferencePipeline
+import comfy.utils
 
 # comfy_extras/nodes_qwen.py::TextEncodeQwenImageEditPlus (identical upstream @ fb2315f1)
 QWEN_EDIT_PLUS_TEMPLATE = (
