@@ -154,3 +154,21 @@ Fila serial já registrada no supervisord. Scripts operacionais copiados para
 `artifacts/setup/ops` no HF. Evaluator corrigido para não sobrescrever step250
 entre braços, salvar outputs individuais de resolução completa, prompts/config
 exatos e cabeçalho do grid.
+
+### E1 A — step250, 1.000 amostras (06:43 UTC)
+
+Throughput real com buckets: mediana 0,990 s/step, 4,04 amostras/s,
+pico 12.143 MiB. n=12, seed76, 512/20 steps, LoRA1/ref_cfg1, prompts curtos.
+GT_true0,5099; ref_gain+0,0263; null_gain+0,0265; copy_gap−0,1497;
+copy_rate0; CCIP0,4167 (CCIP em páginas/múltiplos personagens é apenas proxy).
+
+Grid: https://huggingface.co/AdwolfCzar/anima-nextscene-runs/blob/main/artifacts/E1/A250/E1_A_20260930_06-36-45_step250/grid.png
+Local: `/workspace/nextscene_artifacts/E1/A250/E1_A_20260930_06-36-45_step250/grid.png`.
+
+**Veredito visual provisório:** outputs limpos, ações/framing geralmente seguidos,
+mas identidade fraca (hat branco vira personagem de cabelo azul; mecha vermelho
+vira azul; garota escura vira loira). Algumas trocas de ref afetam estilo/paleta
+(ex. anime vs foto nos espectadores), mas não resolvem identidade/cenário. Sem
+atrator de cópia grosseiro neste checkpoint. **Ainda não resolve o objetivo.**
+Aguardar B e baseline strength0; continuar curto até1.000 se ambos ainda fracos.
+Média de n12/uma seed não estabelece ranking.
