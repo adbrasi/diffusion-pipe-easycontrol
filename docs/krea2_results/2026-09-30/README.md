@@ -45,3 +45,5 @@ copy_rate(dHash)=0 em ambos não detecta por si só a repetição de composiçã
 JSONs completos ao lado dos grids.
 
 Auditoria Raw no A125 **micro2** (não confundir com A125 micro4 anterior): [grid de CFG/steps](A125_micro2_Raw_settings_grid.jpg), [auditoria oficial](A125_micro2_Raw_configuration_audit.json), [parâmetros completos](A125_micro2_Raw_settings_manifest.json). As três linhas usam a mesma seed, checkpoint, prompt e referência. Nenhuma variante mostrou melhora consistente; Raw28/CFG5.5 permanece no A/B.
+
+A500/A750 micro2, Turbo com adapter apenas: [A500 512](A500_micro2_Turbo_sampling512.jpg), [A500 1024](A500_micro2_Turbo_sampling1024.jpg), [A750 512](A750_micro2_Turbo_sampling512.jpg), [A750 1024](A750_micro2_Turbo_sampling1024.jpg). Dois casos fixos, mesma seed. A750/512 quase copia a referência em ambos; 1024 altera o mecha, mas noite continua próxima da referência. Métricas JSON adjacentes. Meta ampliada para1000 por braço, monitoramento em andamento; sem eleger vencedor.
