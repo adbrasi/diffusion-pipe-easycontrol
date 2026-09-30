@@ -286,3 +286,9 @@ Custo Krea acumulado estimado desde16:09UTC:US$3.82, inclui setup/cache/ociosida
 Pedido explícito do usuário: acompanhar até1000. A500/B500 salvos; A retomado no mesmo run500→750,LR1e-4 confirmado,~2.8s/step (~0.72amostras/s). Primeiras inferências1024 stock passaram: A250/1024: pico24305MiB,2PNGs1376×768 completos; A500/1024: pico24305MiB,2PNGs1376×768 completos. Grids respectivos confirmados no HF privado. Sem alterar receita ou captions.
 
 Inspeção A500/1024: saída limpa de checkerboard; cena noturna preserva ambiente mas continua com três personagens de costas, apesar do prompt frontal. Mecha muda enquadramento, porém troca desenho/paleta; n=2 e mesma seed não permitem eleger método. Métricas DINOgt500/512=.4814,500/1024=.4911; não interpretar como herança completa. Sem ref_gain/adapter_gain por retirada expressa das comparações. Avaliações512/1024 previstas em750/1000 e B250/500/750/1000.
+
+## 2026-09-30 22:20 UTC — A750: cópia na resolução de treino
+
+Checkpoint A750 e4PNGs completos,512/1024,somente adapter treinado/Turbo. Inspeção visual:512 quase reproduz A nos dois casos (noite ainda de costas; mecha ainda cena larga de fogo, em vez do perfil pedido). dHash copy_rate=1.0 em n=2,copy_gap=.4367,DINOgt=.4520. Em1024 mecha muda para perfil,mas estilo/identidade divergem; noite continua próxima de A. dHash1024=0 não contradiz cópia visual do cenário: métricas isoladas não bastam. DINOgt1024=.5205,copy_gap=.1853,CCIP=.5; mesma seed/dois exemplos,sem generalizar para dataset inteiro.
+
+Há sinal de polo de cópia no A nativo t_ref0 conforme hipótese do handoff. Manter a autorização atual1000 por braço para comparação homogênea; não iniciar automaticamente variante reference_timestep='target' nem modificar LR/captions. A750→1000 retomado no mesmo run. Grids em /workspace/k2ab/artifacts/fp8_512_micro2/eval/A_native_step750/Turbo/grid.png e resolution_1024/Turbo/grid.png.
