@@ -679,3 +679,9 @@ Custo estimado acumulado desde06:05 UTC: US$4.08 (6.58h × US$0.62/h; inclui set
 Concluído `eval_B_epoch1_seed142` em 3.5min. 
 
 Custo estimado acumulado desde06:05 UTC: US$4.12 (6.64h × US$0.62/h; inclui setup, cache e ociosidade).
+
+### E2 — 2026-09-30 12:43 UTC
+
+E2 concluído: uma época em cada braço; checkpoints1000/2000/3000/5000 e epoch1 avaliados em24pares, seeds76/142, com buckets de aspecto. Métricas em `/workspace/nextscene_artifacts/E2/summary_all_seeds.csv`; outputs e grids sob `E2/eval_seed*/`. A escolha visual de checkpoint continua necessária; a campanha não declara identidade resolvida automaticamente.
+
+Custo estimado acumulado desde06:05 UTC: US$4.12 (6.64h × US$0.62/h; inclui setup, cache e ociosidade).
