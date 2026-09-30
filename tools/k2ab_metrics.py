@@ -36,7 +36,7 @@ def find(d, stem):
     return None
 
 
-def labeled_grid(rows, stems, title, cell=384):
+def labeled_grid(rows, stems, title, cell=384, columns=None):
     header, label = 64, 28
     resized_rows = []
     for row in rows:
@@ -52,7 +52,7 @@ def labeled_grid(rows, stems, title, cell=384):
     font = ImageFont.truetype('DejaVuSans.ttf', 18)
     small = ImageFont.truetype('DejaVuSans.ttf', 14)
     draw.text((8, 6), title, fill='black', font=font)
-    for column, text in enumerate(('A - referencia', 'B - proxima cena real', 'Ref certa - resultado', 'Ref trocada - resultado')):
+    for column, text in enumerate(columns or ('A - referencia', 'B - proxima cena real', 'Ref certa - resultado', 'Ref trocada - resultado')):
         draw.text((column*cell+8, 35), text, fill='black', font=font)
     y = header
     for index, (row, stem, height) in enumerate(zip(resized_rows, stems, heights)):
@@ -67,15 +67,18 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--pairs', required=True)
     ap.add_argument('--dir', action='append', required=True)
+    ap.add_argument('--compare-adapter', action='store_true')
     ap.add_argument('--copy_dhash', type=int, default=6)
     args = ap.parse_args()
     feats = Feats('cuda' if torch.cuda.is_available() else 'cpu')
     for d in map(Path, args.dir):
         rows, per = [], []
-        for out_true in sorted(d.glob('*_true.png')):
-            stem = out_true.name[:-len('_true.png')]
+        suffix = '_with_lora.png' if args.compare_adapter else '_true.png'
+        gain_key = 'adapter_gain' if args.compare_adapter else 'ref_gain'
+        for out_true in sorted(d.glob('*' + suffix)):
+            stem = out_true.name[:-len(suffix)]
             a_path, b_path = find(Path(args.pairs) / 'control', stem), find(Path(args.pairs) / 'target', stem)
-            shuf = d / f'{stem}_shuffled.png'
+            shuf = d / (f'{stem}_without_lora.png' if args.compare_adapter else f'{stem}_shuffled.png')
             if a_path is None or b_path is None or not shuf.exists():
                 print(f'skip {stem}: missing A/B/shuffled')
                 continue
@@ -86,7 +89,7 @@ def main():
             per.append({
                 'stem': stem,
                 'gt_true': float(f[2] @ f[1]),
-                'ref_gain': float(f[2] @ f[1] - f[3] @ f[1]),
+                gain_key: float(f[2] @ f[1] - f[3] @ f[1]),
                 'copy_gap': float(f[2] @ f[0] - f[1] @ f[0]),
                 'copy': int(dhash_ham(t, A) <= args.copy_dhash),
                 'ccip_true': feats.ccip_same(t, B),
@@ -99,12 +102,13 @@ def main():
         def mean(k):
             v = [p[k] for p in per if p[k] is not None]
             return round(sum(v) / len(v), 4) if v else None
-        summary = {'dir': str(d), 'n': len(per), **{k: mean(k) for k in ('gt_true', 'ref_gain', 'copy_gap', 'ccip_true')},
+        summary = {'dir': str(d), 'n': len(per), **{k: mean(k) for k in ('gt_true', gain_key, 'copy_gap', 'ccip_true')},
                    'copy_rate': mean('copy')}
         (d / 'metrics.json').write_text(json.dumps({'summary': summary, 'pairs': per}, indent=2))
         prefix = ('FP8 512 | micro2 | ' if 'fp8_512_micro2' in d.parts else
                   'FP8 512 | micro4 | ' if 'fp8_512' in d.parts else '')
-        g = labeled_grid(rows, [row['stem'] for row in per], f'{prefix}{d.parent.name} | {d.name}')
+        g = labeled_grid(rows, [row['stem'] for row in per], f'{prefix}{d.parent.name} | {d.name}',
+                         columns=('A - referencia', 'B - proxima cena real', 'Com LoRA treinada', 'Sem LoRA treinada') if args.compare_adapter else None)
         g.save(d / 'grid.png')
         print(json.dumps(summary))
 

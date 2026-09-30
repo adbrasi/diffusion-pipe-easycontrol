@@ -112,6 +112,7 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--limit', type=int, default=13)
     parser.add_argument('--variant', choices=('Turbo', 'Raw'), action='append')
+    parser.add_argument('--compare-adapter', action='store_true', help='Same reference with and without the trained adapter; no shuffled images.')
     parser.add_argument('--disable-reference-method', action='store_true')
     parser.add_argument('--t2i-base', action='store_true')
     parser.add_argument('--manifest', type=Path, default=ROOT / 'artifacts/heldout_manifest.json')
@@ -130,14 +131,19 @@ def main():
             out = args.out / variant
             out.mkdir(parents=True, exist_ok=True)
             for row in rows:
-                conditions = [('true', row['reference'])]
-                if not args.t2i_base:
-                    conditions.append(('shuffled', row['shuffled_reference']))
+                if args.compare_adapter:
+                    if not name or args.t2i_base:
+                        raise ValueError('--compare-adapter requires an adapter and image conditioning')
+                    conditions = [('with_lora', row['reference']), ('without_lora', row['reference'])]
+                else:
+                    conditions = [('true', row['reference'])]
+                    if not args.t2i_base:
+                        conditions.append(('shuffled', row['shuffled_reference']))
                 for kind, reference in conditions:
                     dest = out / f'{row["stem"]}_{kind}.png'
                     if dest.exists():
                         continue
-                    prompt = graph(row, reference, variant, name, f'{args.out.name}/{variant}/{dest.stem}',
+                    prompt = graph(row, reference, variant, None if kind == 'without_lora' else name, f'{args.out.name}/{variant}/{dest.stem}',
                                    reference_method=not args.disable_reference_method, t2i=args.t2i_base,
                                    base_model=args.base_model, reference_pixels=args.reference_pixels)
                     dest.with_suffix('.json').write_text(json.dumps(prompt, indent=2))

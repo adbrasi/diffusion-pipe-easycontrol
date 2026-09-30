@@ -188,3 +188,13 @@ Custo Krea acumulado estimado desde16:09UTC:US$3.17, inclui setup/cache/ociosida
 A_native_fp8_512_micro2_probe salvou step250; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step250/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$3.17, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 21:16 UTC — Sampling reduzido conforme pedido do usuário
+
+Novo contrato explícito: apenas Turbo nos steps250 e500 de A eB. Só comparação COM/SEM adapter treinado, mesma imagem de referência, prompt e seed; sem shuffle e sem Raw. Dois casos fixos (noite/binóculo e mecha),2 versões cada=4PNGs por checkpoint. A125 já produzido preservado. Manifest reduzido separado heldout_manifest_quick.json, sem alterar captions/dados/manifest original. Grids A|B alvo|com LoRA treinada|sem LoRA treinada. Métrica da diferença entre versões chama-se adapter_gain; não inventar ref_gain sem shuffle. Baselines extras T2I/beta1original desativados nesta campanha para economizar.
+
+Stock A: versão sem adapter omite nó LoRA treinada, mantém Turbo oficial e conditioning da mesma imagem. Runner B: contexto PEFT disable_adapter cobre todos os módulos treinados, DiT e text-fusion; mantém Turbo oficial fundida e o mesmo contrato B. Roteadores existentes respeitam disable_adapters. Teste CPU confirmou bypass/restauração PEFT; teste dos graphs stock confirmou condicionamentos, noise e schedule iguais, só LoRA treinada difere.
+
+Treino não interrompido: só scheduler reiniciado,worker/GPUjob A250 permaneceu rodando. Próximo segmento A250→500 direto (sem pausa375), checkpoints de recuperação/upload continuam125. B250 inicia fresco e segue até500. Dry-run de agendamento validou reutilização do job A250, B fresco, intervalos corretos e ausência de Raw/baselines.
+
+Esclarecimento ao usuário: ~0.72 no log era AMOSTRAS/s; microbatch2 resulta~0.36steps/s (~2.8s/step,~23min/500steps computação). Além do treino, A125 consumiu52PNGs Turbo/Raw e auditoria adicionou15Raw; também houve inicialização/cache e incidentes previamente registrados. Redução atual elimina a maior parte do sampling.

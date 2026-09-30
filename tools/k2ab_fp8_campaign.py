@@ -1,10 +1,9 @@
-"""Fresh scaled-FP8 512 A/B, serial training/evaluation at each saved adapter."""
+"""Fresh scaled-FP8 512 A/B, serial training with Turbo evaluation every 250 steps."""
 import argparse
 import json
 from pathlib import Path
 import subprocess
 import sys
-import time
 
 import toml
 
@@ -13,7 +12,7 @@ from tools import k2ab_campaign as ops
 
 ROOT = ops.ROOT
 ART = ROOT / 'artifacts/fp8_512'
-MANIFEST = ART / 'heldout_manifest.json'
+MANIFEST = ART / 'heldout_manifest_quick.json'
 ops.STATE = ART / 'campaign_state.json'
 RUN_SUFFIX = 'fp8_512'
 JOB_PREFIX = ''
@@ -25,10 +24,10 @@ def run_job(name, argv, state, cwd=ops.REPO, train_output=None):
     ops.wait_job(path, state)
 
 
-def stock_args(out, adapter=None, limit=13):
+def stock_args(out, adapter=None, limit=2):
     args = [ops.PYTHON, 'tools/k2ab_eval_stock.py', '--out', str(out),
             '--manifest', str(MANIFEST), '--base-model', 'krea2_raw_fp8_scaled.safetensors',
-            '--reference-pixels', 'target', '--limit', str(limit)]
+            '--reference-pixels', 'target', '--limit', str(limit), '--variant', 'Turbo', '--compare-adapter']
     return args + (['--adapter', str(adapter)] if adapter else ['--t2i-base'])
 
 
@@ -39,16 +38,24 @@ def main():
     if state.get('status') in ('failed', 'stopped', 'awaiting_user_visual_verdict'):
         print(f'Campaign already {state["status"]}; explicit recovery required.', flush=True)
         return
+    full_manifest = json.loads((ART / 'heldout_manifest.json').read_text())
+    selected = ['03_ds4_imagem000268', '09_ds2_000248']
+    by_stem = {row['stem']: row for row in full_manifest}
+    MANIFEST.write_text(json.dumps([by_stem[stem] for stem in selected], indent=2))
     state.setdefault('reported_stages', [])
     state.update(status='running', recipe=f'fp8_scaled_512_micro{MICRO_BATCH}_accum1', fresh=True,
-                 checkpoint_arms=[f'{arm}_{RUN_SUFFIX}_probe' for arm in ('A_native', 'B_beta1_fixed')])
+                 checkpoint_arms=[f'{arm}_{RUN_SUFFIX}_probe' for arm in ('A_native', 'B_beta1_fixed')],
+                 sampling_variants=['Turbo'], sampling_steps=[250, 500],
+                 sampling_cases=selected, images_per_checkpoint=4, extra_baselines=False, sampling_comparison='with_vs_without_adapter')
     ops.atomic(ops.STATE, state)
     for arm_index, arm in enumerate(('A_native', 'B_beta1_fixed')):
         output = ROOT / 'checkpoints' / f'{arm}_{RUN_SUFFIX}_probe'
         config = ART / 'configs' / f'{arm}_probe.toml'
         cwd = Path('/workspace/k2ab/native_worktree') if arm_index == 0 else ops.REPO
-        for stage_index, step in enumerate((125, 250, 375, 500)):
-            name = f'{JOB_PREFIX}{200+arm_index*100+stage_index*10}_{arm}_{step}'
+        for stage_index, step in enumerate((250, 500)):
+            # Keep existing queue names so an active 250-step job is reused.
+            stage_id = 210 if step == 250 else 230
+            name = f'{JOB_PREFIX}{stage_id+arm_index*100}_{arm}_{step}'
             recipe = toml.load(config)
             if recipe['micro_batch_size_per_gpu'] != MICRO_BATCH or recipe['gradient_accumulation_steps'] != 1:
                 raise RuntimeError('Campaign/config batch mismatch')
@@ -59,8 +66,8 @@ def main():
             toml.dump(recipe, stage_config.open('w'))
             args = ['/venv/main/bin/deepspeed', '--num_gpus=1', '--master_port=29601',
                     'train.py', '--deepspeed', '--config', str(stage_config)]
-            if stage_index:
-                runs = sorted(output.glob('*/latest'))
+            runs = sorted(output.glob('*/latest'))
+            if stage_index or runs:
                 if not runs:
                     raise RuntimeError(f'No recovery state for the new {arm} run')
                 args += ['--resume_from_checkpoint', runs[-1].parent.name]
@@ -76,7 +83,7 @@ def main():
                 ops.atomic(ops.STATE, state)
                 ops.note(f'Novo {arm}/FP8/512/micro{MICRO_BATCH} salvou step{step}, '
                          f'{state["samples_seen"]} amostras; nenhum peso do A74 utilizado. '
-                         'Avaliando antes do próximo segmento.')
+                         'Avaliando apenas Turbo antes do próximo segmento.')
             out = ART / 'eval' / f'{arm}_step{step}'
             if arm_index == 0:
                 ops.start_service('k2ab_stock')
@@ -85,51 +92,18 @@ def main():
                 finally:
                     subprocess.run(['supervisorctl', 'stop', 'k2ab_stock'], check=True)
             else:
-                for variant in ('Turbo', 'Raw'):
+                for variant in ('Turbo',):
                     run_job(name+'_eval_'+variant, [ops.PYTHON, 'tools/k2ab_eval_runner.py',
                         '--config', str(config), '--adapter', str(adapter.parent), '--out', str(out),
-                        '--variant', variant, '--manifest', str(MANIFEST)], state)
-            metrics = [ops.PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout')]
-            for variant in ('Turbo', 'Raw'):
+                        '--variant', variant, '--manifest', str(MANIFEST), '--limit', '2', '--compare-adapter'], state)
+            metrics = [ops.PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout'), '--compare-adapter']
+            for variant in ('Turbo',):
                 metrics += ['--dir', str(out / variant)]
             run_job(name+'_metrics', metrics, state)
-            if arm_index == 0 and step == 125 and MICRO_BATCH == 4:
-                # Smoke12 showed a checkerboard in the native zero-timestep
-                # contract, including stock without an adapter. Require our
-                # visual inspection of the first trained save before spending
-                # on the rest of A. This is an operator gate, not a user
-                # permission request; the user's A/B authorization stands.
-                # The micro2 recovery uses the already-validated identical
-                # inference contract; its sampling/metrics still run at every
-                # save, but it does not wait for a duplicate operator marker.
-                gate = ART / 'A125_sampling_review.ok'
-                state.update(status='awaiting_A125_sampling_review')
-                ops.atomic(ops.STATE, state)
-                while not gate.exists():
-                    if (ROOT / 'ops/stop_campaign').exists():
-                        raise SystemExit('Campaign stopped at the sampling gate')
-                    time.sleep(10)
-                state.update(status='running')
-                ops.atomic(ops.STATE, state)
-    ops.start_service('k2ab_stock')
-    try:
-        run_job(JOB_PREFIX+'410_fp8_T2I_base', stock_args(ART / 'eval/T2I_base'), state)
-    finally:
-        subprocess.run(['supervisorctl', 'stop', 'k2ab_stock'], check=True)
-    ops.start_service('k2ab_legacy')
-    try:
-        run_job(JOB_PREFIX+'420_beta1_original_512', [ops.PYTHON, 'tools/k2ab_eval_legacy.py',
-            '--out', str(ART / 'eval/beta1_original_step13250'), '--manifest', str(MANIFEST)], state)
-    finally:
-        subprocess.run(['supervisorctl', 'stop', 'k2ab_legacy'], check=True)
-    metrics = [ops.PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout')]
-    for variant in ('Turbo', 'Raw'):
-        metrics += ['--dir', str(ART / 'eval/beta1_original_step13250' / variant)]
-    run_job(JOB_PREFIX+'430_beta1_original_metrics', metrics, state)
     state.update(status='awaiting_user_visual_verdict', current_job=None)
     ops.atomic(ops.STATE, state)
     ops.note(f'Novo A/B FP8/512500/micro{MICRO_BATCH} completo:{500*MICRO_BATCH}amostras por braço, '
-             f'grids/metrics125/250/375/500 em {ART}/eval. '
+             f'grids/metrics Turbo250/500 em {ART}/eval. '
              'Decisão visual do usuário pendente; sem iniciar variante target ou W8A8 automaticamente.')
 
 
@@ -142,7 +116,7 @@ if __name__ == '__main__':
         RUN_SUFFIX = 'fp8_512_micro2'
         JOB_PREFIX = 'm2_'
         ART = ROOT / 'artifacts' / RUN_SUFFIX
-        MANIFEST = ART / 'heldout_manifest.json'
+        MANIFEST = ART / 'heldout_manifest_quick.json'
         ops.STATE = ART / 'campaign_state.json'
     try:
         main()
