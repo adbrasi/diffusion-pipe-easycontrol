@@ -1,0 +1,117 @@
+{
+  "summary": {
+    "dir": "/workspace/k2ab/artifacts/fp8_512/eval/A_native_step125/Raw",
+    "n": 13,
+    "gt_true": 0.5307,
+    "ref_gain": 0.0922,
+    "copy_gap": -0.0156,
+    "ccip_true": 0.5385,
+    "copy_rate": 0.0
+  },
+  "pairs": [
+    {
+      "stem": "00_ds1_bj579mxzos_image_0006",
+      "gt_true": 0.29238075017929077,
+      "ref_gain": -0.05648544430732727,
+      "copy_gap": 0.44808506965637207,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "01_ds2_002518",
+      "gt_true": 0.5268388390541077,
+      "ref_gain": 0.24077707529067993,
+      "copy_gap": 0.02132505178451538,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "03_ds4_imagem000268",
+      "gt_true": 0.4870537519454956,
+      "ref_gain": -0.1481418013572693,
+      "copy_gap": 0.17099833488464355,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "05_ds2_004723",
+      "gt_true": 0.6537858247756958,
+      "ref_gain": 0.40701013803482056,
+      "copy_gap": -0.29018259048461914,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "07_ds4_imagem000543",
+      "gt_true": 0.6632389426231384,
+      "ref_gain": 0.07864350080490112,
+      "copy_gap": 0.16236895322799683,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "08_ds1_40zjrzfdij_image_0013",
+      "gt_true": 0.6827166676521301,
+      "ref_gain": -0.10176414251327515,
+      "copy_gap": 0.09754380583763123,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "09_ds2_000248",
+      "gt_true": 0.5978006720542908,
+      "ref_gain": 0.2588203251361847,
+      "copy_gap": -0.1624555140733719,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "10_ds3_002590",
+      "gt_true": 0.5346938967704773,
+      "ref_gain": -0.12089043855667114,
+      "copy_gap": -0.21568164229393005,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "11_ds4_imagem001466",
+      "gt_true": 0.331886887550354,
+      "ref_gain": -0.0524238646030426,
+      "copy_gap": -0.10919594764709473,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "15_ds4_imagem001559",
+      "gt_true": 0.6270436644554138,
+      "ref_gain": 0.3326590657234192,
+      "copy_gap": 0.05128836631774902,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "19_ds4_imagem001451",
+      "gt_true": 0.7048417329788208,
+      "ref_gain": 0.04625046253204346,
+      "copy_gap": 0.0575508177280426,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "21_ds2_004248",
+      "gt_true": 0.4608982503414154,
+      "ref_gain": 0.1042083203792572,
+      "copy_gap": -0.5521283149719238,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "23_ds4_imagem000762",
+      "gt_true": 0.33569490909576416,
+      "ref_gain": 0.2101433277130127,
+      "copy_gap": 0.11799615621566772,
+      "copy": 0,
+      "ccip_true": true
+    }
+  ]
+}

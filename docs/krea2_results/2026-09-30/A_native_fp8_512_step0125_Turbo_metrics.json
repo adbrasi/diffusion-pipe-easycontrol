@@ -1,0 +1,117 @@
+{
+  "summary": {
+    "dir": "/workspace/k2ab/artifacts/fp8_512/eval/A_native_step125/Turbo",
+    "n": 13,
+    "gt_true": 0.4746,
+    "ref_gain": 0.0705,
+    "copy_gap": 0.0664,
+    "ccip_true": 0.4615,
+    "copy_rate": 0.0
+  },
+  "pairs": [
+    {
+      "stem": "00_ds1_bj579mxzos_image_0006",
+      "gt_true": 0.3229604959487915,
+      "ref_gain": 0.010185211896896362,
+      "copy_gap": 0.44821059703826904,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "01_ds2_002518",
+      "gt_true": 0.5135218501091003,
+      "ref_gain": 0.32435184717178345,
+      "copy_gap": 0.18980956077575684,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "03_ds4_imagem000268",
+      "gt_true": 0.3542000353336334,
+      "ref_gain": -0.32574591040611267,
+      "copy_gap": 0.13516545295715332,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "05_ds2_004723",
+      "gt_true": 0.7343412637710571,
+      "ref_gain": 0.4672635793685913,
+      "copy_gap": -0.19886982440948486,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "07_ds4_imagem000543",
+      "gt_true": 0.1916193813085556,
+      "ref_gain": -0.4432905316352844,
+      "copy_gap": 0.44747060537338257,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "08_ds1_40zjrzfdij_image_0013",
+      "gt_true": 0.5853258371353149,
+      "ref_gain": -0.18241935968399048,
+      "copy_gap": 0.03970041871070862,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "09_ds2_000248",
+      "gt_true": 0.6942897439002991,
+      "ref_gain": 0.3301469683647156,
+      "copy_gap": -0.1154535710811615,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "10_ds3_002590",
+      "gt_true": 0.6346900463104248,
+      "ref_gain": 0.11116540431976318,
+      "copy_gap": -0.15646475553512573,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "11_ds4_imagem001466",
+      "gt_true": 0.349359393119812,
+      "ref_gain": 0.16934874653816223,
+      "copy_gap": -0.1509864628314972,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "15_ds4_imagem001559",
+      "gt_true": 0.6534050107002258,
+      "ref_gain": 0.46156996488571167,
+      "copy_gap": 0.1321806013584137,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "19_ds4_imagem001451",
+      "gt_true": 0.541496753692627,
+      "ref_gain": -0.1852157711982727,
+      "copy_gap": 0.2957509160041809,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "21_ds2_004248",
+      "gt_true": 0.4607308804988861,
+      "ref_gain": 0.12878140807151794,
+      "copy_gap": -0.542542576789856,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "23_ds4_imagem000762",
+      "gt_true": 0.1338922530412674,
+      "ref_gain": 0.0503452867269516,
+      "copy_gap": 0.33898377418518066,
+      "copy": 0,
+      "ccip_true": false
+    }
+  ]
+}

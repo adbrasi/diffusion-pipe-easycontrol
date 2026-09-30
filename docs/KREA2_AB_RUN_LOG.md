@@ -116,3 +116,17 @@ Custo Krea acumulado estimado desde16:09UTC:US$1.87, inclui setup/cache/ociosida
 A_native_fp8_512_probe salvou step125; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_probe/20260930_18-57-31/step125/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$1.87, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 19:21 UTC — A fresco125: quadriculado desapareceu, gate liberado
+
+A_native_fp8_512_probe/20260930_18-57-31 terminou125steps (500amostras),sem A74 ou pesos dos smokes. Mediana5,770s/step=0,693amostras/s,pico31723MiB incluindo Comfy do usuário,batch4real,accum1,swap0,256ScaledFP8Linear;512keys auditadas,adapter já enviado ao HF. LR após warmup=1e-4. Houve avisos do allocator de tentativa de alocação que foram recuperados,sem torch.OutOfMemoryError,sem skipped steps e saída0. Não apresentar esses avisos como OOM fatal.
+
+Inspeção visual dos grids completos,13heldout,certa+trocada em Turbo e Raw (52PNG): quadriculado do smoke não visível. O aprendizado125 resolveu esse artefato sem mudar o timestep ou o workflow; reforça a hipótese de contrato zero ainda pouco adaptado no smoke12. Ainda há repetição de pose/composição (noite continua de costas),identidade e ação imperfeitas. Shuffle muda a saída para a ref trocada. Não confundir traço limpo com tarefa resolvida.
+
+Métricas n13: Turbo gt_true0.4746,ref_gain0.0705,copy_gap0.0664,CCIP0.4615; Raw gt0.5307,ref_gain0.0922,copy_gap−0.0156,CCIP0.5385. copy_rate dHash=0 em ambos,mas repetição visual de composição continua: métrica não substitui revisão. Sem vencedor; B500 ainda não começou.
+
+Portão A125 liberado para seguir a autorização A250/375/500→B125/250/375/500,sempre retomando somente estados da campanha NOVA. Grids locais /workspace/k2ab/artifacts/fp8_512/eval/A_native_step125/{Turbo,Raw}/grid.png. Versões JPEG,paridadeGPU e JSONs de métricas publicados em docs/krea2_results/2026-09-30 para review por agente que só lê GitHub. Outputs completos/HF privado contínuo.
+
+Disco: removidos somente optimizerstates obsoletos5/10 dos dois smokesFP8 depois do resume12validado,liberando5.29GiB. Latest12 e todos os adapters5/10/12 enviados ao HF foram mantidos; nenhum cache de texto/caption foi alterado.
+
+Custo Krea acumulado estimado desde16:09UTC:US$1.99,inclui setup/diagnóstico/cache/ociosidade; não é extrato Vast.
