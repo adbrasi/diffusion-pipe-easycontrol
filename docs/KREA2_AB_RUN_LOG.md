@@ -150,3 +150,9 @@ Smokes10 em12pares (2legendas existentes mais longas por cada6buckets),micro2×a
 Teste operacional: lançar controlador antigo em estado failed termina com código0 e não agenda/commita; não há restart loop. Novo controller distingue namespaces/batches e idempotência por estágio. Micro2 usa o mesmo contrato de inferência já validado nos52PNGs A125/micro4,sem outro portão manual duplicado; geração Turbo/Raw e métricas continuam a cada125. Probes micro2 começam do zero,500steps=1000amostras cada,~0.67época,sem nenhum adapter antigo ou smoke carregado. Captions fonte SHA256 inalterado. Marcadores de parada anteriores revogados pela autorização de retomada; caminho antigoA74 continua apenas arquivo.
 
 Artefatos novos: /workspace/k2ab/artifacts/fp8_512_micro2; checkpoints em /workspace/k2ab/checkpoints/{A_native,B_beta1_fixed}_fp8_512_micro2_probe. Ordem A500→B500; backups HF ativos.
+
+## 2026-09-30 20:47 UTC — Campanha
+
+Novo A_native/FP8/512/micro2 salvou step125, 250 amostras; nenhum peso do A74 utilizado. Avaliando antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$2.87, inclui setup/cache/ociosidade, não é extrato.
