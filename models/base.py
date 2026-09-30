@@ -638,6 +638,15 @@ class ComfyPipeline(CommonPipeline):
 
         diffusion_model_dtype = self.model_config.get('diffusion_model_dtype', dtype)
         self.dequantize(self.diffusion_model, diffusion_model_dtype)
+        if self.model_config.get('base_quant') == 'fp8_scaled':
+            quantized = [m for m in self.diffusion_model.modules() if isinstance(m, ScaledFP8Linear)]
+            if not quantized:
+                raise RuntimeError('base_quant=fp8_scaled converted zero Linears; verify the scaled checkpoint')
+            for module in quantized:
+                if module.weight.dtype != torch.float8_e4m3fn:
+                    raise RuntimeError(f'Scaled FP8 weight lost its storage dtype: {module.weight.dtype}')
+            print(f'base_quant=fp8_scaled: {len(quantized)} ScaledFP8Linear modules, '
+                  'weights=float8_e4m3fn, per-tensor scales preserved, matmul=bf16')
 
         self.diffusion_model.train()
         for name, p in self.diffusion_model.named_parameters():
