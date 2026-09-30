@@ -347,3 +347,17 @@ braços dentro deE2 continuam diferindo somente no layout RoPE.
 Iniciando `train_A_epoch1`. Log local: `/workspace/nextscene_artifacts/E2/train_A_epoch1.log`.
 
 Custo estimado acumulado desde06:05 UTC: US$1.27 (2.05h × US$0.62/h; inclui setup, cache e ociosidade).
+
+### E2 — loader confirmado e treino iniciado (08:19 UTC)
+
+Loader: **5685steps/época ×4 = 22740amostras**, após arredondamento dos
+buckets (estimativa anterior22.757). A iniciou updates e está no step225;
+mediana atual0.992s/step, losses finitos, GPU observada100%utilização.
+Previsão de cálculo:94.0min por braço (~3h10 ambos), além do
+cache inicial e ~1h para20avaliações (5checkpoints ×2braços ×2seeds).
+Custo estimado acumulado desde06:05UTC agora:US$1.39.
+
+Campanha supervisionada está em execução; B começa automaticamente depois
+da época deA. Confirmado push da receita/código e backup HF dos configs,
+captions exatas e smokeAR. Uma atualização remota de documentação Krea2 foi
+integrada via merge; não alterou código/configs de treino.
