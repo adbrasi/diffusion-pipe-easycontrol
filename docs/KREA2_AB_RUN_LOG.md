@@ -130,3 +130,9 @@ Portão A125 liberado para seguir a autorização A250/375/500→B125/250/375/50
 Disco: removidos somente optimizerstates obsoletos5/10 dos dois smokesFP8 depois do resume12validado,liberando5.29GiB. Latest12 e todos os adapters5/10/12 enviados ao HF foram mantidos; nenhum cache de texto/caption foi alterado.
 
 Custo Krea acumulado estimado desde16:09UTC:US$1.99,inclui setup/diagnóstico/cache/ociosidade; não é extrato Vast.
+
+## 2026-09-30 19:27 UTC — Campanha
+
+Campanha FP8 parou em erro: 210_A_native_250.job failed; inspect its log; investigar antes de seguir.
+
+Custo Krea acumulado estimado desde16:09UTC:US$2.05, inclui setup/cache/ociosidade, não é extrato.
