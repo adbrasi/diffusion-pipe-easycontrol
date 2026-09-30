@@ -1,0 +1,122 @@
+[
+  {
+    "stem": "00_ds1_bj579mxzos_image_0006",
+    "prompt": "Close-up profile view. The same character turns sharply to the left.",
+    "reference": "00_ds1_bj579mxzos_image_0006.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds1_recortados",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "15_ds4_imagem001559.jpg"
+  },
+  {
+    "stem": "07_ds4_imagem000543",
+    "prompt": "Extreme frontal close-up of the same character narrowing their eyes with a skeptical expression.",
+    "reference": "07_ds4_imagem000543.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "08_ds1_40zjrzfdij_image_0013.jpg"
+  },
+  {
+    "stem": "01_ds2_002518",
+    "prompt": "Medium shot from a low angle. The same boy yells with his arms outstretched, wielding a weapon overhead amid glowing green energy.",
+    "reference": "01_ds2_002518.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds2_poxima_v2",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "05_ds2_004723.jpg"
+  },
+  {
+    "stem": "11_ds4_imagem001466",
+    "prompt": "Close-up of the same man staring toward the camera with wide, hollow eyes and his mouth slightly parted in shock.",
+    "reference": "11_ds4_imagem001466.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "21_ds2_004248.jpg"
+  },
+  {
+    "stem": "10_ds3_002590",
+    "prompt": "Three comic panels inside the same car, moving from a side view of both passengers to a close-up of the woman smiling while driving and talking.",
+    "reference": "10_ds3_002590.jpg",
+    "width": 416,
+    "height": 624,
+    "seed": 76,
+    "subset": "ds3_comikontext",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "00_ds1_bj579mxzos_image_0006.jpg"
+  },
+  {
+    "stem": "15_ds4_imagem001559",
+    "prompt": "Extreme close-up of the same character screaming in terror underwater, eyes bulging and mouth wide open.",
+    "reference": "15_ds4_imagem001559.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "03_ds4_imagem000268.jpg"
+  },
+  {
+    "stem": "19_ds4_imagem001451",
+    "prompt": "Extreme macro close-up of the same character's eye, wide open with a tear at the lower eyelid and a slightly upward gaze.",
+    "reference": "19_ds4_imagem001451.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "09_ds2_000248.jpg"
+  },
+  {
+    "stem": "23_ds4_imagem000762",
+    "prompt": "High-angle bird's-eye wide shot of the same castle, three figures silhouetted at the large glowing entrance.",
+    "reference": "23_ds4_imagem000762.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "07_ds4_imagem000543.jpg"
+  },
+  {
+    "stem": "08_ds1_40zjrzfdij_image_0013",
+    "prompt": "Close-up of the same woman looking at the viewer, surprised and flustered, mouth slightly open.",
+    "reference": "08_ds1_40zjrzfdij_image_0013.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds1_recortados",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "01_ds2_002518.jpg"
+  },
+  {
+    "stem": "05_ds2_004723",
+    "prompt": "Medium shot. The same boy leans forward on the desk and looks down at a small paper bag while the boy opposite him looks up, surprised.",
+    "reference": "05_ds2_004723.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds2_poxima_v2",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "11_ds4_imagem001466.jpg"
+  }
+]
