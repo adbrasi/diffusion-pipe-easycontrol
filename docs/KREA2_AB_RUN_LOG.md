@@ -330,3 +330,9 @@ B250/1024 passou,2PNGs1376×768 sem erro. B512 leva~164s/job para2imagens,embora
 Runner agora aceita --manifest-1024 e reúne as duasresoluções em uma pipeline/carregamento/fusão,sem mudar matemática de forward,adapter,prompt/ref,seed76,Euler8/CFG1/mu1.15,basequant ou preprocessing. Arquivos existentes são ignorados ANTES de criar pipeline; B250 completo não recarrega o modelo. B500512 estava ativo ao editar,foi preservado; job combinado de B500 gera apenas os1024 faltantes. B750/B1000 gerarão4imagens com uma única preparação de base cada. Stock A inalterado,pois a preparação já era rápida.
 
 Verificação funcional mockada: uma create_pipeline/setup para4PNGs,dimensões688×384 e1376×768,seed76/steps8/CFG1 em todos; sem shuffle ou semadapter. Reexecução com4arquivos existentes não chama create/setup. Compilação ok. Não alegar ganho medido ou paridade numérica a partir do mock; confirmar execução real/tempo nos próximos jobs. LR e treinamento mantidos.
+
+## 2026-09-30 22:46 UTC — B500 avaliado e retomado501
+
+B250/B500 têm4PNGs cada,512/1024;1024 real passou no runner. Primeiro job combinado B500 apenas completou1024 faltante,tempo180.59s; não é benchmark de4imagens com uma carga,aguardar B750. B250 combinado com4PNGs existentes encerrou sem preparação de modelo.
+
+Inspeção B500: noite ainda de costas em ambasresoluções;512 eleva o binóculo acima da cabeça,1024 altera contagem para4personagens. Mecha muda perfil/composição mas ainda difere no desenho;512 mantém vermelho/preto melhor que A1000amarelo,porém são checkpoints diferentes,não comparar como seleçãofinal. DINOgt B500512=.5885 e1024=.5195,copy_rate=.5/0 respectivamente;copy_rate0 não significa ação correta. Grids/JPEG e metrics versionados para review. B500→750 resume501,LR1e-4 confirmado,~3.15s/step; A1000 concluído e preservado. Continua monitoramento até ambos1000.

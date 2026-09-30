@@ -49,3 +49,5 @@ Auditoria Raw no A125 **micro2** (não confundir com A125 micro4 anterior): [gri
 A500/A750 micro2, Turbo com adapter apenas: [A500 512](A500_micro2_Turbo_sampling512.jpg), [A500 1024](A500_micro2_Turbo_sampling1024.jpg), [A750 512](A750_micro2_Turbo_sampling512.jpg), [A750 1024](A750_micro2_Turbo_sampling1024.jpg). Dois casos fixos, mesma seed. A750/512 quase copia a referência em ambos; 1024 altera o mecha, mas noite continua próxima da referência. Métricas JSON adjacentes. Meta ampliada para1000 por braço, monitoramento em andamento; sem eleger vencedor.
 
 A1000 micro2: [Turbo512](A1000_micro2_Turbo_sampling512.jpg), [Turbo1024](A1000_micro2_Turbo_sampling1024.jpg). Noite agora frontal com binóculo, preservando ambiente; mecha muda enquadramento mas troca vermelho por amarelo. B ainda em andamento; comparação de dois exemplos não elege vencedor.
+
+B250/B500 micro2 também disponíveis em512 e1024 nos arquivos B<step>_micro2_Turbo_sampling<resolution>.jpg, com métricas adjacentes. B500 mantém a noite de costas;1024 adiciona personagem. Comparação homogênea1000 ainda em andamento.
