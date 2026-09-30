@@ -280,3 +280,9 @@ Custo Krea acumulado estimado desde16:09UTC:US$3.82, inclui setup/cache/ociosida
 A_native_fp8_512_micro2_probe salvou step750; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step750/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$3.82, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 22:18 UTC — Monitoramento após extensão1000
+
+Pedido explícito do usuário: acompanhar até1000. A500/B500 salvos; A retomado no mesmo run500→750,LR1e-4 confirmado,~2.8s/step (~0.72amostras/s). Primeiras inferências1024 stock passaram: A250/1024: pico24305MiB,2PNGs1376×768 completos; A500/1024: pico24305MiB,2PNGs1376×768 completos. Grids respectivos confirmados no HF privado. Sem alterar receita ou captions.
+
+Inspeção A500/1024: saída limpa de checkerboard; cena noturna preserva ambiente mas continua com três personagens de costas, apesar do prompt frontal. Mecha muda enquadramento, porém troca desenho/paleta; n=2 e mesma seed não permitem eleger método. Métricas DINOgt500/512=.4814,500/1024=.4911; não interpretar como herança completa. Sem ref_gain/adapter_gain por retirada expressa das comparações. Avaliações512/1024 previstas em750/1000 e B250/500/750/1000.
