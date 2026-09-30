@@ -1,4 +1,5 @@
 """Fresh scaled-FP8 512 A/B, serial training/evaluation at each saved adapter."""
+import argparse
 import json
 from pathlib import Path
 import subprocess
@@ -14,6 +15,9 @@ ROOT = ops.ROOT
 ART = ROOT / 'artifacts/fp8_512'
 MANIFEST = ART / 'heldout_manifest.json'
 ops.STATE = ART / 'campaign_state.json'
+RUN_SUFFIX = 'fp8_512'
+JOB_PREFIX = ''
+MICRO_BATCH = 4
 
 
 def run_job(name, argv, state, cwd=ops.REPO, train_output=None):
@@ -30,16 +34,26 @@ def stock_args(out, adapter=None, limit=13):
 
 def main():
     state = json.loads(ops.STATE.read_text()) if ops.STATE.exists() else dict(milestones=[])
-    state.update(status='running', recipe='fp8_scaled_512_micro4_accum1', fresh=True,
-                 checkpoint_arms=['A_native_fp8_512_probe', 'B_beta1_fixed_fp8_512_probe'])
+    # Terminal failure is actionable state, not permission to replay failed
+    # jobs forever under supervisor's autorestart=unexpected policy.
+    if state.get('status') in ('failed', 'awaiting_user_visual_verdict'):
+        print(f'Campaign already {state["status"]}; explicit recovery required.', flush=True)
+        return
+    state.setdefault('reported_stages', [])
+    state.update(status='running', recipe=f'fp8_scaled_512_micro{MICRO_BATCH}_accum1', fresh=True,
+                 checkpoint_arms=[f'{arm}_{RUN_SUFFIX}_probe' for arm in ('A_native', 'B_beta1_fixed')])
     ops.atomic(ops.STATE, state)
     for arm_index, arm in enumerate(('A_native', 'B_beta1_fixed')):
-        output = ROOT / 'checkpoints' / f'{arm}_fp8_512_probe'
+        output = ROOT / 'checkpoints' / f'{arm}_{RUN_SUFFIX}_probe'
         config = ART / 'configs' / f'{arm}_probe.toml'
         cwd = Path('/workspace/k2ab/native_worktree') if arm_index == 0 else ops.REPO
         for stage_index, step in enumerate((125, 250, 375, 500)):
-            name = f'{200+arm_index*100+stage_index*10}_{arm}_{step}'
+            name = f'{JOB_PREFIX}{200+arm_index*100+stage_index*10}_{arm}_{step}'
             recipe = toml.load(config)
+            if recipe['micro_batch_size_per_gpu'] != MICRO_BATCH or recipe['gradient_accumulation_steps'] != 1:
+                raise RuntimeError('Campaign/config batch mismatch')
+            if recipe['output_dir'] != str(output):
+                raise RuntimeError('Campaign/config output mismatch; refusing to mix old runs')
             recipe['max_steps'] = step
             stage_config = config.with_name(f'{arm}_through{step}.toml')
             toml.dump(recipe, stage_config.open('w'))
@@ -57,9 +71,12 @@ def main():
             adapter = adapters[-1]
             state.update(arm=arm, step=step, samples_seen=step*recipe['micro_batch_size_per_gpu'])
             ops.atomic(ops.STATE, state)
-            ops.note(f'Novo {arm}/FP8/512 salvou step{step}, '
-                     f'{state["samples_seen"]} amostras; nenhum peso do A74 utilizado. '
-                     'Avaliando antes do próximo segmento.')
+            if name not in state['reported_stages']:
+                state['reported_stages'].append(name)
+                ops.atomic(ops.STATE, state)
+                ops.note(f'Novo {arm}/FP8/512/micro{MICRO_BATCH} salvou step{step}, '
+                         f'{state["samples_seen"]} amostras; nenhum peso do A74 utilizado. '
+                         'Avaliando antes do próximo segmento.')
             out = ART / 'eval' / f'{arm}_step{step}'
             if arm_index == 0:
                 ops.start_service('k2ab_stock')
@@ -93,27 +110,37 @@ def main():
                 ops.atomic(ops.STATE, state)
     ops.start_service('k2ab_stock')
     try:
-        run_job('410_fp8_T2I_base', stock_args(ART / 'eval/T2I_base'), state)
+        run_job(JOB_PREFIX+'410_fp8_T2I_base', stock_args(ART / 'eval/T2I_base'), state)
     finally:
         subprocess.run(['supervisorctl', 'stop', 'k2ab_stock'], check=True)
     ops.start_service('k2ab_legacy')
     try:
-        run_job('420_beta1_original_512', [ops.PYTHON, 'tools/k2ab_eval_legacy.py',
+        run_job(JOB_PREFIX+'420_beta1_original_512', [ops.PYTHON, 'tools/k2ab_eval_legacy.py',
             '--out', str(ART / 'eval/beta1_original_step13250'), '--manifest', str(MANIFEST)], state)
     finally:
         subprocess.run(['supervisorctl', 'stop', 'k2ab_legacy'], check=True)
     metrics = [ops.PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout')]
     for variant in ('Turbo', 'Raw'):
         metrics += ['--dir', str(ART / 'eval/beta1_original_step13250' / variant)]
-    run_job('430_beta1_original_metrics', metrics, state)
+    run_job(JOB_PREFIX+'430_beta1_original_metrics', metrics, state)
     state.update(status='awaiting_user_visual_verdict', current_job=None)
     ops.atomic(ops.STATE, state)
-    ops.note('Novo A/B FP8/512500 completo:2000amostras por braço, '
-             'grids/metrics125/250/375/500 em /workspace/k2ab/artifacts/fp8_512/eval. '
+    ops.note(f'Novo A/B FP8/512500/micro{MICRO_BATCH} completo:{500*MICRO_BATCH}amostras por braço, '
+             f'grids/metrics125/250/375/500 em {ART}/eval. '
              'Decisão visual do usuário pendente; sem iniciar variante target ou W8A8 automaticamente.')
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--micro-batch', type=int, choices=(2, 4), default=4)
+    cli = parser.parse_args()
+    MICRO_BATCH = cli.micro_batch
+    if MICRO_BATCH == 2:
+        RUN_SUFFIX = 'fp8_512_micro2'
+        JOB_PREFIX = 'm2_'
+        ART = ROOT / 'artifacts' / RUN_SUFFIX
+        MANIFEST = ART / 'heldout_manifest.json'
+        ops.STATE = ART / 'campaign_state.json'
     try:
         main()
     except Exception as error:
@@ -121,4 +148,6 @@ if __name__ == '__main__':
         state.update(status='failed', error=str(error))
         ops.atomic(ops.STATE, state)
         ops.note(f'Campanha FP8 parou em erro: {error}; investigar antes de seguir.')
-        raise
+        # The JSON records failure, while a normal process exit prevents
+        # supervisor from repeatedly scheduling the already-failed job.
+        sys.exit(0)

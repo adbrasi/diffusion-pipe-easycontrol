@@ -51,8 +51,8 @@ def enqueue(name, argv, cwd=REPO, train_output=None):
 
 
 def prune_old_states():
-    for arm in ('A_native_probe', 'B_beta1_fixed_probe', 'A_native_fp8_512_probe', 'B_beta1_fixed_fp8_512_probe'):
-        for run in (ROOT / 'checkpoints' / arm).glob('*'):
+    for arm in (ROOT / 'checkpoints').glob('*_probe'):
+        for run in arm.glob('*'):
             latest = run / 'latest'
             if not latest.exists():
                 continue
