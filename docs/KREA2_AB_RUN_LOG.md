@@ -104,3 +104,9 @@ Inferência limitada a n=1: o quadriculado pertence ao uso do contrato zero sem 
 Grid dos controles: /workspace/k2ab/artifacts/fp8_512/diagnostic/reference_diagnostic_grid.jpg. PNGs e workflows de cada controle,paridadeGPU e receitas estão nessa árvore; sync HF privado contínuo. Confusão própria evitada: a primeira suspeita FP8/base foi descartada ao repetir BF16.
 
 Custo Krea acumulado estimado desde16:09UTC:US$1.73, inclui diagnóstico/setup/ociosidade; não é extrato Vast.
+
+## 2026-09-30 19:09 UTC — Campanha
+
+Novo A_native/FP8/512 salvou step125, 500 amostras; nenhum peso do A74 utilizado. Avaliando antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$1.87, inclui setup/cache/ociosidade, não é extrato.
