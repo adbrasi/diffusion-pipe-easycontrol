@@ -109,9 +109,11 @@ def main():
         summary = {'dir': str(d), 'n': len(per), **{k: mean(k) for k in (('gt_true', 'copy_gap', 'ccip_true') if args.adapter_only else ('gt_true', gain_key, 'copy_gap', 'ccip_true'))},
                    'copy_rate': mean('copy')}
         (d / 'metrics.json').write_text(json.dumps({'summary': summary, 'pairs': per}, indent=2))
-        prefix = ('FP8 512 | micro2 | ' if 'fp8_512_micro2' in d.parts else
-                  'FP8 512 | micro4 | ' if 'fp8_512' in d.parts else '')
-        g = labeled_grid(rows, [row['stem'] for row in per], f'{prefix}{d.parent.name} | {d.name}',
+        sample_resolution = 1024 if 'resolution_1024' in d.parts else 512
+        run_name = d.parent.parent.name if d.parent.name == 'resolution_1024' else d.parent.name
+        prefix = (f'FP8 treino512 / sampling{sample_resolution} | micro2 | ' if 'fp8_512_micro2' in d.parts else
+                  f'FP8 treino512 / sampling{sample_resolution} | micro4 | ' if 'fp8_512' in d.parts else '')
+        g = labeled_grid(rows, [row['stem'] for row in per], f'{prefix}{run_name} | {d.name}',
                          columns=(('A - referencia', 'B - proxima cena real', 'Com LoRA treinada') if args.adapter_only
                                   else ('A - referencia', 'B - proxima cena real', 'Com LoRA treinada', 'Sem LoRA treinada') if args.compare_adapter else None))
         g.save(d / 'grid.png')

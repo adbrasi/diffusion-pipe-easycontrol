@@ -1,0 +1,26 @@
+[
+  {
+    "stem": "03_ds4_imagem000268",
+    "prompt": "Medium frontal shot of three of the same spectators behind the railing, reacting with surprise; the center man holds binoculars to his face.",
+    "reference": "03_ds4_imagem000268.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "19_ds4_imagem001451.jpg"
+  },
+  {
+    "stem": "09_ds2_000248",
+    "prompt": "Extreme angled profile close-up of the same robot head, tightly framed around its eye and jaw.",
+    "reference": "09_ds2_000248.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds2_poxima_v2",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "23_ds4_imagem000762.jpg"
+  }
+]
