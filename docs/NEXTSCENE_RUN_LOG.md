@@ -95,3 +95,62 @@ Captions: chave OpenRouter existe, mas está **expirada** (HTTP401). Não houve
 custo de geração. Meu erro: script de probe continuou 12 chamadas após o primeiro
 401; deveria ter abortado ali. Usarei extração determinística de ação/framing,
 permitida no handoff, registrando cobertura e limitações; sem bloquear por API.
+
+## Marco 2 — dados e início do E1 (~06:37 UTC)
+
+Download completo. A contagem nominal do handoff não corresponde aos arquivos
+publicados: alvos ds1=2.846, ds2=4.600, ds3=2.900, ds4=1.255; no ds2 há 5.400
+refs/captions, mas faltam 800 imagens B. Pares efetivamente casados: 2.802,
+4.600, 2.893, 1.255 (11.550). Não inventei nem completei pares ausentes.
+
+Auditoria completa DINO-small em batches: ~4m24 total. Grids de fronteira com
+20 pares/subset em `/workspace/nextscene_artifacts/data/*_boundary.jpg`.
+Mantive dHash<=6 / pixel>=0,97 como filtro de duplicatas. DINO 0,35 descartava
+muitos cortes válidos da mesma obra; baixei min_dino para 0,30/0,25/0,30/0,20
+(ds1/2/3/4). O ds4 é curado e os casos de câmera nova merecem tolerância maior.
+Isso é calibração visual, não uma classificação perfeita de continuidade.
+Títulos/cartelas/frames pretos óbvios foram removidos pela caption.
+
+| subset | pares finais | repeats | mediana palavras full/short | pares com short |
+|---|---:|---:|---:|---:|
+| ds1 | 2.368 | 1 | 93 / 17 | 1.600 |
+| ds2 | 2.879 | 1 | 94 / 18 | 1.778 |
+| ds3 | 2.506 | 1 | 95 / 17 | 1.910 |
+| ds4 | 1.008 | 2 | 94 / 18 | 603 |
+
+Total 8.761 pares; captions full + short onde há ação explícita. Short via
+`tools/nextscene_captions.py` extrai ação e framing e evita inventar continuidade.
+Limitação: não identifica personagens novos/herdados como um VLM. Casos sem ação
+legível conservam só a caption original. Os relatórios guardam exemplos para revisão.
+
+Held-out retirado por stem, SHA256 de A/B e vídeo inteiro no ds1 (44 pares
+reservados para excluir vazamento por frames próximos). Em ds2/ds3/ds4 o nome
+não dá identificação de vídeo/obra; cenas semelhantes podem persistir, uma
+limitação documentada. Eval principal usa prompts curtos revisados manualmente,
+sem depender da caption exaustiva. Manifesto dos 24 prompts em
+`artifacts/data/heldout_short_manifest.json`.
+
+Rating por classificador anime_rating (amostra seed fixa de 100 B/subset):
+SFW/R15/R18 = ds1 23/5/72, ds2 87/3/10, ds3 5/11/84, ds4 85/7/8.
+Estimativa R18 ponderada por pares/repeats finais ~42% (amostra do bruto, não
+classificação exata do filtrado; incerteza amostral e do classificador). Não
+alterei o balanceamento além de repetir ds4 duas vezes.
+
+**E1:** 512 pares/subset = 2.048 pares base, ds4 repeats2. Seed42,
+512px com 7 buckets, micro2×accum2 (4 amostras/step), rank64, lr5e-5,
+warmup100, saves250. A/B só muda RoPE. Começar com 250 steps (1.000 amostras)
+e decidir continuação após grid/métricas. Cache do recorte compartilhado entre
+os braços. Nenhum resultado de E1 ainda.
+
+```bash
+source /venv/main/bin/activate
+cd /workspace/diffusion-pipe-easycontrol
+NCCL_P2P_DISABLE=1 deepspeed --num_gpus=1 train.py --deepspeed --config examples/anima_nextscene/gpu_20260930/E1_A.toml
+# mesmo comando para E1_B.toml; usar --resume_from_checkpoint para continuar
+python /workspace/nextscene_ops/eval_latest.py examples/anima_nextscene/gpu_20260930/E1_A.toml 250 /workspace/nextscene_artifacts/E1/A250
+```
+
+Fila serial já registrada no supervisord. Scripts operacionais copiados para
+`artifacts/setup/ops` no HF. Evaluator corrigido para não sobrescrever step250
+entre braços, salvar outputs individuais de resolução completa, prompts/config
+exatos e cabeçalho do grid.

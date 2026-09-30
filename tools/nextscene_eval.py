@@ -37,7 +37,7 @@ import sys
 from pathlib import Path
 
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.insert(0, ROOT)
@@ -149,12 +149,16 @@ class Runner:
 
 def grid(rows, cell=256):
     cols = max(len(r) for r in rows)
-    g = Image.new('RGB', (cols * cell, len(rows) * cell), 'white')
+    header = 28
+    g = Image.new('RGB', (cols * cell, len(rows) * cell + header), 'white')
+    draw = ImageDraw.Draw(g)
+    for j, title in enumerate(['A / reference', 'B / ground truth', 'correct reference', 'shuffled reference', 'null reference']):
+        draw.text((j * cell + 8, 8), title, fill='black')
     for i, r in enumerate(rows):
         for j, im in enumerate(r):
             im = im.copy()
             im.thumbnail((cell, cell))
-            g.paste(im, (j * cell, i * cell))
+            g.paste(im, (j * cell, i * cell + header))
     return g
 
 
@@ -199,13 +203,20 @@ def main():
     summary = []
     for ckpt in args.ckpt:
         path = run.load_ckpt(ckpt)
-        name = Path(ckpt).name if not ckpt.endswith('.safetensors') else Path(ckpt).parent.name
+        ckpt_dir = Path(path).parent
+        # Every arm has step250, step500, etc. Do not overwrite another arm's
+        # evidence when evaluating multiple checkpoints in the same invocation.
+        name = '_'.join(ckpt_dir.parts[-3:])
+        d = Path(args.out) / name
+        d.mkdir(parents=True, exist_ok=True)
         rows, per = [], []
         for i, (stem, _, _, _) in enumerate(pairs):
             j = (i + 1) % len(pairs)
             o_true = run.generate(ctxs[i], refs[i], args.seed)
             o_shuf = run.generate(ctxs[i], refs[j], args.seed)
             o_null = run.generate(ctxs[i], torch.zeros_like(refs[i]), args.seed)
+            for tag, im in [('true', o_true), ('shuffled', o_shuf), ('null', o_null)]:
+                im.save(d / f'{stem}_{tag}.png')
             f = feats.dino([o_true, o_shuf, o_null])
             m = {
                 'stem': stem,
@@ -218,9 +229,9 @@ def main():
             }
             per.append(m)
             rows.append([A[i], B[i], o_true, o_shuf, o_null])
-        d = Path(args.out) / name
-        d.mkdir(parents=True, exist_ok=True)
         grid(rows).save(d / 'grid.png')
+        (d / 'eval_config.json').write_text(json.dumps(vars(args), indent=2))
+        (d / 'prompts.json').write_text(json.dumps({stem: cap for stem, _, _, cap in pairs}, indent=2))
 
         def mean(k):
             v = [p[k] for p in per if p[k] is not None]

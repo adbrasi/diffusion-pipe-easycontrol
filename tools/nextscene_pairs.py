@@ -82,12 +82,16 @@ class Dino:
         self.model = AutoModel.from_pretrained(name).to(self.dev).eval()
 
     def cos(self, a, b):
+        return self.cos_batch([(a, b)])[0]
+
+    def cos_batch(self, pairs):
         t = self.torch
         with t.no_grad():
-            x = self.proc(images=[a.convert('RGB'), b.convert('RGB')], return_tensors='pt').to(self.dev)
+            images = [im.convert('RGB') for pair in pairs for im in pair]
+            x = self.proc(images=images, return_tensors='pt').to(self.dev)
             f = self.model(**x).last_hidden_state[:, 0]
             f = t.nn.functional.normalize(f, dim=-1)
-        return float((f[0] * f[1]).sum())
+        return (f[::2] * f[1::2]).sum(-1).cpu().tolist()
 
 
 def audit(args):
@@ -97,6 +101,21 @@ def audit(args):
     missing = len(targets) - len(stems)
     dino = Dino() if args.dino else None
     rows = []
+    pending_images, pending_rows = [], []
+
+    def flush_dino():
+        if not pending_images:
+            return
+        scores = dino.cos_batch(pending_images)
+        for row, score in zip(pending_rows, scores):
+            row['dino_cos'] = round(score, 4)
+            if row['bucket'] == 'keep' and score < args.min_dino:
+                row['bucket'] = 'unrelated'
+        for pair in pending_images:
+            for image in pair:
+                image.close()
+        pending_images.clear()
+        pending_rows.clear()
     for i, stem in enumerate(stems):
         tp, cp = targets[stem], controls[stem]
         try:
@@ -114,16 +133,28 @@ def audit(args):
             'control_caption': str(ref_cap) if ref_cap.exists() else '',
             'dhash_ham': bin(dhash(a) ^ dhash(b)).count('1'),
             'pix_sim': round(cos(thumb_vec(a), thumb_vec(b)), 4),
-            'dino_cos': round(dino.cos(a, b), 4) if dino else '',
+            'dino_cos': '',
             'words': len(caption.split()),
             'size_match': int(a.size == b.size),
         }
         near_dup = row['dhash_ham'] <= args.min_dhash or row['pix_sim'] >= args.max_pix_sim
-        unrelated = dino is not None and row['dino_cos'] < args.min_dino
-        row['bucket'] = 'near_dup' if near_dup else ('unrelated' if unrelated else 'keep')
+        row['bucket'] = 'near_dup' if near_dup else 'keep'
         rows.append(row)
+        if dino:
+            # DINO resizes to 224px anyway; keep only small thumbnails between
+            # forwards so large source images cannot exhaust host memory.
+            a.thumbnail((448, 448)); b.thumbnail((448, 448))
+            pending_images.append((a, b)); pending_rows.append(row)
+            if len(pending_images) >= args.dino_batch_size:
+                flush_dino()
+        else:
+            a.close(); b.close()
         if (i + 1) % 500 == 0:
             print(f'{i + 1}/{len(stems)}', file=sys.stderr)
+
+    flush_dino()
+    if not rows:
+        raise ValueError('No readable matched pairs found')
 
     with open(args.out, 'w', newline='') as f:
         w = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
@@ -186,6 +217,7 @@ def main():
     a.add_argument('--control', required=True)
     a.add_argument('--out', required=True)
     a.add_argument('--dino', action='store_true', help='also compute DINOv2 relatedness (needs transformers)')
+    a.add_argument('--dino-batch-size', type=int, default=16, help='pairs per DINO forward (2 images each)')
     a.add_argument('--min-dhash', type=int, default=6, help='<= this Hamming distance (of 64) = near-duplicate')
     a.add_argument('--max-pix-sim', type=float, default=0.97, help='>= this thumbnail cosine = near-duplicate')
     a.add_argument('--min-dino', type=float, default=0.35, help='< this DINO cosine = unrelated (with --dino)')
