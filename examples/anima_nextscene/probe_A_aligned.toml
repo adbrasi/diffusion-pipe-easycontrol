@@ -1,0 +1,56 @@
+# anima_nextscene PROBE A_aligned — the single-variable geometry A/B.
+# A_aligned   : reference on the SAME (h,w) grid as the target (old IC-LoRA geometry,
+#               positional kernel 0.987 = "pixel-aligned overlay" -> copy attractor)
+# B_disjoint_w: reference moved one full frame along width (AnimaRefLora / Stand-In / UNO)
+# Everything else is IDENTICAL between the two files — only rope_layout differs.
+# Judge with tools/nextscene_eval.py on 16-24 held-out pairs at every save (ref_gain,
+# copy_rate, copy_gap, ccip) AND by eye on the grids. ~2500 steps x 4 samples.
+
+output_dir = '/workspace/checkpoints/anima_nextscene/probe_A_aligned'
+dataset = 'examples/anima_nextscene/dataset.toml'
+epochs = 1000
+max_steps = 2500
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 100
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 60
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 4
+partition_method = 'parameters'
+
+[model]
+type = 'anima_nextscene'
+# Anima Base v1.0 — every working community adapter is verified on it (not preview2).
+transformer_path = '/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors'
+vae_path = '/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors'
+llm_path = '/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors'
+dtype = 'bfloat16'
+timestep_sample_method = 'logit_normal'
+sigmoid_scale = 1.0          # no training shift (official Anima advice); shift 3 only at inference
+
+[nextscene]
+rope_layout = 'aligned'
+ref_temporal_index = 1
+ref_dropout = 0.1            # trained null -> ref_cfg dial; also blocks "ref always there" coupling
+lora_cross_attn = true       # Round-1 winner scope (self_attn + mlp + cross_attn); llm_adapter/adaln never
+diff_weight = true           # copied regions weigh 0.2, changed regions > 1 (mean kept at 1)
+high_noise_prob = 0.2        # 20% of steps at sigma in [0.8, 1]: the band that decides composition
+ref_hflip_prob = 0.0
+ref_noise_prob = 0.0
+
+[adapter]
+type = 'lora'
+rank = 64
+alpha = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'adamw_optimi'
+lr = 5e-5
+betas = [0.9, 0.99]
+weight_decay = 0.01
+eps = 1e-8

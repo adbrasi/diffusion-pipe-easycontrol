@@ -66,8 +66,8 @@ def parse_args():
     p.add_argument("--llm", required=True, help="Qwen3-0.6B (dir or safetensors)")
     p.add_argument("--lora", default=None, help="LoRA safetensors (EasyControl or levzzz style)")
     p.add_argument("--control_image", default=None, help="Control image (required if --lora is set)")
-    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ic_lora_routed", "ic_lora_dual", "routed_targetfirst", "ominicontrol", "ominicontrol_subject"],
-                   help="Control mode: easycontrol, levzzz, ic_lora, ic_lora_full (ref_first), ominicontrol (spatial), ominicontrol_subject, auto (detect)")
+    p.add_argument("--mode", default="auto", choices=["auto", "easycontrol", "levzzz", "ic_lora", "ic_lora_full", "ic_lora_routed", "ic_lora_dual", "routed_targetfirst", "ominicontrol", "ominicontrol_subject", "nextscene"],
+                   help="Control mode: nextscene (anima_nextscene adapters, geometry read from the adapter metadata), easycontrol, levzzz, ic_lora, ic_lora_full (ref_first), ominicontrol (spatial), ominicontrol_subject, auto (detect)")
     p.add_argument("--skip_adaln", action="store_true", default=False,
                    help="Skip LoRA on adaln_modulation layers (smoother strength control, matches LTX-2)")
     p.add_argument("--prompt", required=True)
@@ -82,6 +82,16 @@ def parse_args():
                    help="PEFT LoRA merge scale for ic_lora/ominicontrol modes (0.0 = base model + ref, honest baseline)")
     p.add_argument("--ref_cfg", type=float, default=1.0,
                    help="Guidance da REFERENCIA (3 branches, independente do --cfg do texto). 0 = sem guidance de ref.")
+    p.add_argument("--uncond_ref", default="keep", choices=["keep", "zero"],
+                   help="nextscene: reference in the negative/uncond branch. keep = text-only CFG "
+                        "(Cosmos Video2World / Qwen-Image-Edit convention); zero = ref only in the positive "
+                        "(amplifies the ref by --cfg)")
+    p.add_argument("--rope_layout", default=None,
+                   help="nextscene: override the adapter's RoPE layout (aligned|disjoint_w|disjoint_h|disjoint_diag)")
+    p.add_argument("--ref_temporal_index", type=int, default=None,
+                   help="nextscene: override the adapter's reference temporal index")
+    p.add_argument("--ref_renoise", type=float, default=0.0,
+                   help="nextscene: LTX-style reference re-noising, s = ref_renoise * sigma_t^2 (diagnostic anti-copy dial)")
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--save_path", default="./outputs", help="Output directory")
     p.add_argument("--vae_chunk_size", type=int, default=None)
@@ -408,6 +418,91 @@ def sample_ic_lora_full(
         latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
 
     return latents
+
+
+# ============================================================================
+# Anima Next-Scene sampling (models/anima_nextscene.py contract)
+# ============================================================================
+
+def read_nextscene_contract(lora_path):
+    """Geometry contract stored in the adapter header by AnimaNextScenePipeline."""
+    from safetensors import safe_open
+    from models.anima_nextscene import contract_from_metadata
+    with safe_open(lora_path, framework="pt") as f:
+        return contract_from_metadata(f.metadata())
+
+
+def combine_nextscene(cond, neg, zero_ref, cfg, ref_cfg):
+    """pred = n + cfg*(c - n) + (ref_cfg - 1)*(c - z)
+
+    c = f(positive, ref)   n = f(negative, ref or zeros per --uncond_ref)
+    z = f(positive, ref=zeros)  (trained null via ref_dropout)
+    ref_cfg = 1 -> plain text CFG with the reference present in both branches.
+    """
+    pred = cond if neg is None else neg + cfg * (cond - neg)
+    if zero_ref is not None and ref_cfg != 1.0:
+        pred = pred + (ref_cfg - 1.0) * (cond - zero_ref)
+    return pred
+
+
+@torch.no_grad()
+def sample_nextscene(
+    dit, pos_context, neg_context,
+    control_latents, height, width, steps, cfg, flow_shift, seed, device, dtype,
+    ref_cfg=1.0, uncond_ref="keep", ref_renoise=0.0,
+):
+    """Target-first [noisy_target | clean_ref], per-frame t = [sigma, ref_t].
+    The RoPE layout must already be installed on dit.pos_embedder."""
+    latent_h, latent_w = height // 8, width // 8
+    gen = torch.Generator(device="cpu").manual_seed(seed)
+    from diffusers.utils.torch_utils import randn_tensor
+    latents = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
+    ref_noise = randn_tensor((1, 16, 1, latent_h, latent_w), generator=gen, device=device, dtype=torch.bfloat16)
+    padding_mask = torch.zeros(1, 1, latent_h, latent_w, dtype=torch.bfloat16, device=device)
+
+    timesteps, sigmas = get_timesteps_sigmas(steps, flow_shift, device)
+    timesteps = (timesteps / 1000).to(device, dtype=torch.bfloat16)
+
+    ref = control_latents.to(device, torch.bfloat16)
+    zeros = torch.zeros_like(ref)
+    do_cfg = cfg > 1.0 and neg_context is not None
+
+    def _fwd(x_t, ref_in, t_ref, context):
+        x = torch.cat([x_t, ref_in], dim=2)
+        t_frames = torch.stack([t_cur, t_ref], dim=1)
+        with torch.autocast('cuda', dtype=torch.bfloat16):
+            out = dit(x, t_frames, context, padding_mask=padding_mask)
+        return out[:, :, :1]
+
+    for step_i in tqdm(range(steps), desc="Sampling (nextscene)"):
+        t_cur = timesteps[step_i].unsqueeze(0)
+        s = float(ref_renoise) * float(t_cur) ** 2
+        ref_in = ref if s <= 0 else (1 - s) * ref + s * ref_noise
+        t_ref = torch.full_like(t_cur, s)
+        t_zero = torch.zeros_like(t_cur)
+
+        c = _fwd(latents, ref_in, t_ref, pos_context)
+        n = None
+        if do_cfg:
+            n = _fwd(latents, ref_in if uncond_ref == "keep" else zeros,
+                     t_ref if uncond_ref == "keep" else t_zero, neg_context)
+        z = _fwd(latents, zeros, t_zero, pos_context) if ref_cfg != 1.0 else None
+        noise_pred = combine_nextscene(c, n, z, cfg if do_cfg else 1.0, ref_cfg)
+        latents = euler_step(latents, noise_pred, sigmas, step_i).to(latents.dtype)
+    return latents
+
+
+def install_nextscene_geometry(dit, lora_path, rope_layout=None, ref_temporal_index=None):
+    from models.anima_nextscene import install_nextscene_rope
+    contract = read_nextscene_contract(lora_path) if lora_path else None
+    layout = rope_layout or (contract or {}).get("rope_layout")
+    index = ref_temporal_index if ref_temporal_index is not None else (contract or {}).get("ref_temporal_index")
+    if layout is None or index is None:
+        raise SystemExit("nextscene: adapter has no nextscene_contract metadata; pass --rope_layout and --ref_temporal_index")
+    install_nextscene_rope(dit.pos_embedder, layout, int(index))
+    print(f"  nextscene geometry: rope_layout={layout} ref_temporal_index={index}"
+          + ("" if contract else "  (from CLI, no contract in adapter)"))
+    return layout, int(index)
 
 
 # ============================================================================
@@ -935,6 +1030,8 @@ def main():
             sd_check = load_safetensors(args.lora, device='cpu')
             has_ec_keys = any('q_loras' in k or 'k_loras' in k for k in sd_check.keys())
             mode = "easycontrol" if has_ec_keys else "levzzz"
+            if read_nextscene_contract(args.lora) is not None:
+                mode = "nextscene"
             del sd_check
             print(f"Auto-detected mode: {mode}")
 
@@ -946,7 +1043,7 @@ def main():
             routed_entries = load_routed_lora_entries(dit, args.lora, device, dtype)
         elif mode == "ic_lora_dual":
             routed_entries = load_routed_lora_entries(dit, args.lora, device, dtype, with_paths=True)
-        elif mode in ("levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject"):
+        elif mode in ("levzzz", "ic_lora", "ic_lora_full", "ominicontrol", "ominicontrol_subject", "nextscene"):
             dit = load_peft_lora(dit, args.lora, device, dtype, skip_adaln=args.skip_adaln,
                                  lora_strength=args.lora_strength)
     else:
@@ -1007,6 +1104,15 @@ def main():
             control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
             device, dtype,
             control_strength=args.control_strength,
+        )
+    elif mode == "nextscene" and control_latents is not None:
+        install_nextscene_geometry(dit, args.lora, args.rope_layout, args.ref_temporal_index)
+        print(f"  Mode: nextscene (cfg={args.cfg}, ref_cfg={args.ref_cfg}, uncond_ref={args.uncond_ref}, "
+              f"ref_renoise={args.ref_renoise})")
+        latents = sample_nextscene(
+            dit, pos_context, neg_context,
+            control_latents, args.height, args.width, args.steps, args.cfg, args.flow_shift, args.seed,
+            device, dtype, ref_cfg=args.ref_cfg, uncond_ref=args.uncond_ref, ref_renoise=args.ref_renoise,
         )
     elif mode == "ic_lora" and control_latents is not None:
         print(f"  Mode: IC-LoRA (per-token timestep)")

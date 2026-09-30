@@ -366,6 +366,9 @@ if __name__ == '__main__':
     elif model_type == 'raiz_iclora':
         from models import ic_lora_dual
         model = ic_lora_dual.RaizICLoraPipeline(config)
+    elif model_type == 'anima_nextscene':
+        from models import anima_nextscene
+        model = anima_nextscene.AnimaNextScenePipeline(config)
     elif model_type == 'ic_lora_full':
         from models import ic_lora_full
         model = ic_lora_full.ICLoraFullPipeline(config)

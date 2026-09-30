@@ -1,0 +1,30 @@
+# anima_nextscene — dataset (diffusion-pipe edit layout).
+# target/  = scene 2 (image + .txt caption, or captions.json with several caption tiers)
+# control/ = scene 1 (reference), SAME stem as the target.
+# Build the tree with tools/nextscene_pairs.py (drops near-duplicates = copy lessons;
+# --reverse adds B->A pairs when the reference has its own caption).
+#
+# Caption tiers (strongly recommended, see docs/ANIMA_NEXTSCENE_PESQUISA_2026-09.md §6):
+# put a captions.json in the target dir mapping "<file name>" -> ["full description",
+# "short change-only caption", ...]. Each caption becomes its own cached sample, so the
+# same pair is seen with rich AND terse text — the loss only closes if what is missing
+# from the text comes from the reference.
+
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/ns_filtered/target'
+control_path = '/workspace/ns_filtered/control'
+caption_ext = '.txt'
+num_repeats = 1
+
+# Small, hand-curated sets can be up-weighted, e.g. the 1255-pair contexto_rush:
+# [[directory]]
+# path = '/workspace/ctx_filtered/target'
+# control_path = '/workspace/ctx_filtered/control'
+# num_repeats = 2
