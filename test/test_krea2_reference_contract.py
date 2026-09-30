@@ -160,7 +160,8 @@ class Krea2ReferencePackingTest(unittest.TestCase):
 
     def test_dropout_is_training_only_and_drops_whole_reference(self):
         module = _load_pipeline_module()
-        contract = types.SimpleNamespace(condition_token_stride=1, condition_dropout=1.0)
+        contract = types.SimpleNamespace(condition_token_stride=1, condition_dropout=1.0,
+                                        position_mode='subject')
         reference = torch.ones(2, 1, 1, 4, 4)
         target = torch.zeros_like(reference)
 
