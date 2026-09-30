@@ -67,3 +67,14 @@ Custo Krea acumulado estimado desde16:09UTC: **US$1.01**, inclui setup/cache/oci
 Push inicial da parada foi rejeitado porque Claude já havia publicado8a263fc (base fp8_scaled com escala,512px,batch real e AGENTS.md). Fiz fetch, rebase do commit de parada/exportação/grid sobre esse código, li AGENTS.md inteiro e envieicecd51b. **Não executei o novo treino/receita/testes**: a parada do usuário continua vigente. Adapter A74 pertence à receita BF161024/micro1×accum4 antiga e ao worktree38c94bf, não à nova receita de Claude.
 
 Correções operacionais durante o teste: o audit stock não aceita --comfy, removi o argumento e repeti com sucesso. Reexportação determinística dos tensors usa serialização de metadata cuja ordem pode alterar o SHA256: a auditoria HF detectou o arquivo anterior, republiquei o adapter atual e confirmei SHA256 local=HF. Sem diferença nos pesos e sem retomar treino.
+
+## 2026-09-30 18:09 UTC — Retomada autorizada: FP8 com escala,512,batch real
+
+Usuário autorizou smoke e A/B, nesta ordem A depois B, ambos **do zero**. A74 permanece arquivado; não será carregado no novo treino. Captions e embeddings naturais preservados; sugestão de remoção de padding retirada por Claude porque o fork já salva tamanho natural.
+
+- Receitas novas separadas em `/workspace/k2ab/artifacts/fp8_512/configs`; base oficial `krea2_raw_fp8_scaled.safetensors` hardlink do arquivo já baixado, `base_quant=fp8_scaled`, sem diffusion_model_dtype=float8,512px,micro4×accum1,sem block swap. A usa reference_pixels=target; ambos refs crop-fit ao bucket.
+- Testes CPU16passaram no fork B e16no worktree A (ComfyUI stock fb2315f1). Encoder A real voltou a dar relL2=0 em3refsPNG, dump originalstock íntegro; log `/workspace/k2ab/artifacts/te_fork_fp8_512.log`.
+- Adicionada auditoria explícita da conversão: quantização solicitada com0Linears ou armazenamento diferente de e4m3 aborta. O forward atual desquantiza para matmul BF16; não implementa W8A8 nem promete acelerar a própria multiplicação. Primeiro ganho a medir é eliminar swap e reduzir resolução.
+- Smoke A fresh enfileirado100,semresume,10steps,saves5/10; B será enfileirado após resultado A e escolha do batch que realmente cabe. Probes não iniciam antes dos gates/smokes. Configs novas não sobrescrevem os artefatos BF16.
+- Comparação antiga: A1024/micro1×accum4/swap20 ~25,15s/step =0,159amostras/s; Bsmoke1024 ~35,75s/step =0,112amostras/s. Relatar ganho inclui mudança de resolução/batch/offload, não atribuí-lo só à quantização.
+- W8A8 opcional somente após A/B rodando e se o throughput incomodar; implementação própria, sem código AGPL OneTrainer; troca de padrão condicionada a paridade/seed fixa/grids e ganho medido. Variante seguinte se A copiar/ficar atrás de B: reference_timestep=target / método index stock, como orientação nova de Claude.
