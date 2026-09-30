@@ -1858,3 +1858,9 @@ Custo Krea acumulado estimado desde16:09UTC:US$2.20, inclui setup/cache/ociosida
 Novo A_native/FP8/512 salvou step125, 500 amostras; nenhum peso do A74 utilizado. Avaliando antes do próximo segmento.
 
 Custo Krea acumulado estimado desde16:09UTC:US$2.20, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 19:41 UTC — Campanha
+
+Campanha FP8 parou em erro: 210_A_native_250.job failed; inspect its log; investigar antes de seguir.
+
+Custo Krea acumulado estimado desde16:09UTC:US$2.20, inclui setup/cache/ociosidade, não é extrato.
