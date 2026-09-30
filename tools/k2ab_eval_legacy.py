@@ -56,8 +56,9 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--limit', type=int, default=13)
     parser.add_argument('--variant', choices=('Turbo', 'Raw'), action='append')
+    parser.add_argument('--manifest', type=Path, default=ROOT / 'artifacts/heldout_manifest.json')
     args = parser.parse_args()
-    rows = json.loads((ROOT / 'artifacts/heldout_manifest.json').read_text())[:args.limit]
+    rows = json.loads(args.manifest.read_text())[:args.limit]
     try:
         for variant in args.variant or ('Turbo', 'Raw'):
             out = args.out / variant

@@ -51,7 +51,7 @@ def enqueue(name, argv, cwd=REPO, train_output=None):
 
 
 def prune_old_states():
-    for arm in ('A_native_probe', 'B_beta1_fixed_probe'):
+    for arm in ('A_native_probe', 'B_beta1_fixed_probe', 'A_native_fp8_512_probe', 'B_beta1_fixed_fp8_512_probe'):
         for run in (ROOT / 'checkpoints' / arm).glob('*'):
             latest = run / 'latest'
             if not latest.exists():
@@ -75,7 +75,7 @@ def wait_job(path, campaign):
         status = json.loads(state_path.read_text()) if state_path.exists() else {}
         campaign['current_job'] = path.stem
         campaign['job_status'] = status
-        for arm in ('A_native_probe', 'B_beta1_fixed_probe'):
+        for arm in campaign.get('checkpoint_arms', ('A_native_probe', 'B_beta1_fixed_probe')):
             for adapter in (ROOT / 'checkpoints' / arm).glob('*/step*/adapter_model.safetensors'):
                 milestone = str(adapter.relative_to(ROOT))
                 if milestone not in campaign['milestones'] and time.time()-adapter.stat().st_mtime > 15:

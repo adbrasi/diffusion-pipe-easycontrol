@@ -88,3 +88,19 @@ Ambos converters registraram256ScaledFP8Linear. A resume10→12 passou,LR1e-4 pr
 Integração descoberta antes do sampling B: `apply_turbo_lora` e fusão de extras somavam delta diretamente ao parâmetro weight; no ScaledFP8Linear esse parâmetro são códigos FP8 crus. Corrigi para dequantizar com escala, somar em FP32 e requantizar com escala recalculada/arredondamento estocástico e seed da chave, igual ao set_weight do ComfyUI. Adapter de referência segue separado/routado, nunca fundido. Teste novo compara qdata,escala e peso dequantizado contra QuantizedTensor.requantize_from_float:3testesScaledFP8passaram. Isso é correção de inferência, não W8A8 nem mudança no forward de treino.
 
 Avaliação512 A preparada com nodes exclusivamente stock: TextEncodeQwenImageEditPlus semVAE (grounding original384²) + ImageScale/VAEEncode/ReferenceLatent (ref no bucket512) + método index_timestep_zero. O node Qwen comVAE sempre faria ref1MP e quebraria a relação de grids do novo probe; não utilizar essa variante aqui. O resize PIL do treino e bicubic Comfy não são bit-idênticos em pixels; geometria/posições/método/texto são os mesmos. B runner512 com basefp8_scaled e semswap. Manifest512 separado; captions e manifest1024preservados.
+
+## 2026-09-30 18:56 UTC — Quadriculado no smoke A: controles reais antes do probe
+
+Usuário identificou ruído/quadriculado nos PNGs A12/512. Confirmei visualmente; não é resultado aceitável nem demonstração de sucesso. Não iniciar500 cegamente. B resume10→12 completou, LR1e-4; ambos smokes/resumes/keys passaram.
+
+Controles no MESMO heldout, seed76,688×384,workflow stock sem custom nodes:
+- A12 zero e base SEM adapter com ref zero: quadriculado. O mesmo defeito existe na base BF16, no FP8 com escala e com ref512 ou ref1MP. Raw28 também apresenta o padrão. Portanto não atribuir o problema exclusivamente ao FP8, ao Turbo, ao resize512 nem aos pesos aprendidos no smoke.
+- FP8 T2I sem referência: imagem limpa. FP8 com referência e método index (t compartilhado): imagem limpa, porém copia praticamente a referência, inclusive a trocada. Trocar timestep só na inferência de A treinado em zero seria mismatch e NÃO foi feito como correção.
+- Controle POSITIVO: LoRA oficial Comfy-Org/Krea-2/loras/krea2_style_reference.safetensors no MESMO workflow FP8/ref512/index_timestep_zero/Turbo. Imagens limpa certa e trocada, com nova pose. Esse LoRA é somente régua de diagnóstico, NÃO entra no treino ou na avaliação A/B.
+- Paridade adicional GPU com pesos BF16 reais,sem adapter e sem TE,alvo/ref(1,16,48,86),texto300tokens,t0.6: relL2 zero0.006725/index0.006494,ambos finitos. Ferramenta tools/krea2_native_gpu_parity.py, JSON/log completos. Compatível com arredondamento BF16; não bit-idêntico. Paridade CPU e encoder real já passaram.
+
+Inferência limitada a n=1: o quadriculado pertence ao uso do contrato zero sem adapter suficientemente adaptado; não é prova de bug no loader nem prova de que A irá convergir. O LoRA oficial demonstra que o encanamento stock consegue sair limpo. Preservar a receita autorizada; começar A fresco e inspecionar125 antes de liberar250–500. O novo controller tem esse portão operacional; B começa depois de A500. Não usar A74, não retomar pesos dos smokes e não alterar captions.
+
+Grid dos controles: /workspace/k2ab/artifacts/fp8_512/diagnostic/reference_diagnostic_grid.jpg. PNGs e workflows de cada controle,paridadeGPU e receitas estão nessa árvore; sync HF privado contínuo. Confusão própria evitada: a primeira suspeita FP8/base foi descartada ao repetir BF16.
+
+Custo Krea acumulado estimado desde16:09UTC:US$1.73, inclui diagnóstico/setup/ociosidade; não é extrato Vast.
