@@ -89,6 +89,14 @@ def main():
                 ops.note(f'Novo {arm}/FP8/512/micro{MICRO_BATCH} salvou step{step}, '
                          f'{state["samples_seen"]} amostras; nenhum peso do A74 utilizado. '
                          'Avaliando apenas Turbo antes do próximo segmento.')
+            if arm_index == 1:
+                # Reuse completed images, and load/fuse B's large base only
+                # once for both requested resolutions at each checkpoint.
+                out = ART / 'eval' / f'{arm}_step{step}'
+                run_job(name+'_eval_Turbo_both_resolutions', [ops.PYTHON, 'tools/k2ab_eval_runner.py',
+                    '--config', str(config), '--adapter', str(adapter.parent), '--out', str(out),
+                    '--variant', 'Turbo', '--manifest', str(MANIFEST),
+                    '--manifest-1024', str(MANIFEST_1024), '--limit', '2', '--adapter-only'], state)
             for resolution, manifest in ((512, MANIFEST), (1024, MANIFEST_1024)):
                 # Preserve the existing 512 directories and completed queue jobs.
                 out = ART / 'eval' / f'{arm}_step{step}'
@@ -101,10 +109,6 @@ def main():
                         run_job(name+'_eval'+suffix, stock_args(out, adapter, manifest=manifest), state)
                     finally:
                         subprocess.run(['supervisorctl', 'stop', 'k2ab_stock'], check=True)
-                else:
-                    run_job(name+'_eval_Turbo'+suffix, [ops.PYTHON, 'tools/k2ab_eval_runner.py',
-                        '--config', str(config), '--adapter', str(adapter.parent), '--out', str(out),
-                        '--variant', 'Turbo', '--manifest', str(manifest), '--limit', '2', '--adapter-only'], state)
                 metrics = [ops.PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout'),
                            '--adapter-only', '--dir', str(out / 'Turbo')]
                 run_job(name+'_metrics_adapter_only'+suffix, metrics, state)

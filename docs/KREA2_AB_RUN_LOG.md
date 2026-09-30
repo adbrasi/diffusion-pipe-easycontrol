@@ -322,3 +322,11 @@ DINOgt A1000/512=.6628 e1024=.6022,contra A750 .4520/.5205. dHashcopy_rate=0 em 
 Novo B_beta1_fixed/FP8/512/micro2 salvou step500, 1000 amostras; nenhum peso do A74 utilizado. Avaliando apenas Turbo antes do próximo segmento.
 
 Custo Krea acumulado estimado desde16:09UTC:US$4.01, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 22:41 UTC — Reduzir recargas na avaliação B
+
+B250/1024 passou,2PNGs1376×768 sem erro. B512 leva~164s/job para2imagens,embora o denoise512 seja~3.5s por imagem; grande parte é preparação/fusão da base Turbo no CPU,com GPU ociosa. Iniciar um processo por resolução duplicava esse custo em cadacheckpoint.
+
+Runner agora aceita --manifest-1024 e reúne as duasresoluções em uma pipeline/carregamento/fusão,sem mudar matemática de forward,adapter,prompt/ref,seed76,Euler8/CFG1/mu1.15,basequant ou preprocessing. Arquivos existentes são ignorados ANTES de criar pipeline; B250 completo não recarrega o modelo. B500512 estava ativo ao editar,foi preservado; job combinado de B500 gera apenas os1024 faltantes. B750/B1000 gerarão4imagens com uma única preparação de base cada. Stock A inalterado,pois a preparação já era rápida.
+
+Verificação funcional mockada: uma create_pipeline/setup para4PNGs,dimensões688×384 e1376×768,seed76/steps8/CFG1 em todos; sem shuffle ou semadapter. Reexecução com4arquivos existentes não chama create/setup. Compilação ok. Não alegar ganho medido ou paridade numérica a partir do mock; confirmar execução real/tempo nos próximos jobs. LR e treinamento mantidos.

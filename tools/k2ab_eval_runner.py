@@ -21,34 +21,40 @@ def main():
     parser.add_argument('--adapter-only', action='store_true')
     parser.add_argument('--compare-adapter', action='store_true')
     parser.add_argument('--limit', type=int, default=13)
+    parser.add_argument('--manifest-1024', type=Path, help='Also render this resolution in the same loaded pipeline.')
     parser.add_argument('--manifest', type=Path, default=ROOT / 'artifacts/heldout_manifest.json')
     args = parser.parse_args()
+    rows = [(row, args.out) for row in json.loads(args.manifest.read_text())[:args.limit]]
+    if args.manifest_1024:
+        rows += [(row, args.out / 'resolution_1024')
+                 for row in json.loads(args.manifest_1024.read_text())[:args.limit]]
+    pending = []
+    for row, destination in rows:
+        conditions = ([('with_lora', row['reference']), ('without_lora', row['reference'])]
+                      if args.compare_adapter else [('true', row['reference']), ('shuffled', row['shuffled_reference'])])
+        if args.adapter_only:
+            conditions = [('with_lora', row['reference'])]
+        for kind, name in conditions:
+            output = destination / args.variant / f'{row["stem"]}_{kind}.png'
+            if not output.exists():
+                pending.append((row, output, kind, name))
+    if not pending:
+        return
     config = runner.load_raw_config(args.config)
     adapter = runner.find_adapter_file(args.adapter)
     runner.validate_contract(config, runner.read_metadata(adapter), False)
     runner.normalize_runtime_config(config)
     pipeline = runner.create_pipeline(config)
     turbo = args.variant == 'Turbo'
-    rows = json.loads(args.manifest.read_text())[:args.limit]
     prepared = []
-    for row in rows:
-        conditions = ([('with_lora', row['reference']), ('without_lora', row['reference'])]
-                      if args.compare_adapter else [('true', row['reference']), ('shuffled', row['shuffled_reference'])])
-        if args.adapter_only:
-            conditions = [('with_lora', row['reference'])]
-        for kind, name in conditions:
-            output = args.out / args.variant / f'{row["stem"]}_{kind}.png'
-            if output.exists():
-                continue
-            reference_path = ROOT / 'heldout/control' / name
-            pipeline.prepare_sample_test(row['prompt'], negative_prompt='', cfg=2,
-                                         control_files=[str(reference_path)])
-            conds = tuple(value.cpu() for value in pipeline.conds)
-            unconds = tuple(value.cpu() for value in pipeline.unconds)
-            reference = runner.encode_reference(pipeline, reference_path, row['width'], row['height'], 'crop')
-            prepared.append((row, output, reference, conds, unconds, kind))
-    if not prepared:
-        return
+    for row, output, kind, name in pending:
+        reference_path = ROOT / 'heldout/control' / name
+        pipeline.prepare_sample_test(row['prompt'], negative_prompt='', cfg=2,
+                                     control_files=[str(reference_path)])
+        conds = tuple(value.cpu() for value in pipeline.conds)
+        unconds = tuple(value.cpu() for value in pipeline.unconds)
+        reference = runner.encode_reference(pipeline, reference_path, row['width'], row['height'], 'crop')
+        prepared.append((row, output, reference, conds, unconds, kind))
     official = Path('/workspace/models/krea2/loras/krea2_turbo_lora_rank_64_bf16.safetensors')
     swap = 0 if config['model'].get('base_quant') == 'fp8_scaled' else 8
     sequential, blocks = runner.setup_diffusion_pipeline(pipeline, adapter, config, swap,
