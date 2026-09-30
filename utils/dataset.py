@@ -1528,12 +1528,12 @@ class PipelineDataLoader:
                 # legal here.
                 batch = self.model.encode_text_live(batch)
             features, label = self.model.prepare_inputs(batch, timestep_quantile=self.eval_quantile)
-            target, mask = label
             # The target depends on the noise, so we must broadcast it from the first stage to the last.
             # NOTE: I had to patch the pipeline parallel TrainSchedule so that the LoadMicroBatch commands
             # would line up on the first and last stage so that this doesn't deadlock.
-            target = self._broadcast_target(target)
-            label = (target, mask)
+            # Some pipelines also return stochastic loss weights. Preserve all
+            # label fields and synchronize every tensor (including those weights).
+            label = tuple(self._broadcast_target(item) if torch.is_tensor(item) else item for item in label)
             self.num_batches_pulled += 1
             for micro_batch in split_batch((features, label), self.gradient_accumulation_steps):
                 yield micro_batch

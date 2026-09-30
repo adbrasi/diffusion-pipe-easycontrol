@@ -1,0 +1,8 @@
+resolutions = [ 512,]
+enable_ar_bucket = false
+frame_buckets = [ 1,]
+[[directory]]
+path = "/workspace/ns_smoke/target"
+control_path = "/workspace/ns_smoke/control"
+num_repeats = 1
+

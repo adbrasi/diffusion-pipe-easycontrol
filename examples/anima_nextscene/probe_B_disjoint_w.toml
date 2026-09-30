@@ -45,7 +45,7 @@ ref_noise_prob = 0.0
 [adapter]
 type = 'lora'
 rank = 64
-alpha = 64
+# alpha=rank is set by train.py; explicit alpha is rejected.
 dtype = 'bfloat16'
 
 [optimizer]

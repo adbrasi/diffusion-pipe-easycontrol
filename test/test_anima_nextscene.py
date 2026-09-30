@@ -246,6 +246,42 @@ def test_contract_metadata_roundtrip():
         _Stub({'rope_layout': 'nope'})
 
 
+def test_adapter_excludes_llm_bridge_with_matching_block_suffixes():
+    import copy
+    dit = tiny_dit()
+    # The real bridge has blocks with the same suffixes as the main DiT.
+    dit.llm_adapter = torch.nn.Module()
+    dit.llm_adapter.blocks = copy.deepcopy(dit.blocks)
+    p = _Stub({'lora_cross_attn': True})
+    p.transformer = dit
+    p.configure_adapter({'type': 'lora', 'rank': 4, 'alpha': 4,
+                         'dropout': 0.0, 'dtype': torch.float32})
+    trainable = [n for n, prm in p.transformer.named_parameters() if prm.requires_grad]
+    assert trainable and any('cross_attn' in n for n in trainable)
+    assert not any('llm_adapter' in n or 'adaln_modulation' in n for n in trainable)
+
+
+def test_pipeline_dataloader_preserves_and_splits_loss_weights():
+    from types import SimpleNamespace
+    from utils.dataset import PipelineDataLoader
+    x = torch.randn(4, 16, 2, 4, 4)
+    target = torch.randn(4, 16, 1, 4, 4)
+    weight = torch.arange(4.).reshape(4, 1, 1, 1, 1).expand(4, 1, 1, 4, 4)
+    loader = PipelineDataLoader.__new__(PipelineDataLoader)
+    loader.dataloader = [{}]
+    loader.model = SimpleNamespace(prepare_inputs=lambda *a, **k: ((x,), (target, None, weight)))
+    loader.model_engine = SimpleNamespace(is_pipe_parallel=False)
+    loader.eval_quantile = None
+    loader.gradient_accumulation_steps = 2
+    loader.num_batches_pulled = 0
+    batches = list(loader._pull_batches_from_dataloader())
+    assert len(batches) == 2
+    for i, (_, label) in enumerate(batches):
+        assert len(label) == 3 and label[1].numel() == 0
+        assert torch.equal(label[0], target[2*i:2*i+2])
+        assert torch.equal(label[2], weight[2*i:2*i+2])
+
+
 def test_runner_sampler_cfg_algebra_and_smoke():
     import infer_easycontrol as ie
     c, n, z = torch.full((1,), 3.0), torch.full((1,), 1.0), torch.full((1,), 2.0)

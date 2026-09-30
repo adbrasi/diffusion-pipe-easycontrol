@@ -291,6 +291,11 @@ if __name__ == '__main__':
 
     # Initialize distributed environment before deepspeed
     world_size, rank, local_rank = distributed_init(args)
+    if 'seed' in config:
+        seed = int(config['seed']) + rank
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
 
     # Now initialize deepspeed
     deepspeed.init_distributed()

@@ -38,6 +38,7 @@ Anti-copy / anti-shortcut knobs (all under [nextscene]):
 """
 
 import json
+import re
 import types
 
 import peft
@@ -233,9 +234,17 @@ class AnimaNextScenePipeline(CosmosPredict2Pipeline):
             lora_alpha=adapter_config['alpha'],
             lora_dropout=adapter_config['dropout'],
             bias='none',
-            target_modules=targets,
+            # PEFT treats a list as suffix matches: blocks.0.self_attn.wq also
+            # matches llm_adapter.blocks.0.self_attn.wq. Match full paths so the
+            # frozen text bridge cannot silently acquire LoRA parameters.
+            target_modules='(?:' + '|'.join(re.escape(t) for t in targets) + ')',
         )
         self.lora_model = peft.get_peft_model(self.transformer, self.peft_config)
+        trainable = [name for name, p in self.transformer.named_parameters() if p.requires_grad]
+        contaminated = [name for name in trainable
+                        if any(pattern in name for pattern in self.forbidden_adapter_key_patterns)]
+        if contaminated:
+            raise RuntimeError(f'Forbidden trainable adapter parameters: {contaminated[:10]}')
         if is_main_process():
             self.lora_model.print_trainable_parameters()
         for name, p in self.transformer.named_parameters():
