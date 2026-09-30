@@ -341,3 +341,9 @@ A comparação E1→E2 muda receita e cobertura do dataset em conjunto; não per
 atribuir o ganho a uma mudança individual. Além disso E1 usa n12/cropquadrado e
 E2 n24/targetAR: comparar médias cruas entre protocolos exige cuidado. Os dois
 braços dentro deE2 continuam diferindo somente no layout RoPE.
+
+### E2 — 2026-09-30 08:07 UTC
+
+Iniciando `train_A_epoch1`. Log local: `/workspace/nextscene_artifacts/E2/train_A_epoch1.log`.
+
+Custo estimado acumulado desde06:05 UTC: US$1.27 (2.05h × US$0.62/h; inclui setup, cache e ociosidade).
