@@ -1,0 +1,20 @@
+{
+  "A_native": {
+    "steps": 1000,
+    "samples": 2000,
+    "median_seconds_step": 2.787,
+    "median_samples_s": 0.7176175098672408,
+    "training_iteration_seconds": 2795.905,
+    "peak_process_plus_user_comfy_MiB": 30193.0,
+    "last_loss": 0.1214
+  },
+  "B_beta1_fixed": {
+    "steps": 1000,
+    "samples": 2000,
+    "median_seconds_step": 3.194,
+    "median_samples_s": 0.6261740763932373,
+    "training_iteration_seconds": 3210.095,
+    "peak_process_plus_user_comfy_MiB": 30411.0,
+    "last_loss": 0.1191
+  }
+}

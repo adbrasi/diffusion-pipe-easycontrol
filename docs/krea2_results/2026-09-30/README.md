@@ -53,3 +53,5 @@ A1000 micro2: [Turbo512](A1000_micro2_Turbo_sampling512.jpg), [Turbo1024](A1000_
 B250/B500 micro2 também disponíveis em512 e1024 nos arquivos B<step>_micro2_Turbo_sampling<resolution>.jpg, com métricas adjacentes. B500 mantém a noite de costas;1024 adiciona personagem. Comparação homogênea1000 ainda em andamento.
 
 B750 micro2: [Turbo512](B750_micro2_Turbo_sampling512.jpg), [Turbo1024](B750_micro2_Turbo_sampling1024.jpg). Mudança frontal parcial em512/completa em1024; herança exata do desenho/identidade continua limitada. Uma preparação de base gerou4PNGs em204.16s. B1000 em treino.
+
+A/B1000 concluído: [comparação final](A_B_step1000_Turbo_512_1024.jpg), [trajetória250/500/750/1000](A_B_steps250_500_750_1000_Turbo_512_1024.jpg), [validação32PNGs](final_validation.json), [throughput](training_1000_summary.json). Duas linhas por checkpoint,mesmas referências/prompts/seed,A eB em512/1024. A1000 melhor na ação frontal noturna;B1000 conserva mais vermelho no mecha,mas regride na ação noturna. Sem vencedor geral com n=2. B1000grids e métricas também disponíveis individualmente.

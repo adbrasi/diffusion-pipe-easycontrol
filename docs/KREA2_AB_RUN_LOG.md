@@ -384,3 +384,13 @@ Custo Krea acumulado estimado desde16:09UTC:US$4.41, inclui setup/cache/ociosida
 A/B FP8/5121000/micro2 completo:2000amostras por braço, grids/metrics Turbo250/500/750/1000,512 e1024 em /workspace/k2ab/artifacts/fp8_512_micro2/eval. Decisão visual do usuário pendente; sem iniciar variante target ou W8A8 automaticamente.
 
 Custo Krea acumulado estimado desde16:09UTC:US$4.45, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 23:22 UTC — A/B1000 concluído, acompanhamento encerrado
+
+A1000 concluído22:31:54UTC; B1000 concluído23:15:23UTC,ambos512keys auditadas,sem erro nos novosmicro2. Cadaum1000steps/2000amostras (~1.34épocas),mesma receita/captions,retomadas do próprio run; não A74. Teste final confirmou32PNGs solicitados (2braços×4checkpoints×2resoluções×2casos),16grids/metrics completos,dimensões688×384/1376×768 corretas,Turbo comadapter/referência certa. Hash captions f2a13e2f8913b44824578cb41cbcc9df63f24de39b650e8c3f18f21825ee36a4 permanece idêntico. JSON final_validation e training_1000_summary em artifacts/fp8_512_micro2 e cópias versionadas para review.
+
+Medianas efetivas1000iterações: A2.787s/step=.7176amostras/s,46min35.9s soma de iterações; B3.194s/step=.6262amostras/s,53min30.1s soma. Milsteps verificados1..1000,mas carregamento/cache/sampling não entram nessa soma. VRAMpico A30193MiB/B30411MiB inclui776MiB da sessão Comfy do usuário. ComputaçãoBF16,armazenamentoFP8scaled,swap0; não W8A8. Custo Krea acumulado estimado desde16:09UTC:US$ 4.48,inclui setup/cache/diagnósticos/ociosidade e falha micro4 histórica;não extrato Vast.
+
+B1000 visual:512 centrofrontalcombinóculo,dois laterais de costas;1024 três de costas. Regrediu do B750/1024frontal nesses mesmos seed/prompts. Mecha conserva vermelho/preto melhor que A1000amarelo,mas desenho de cabeça/identidade continua divergente em ambos. A1000cumpre melhor açãofrontal da noite512/1024; não definir vencedor geral com doiscasos/umaseed,sem shuffle/null por retirada expressa do usuário. Copy_rate0 em A1000/B1000 não garante seguir ação. DINOgt A1000 .6628/.6022 e B1000 .6800/.5766(512/1024)não substitui inspeção; B512scoremaior não torna sua pose correta.
+
+Grids compactos: review/A_B_step1000_Turbo_512_1024.jpg e review/A_B_steps250_500_750_1000_Turbo_512_1024.jpg,mesmas entradas,6colunas refA|alvoB|adapterA512|A1024|adapterB512|B1024. PNGsoriginais nas pastas eval. Adapters/grids/log HF privado,grids/metrics/código/log versionados com push. Controller terminou em awaiting_user_visual_verdict,sem novos jobs/variante/W8A8; GPU livre de nossos treinos. Comfy do usuário preservado.
