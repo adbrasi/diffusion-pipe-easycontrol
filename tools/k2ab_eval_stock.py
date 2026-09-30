@@ -112,6 +112,7 @@ def main():
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--limit', type=int, default=13)
     parser.add_argument('--variant', choices=('Turbo', 'Raw'), action='append')
+    parser.add_argument('--adapter-only', action='store_true', help='Generate only with the trained adapter and correct reference.')
     parser.add_argument('--compare-adapter', action='store_true', help='Same reference with and without the trained adapter; no shuffled images.')
     parser.add_argument('--disable-reference-method', action='store_true')
     parser.add_argument('--t2i-base', action='store_true')
@@ -131,7 +132,11 @@ def main():
             out = args.out / variant
             out.mkdir(parents=True, exist_ok=True)
             for row in rows:
-                if args.compare_adapter:
+                if args.adapter_only:
+                    if not name or args.t2i_base:
+                        raise ValueError('--adapter-only requires an adapter and image conditioning')
+                    conditions = [('with_lora', row['reference'])]
+                elif args.compare_adapter:
                     if not name or args.t2i_base:
                         raise ValueError('--compare-adapter requires an adapter and image conditioning')
                     conditions = [('with_lora', row['reference']), ('without_lora', row['reference'])]

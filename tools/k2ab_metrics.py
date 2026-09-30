@@ -47,12 +47,13 @@ def labeled_grid(rows, stems, title, cell=384, columns=None):
             resized.append(image)
         resized_rows.append(resized)
     heights = [max(image.height for image in row) for row in resized_rows]
-    canvas = Image.new('RGB', (4*cell, header + sum(heights) + len(rows)*label), 'white')
+    columns = columns or ('A - referencia', 'B - proxima cena real', 'Ref certa - resultado', 'Ref trocada - resultado')
+    canvas = Image.new('RGB', (len(columns)*cell, header + sum(heights) + len(rows)*label), 'white')
     draw = ImageDraw.Draw(canvas)
     font = ImageFont.truetype('DejaVuSans.ttf', 18)
     small = ImageFont.truetype('DejaVuSans.ttf', 14)
     draw.text((8, 6), title, fill='black', font=font)
-    for column, text in enumerate(columns or ('A - referencia', 'B - proxima cena real', 'Ref certa - resultado', 'Ref trocada - resultado')):
+    for column, text in enumerate(columns):
         draw.text((column*cell+8, 35), text, fill='black', font=font)
     y = header
     for index, (row, stem, height) in enumerate(zip(resized_rows, stems, heights)):
@@ -67,34 +68,37 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--pairs', required=True)
     ap.add_argument('--dir', action='append', required=True)
+    ap.add_argument('--adapter-only', action='store_true')
     ap.add_argument('--compare-adapter', action='store_true')
     ap.add_argument('--copy_dhash', type=int, default=6)
     args = ap.parse_args()
     feats = Feats('cuda' if torch.cuda.is_available() else 'cpu')
     for d in map(Path, args.dir):
         rows, per = [], []
-        suffix = '_with_lora.png' if args.compare_adapter else '_true.png'
+        suffix = '_with_lora.png' if args.compare_adapter or args.adapter_only else '_true.png'
         gain_key = 'adapter_gain' if args.compare_adapter else 'ref_gain'
         for out_true in sorted(d.glob('*' + suffix)):
             stem = out_true.name[:-len(suffix)]
             a_path, b_path = find(Path(args.pairs) / 'control', stem), find(Path(args.pairs) / 'target', stem)
             shuf = d / (f'{stem}_without_lora.png' if args.compare_adapter else f'{stem}_shuffled.png')
-            if a_path is None or b_path is None or not shuf.exists():
+            if a_path is None or b_path is None or (not args.adapter_only and not shuf.exists()):
                 print(f'skip {stem}: missing A/B/shuffled')
                 continue
-            t, s = Image.open(out_true).convert('RGB'), Image.open(shuf).convert('RGB')
+            t = Image.open(out_true).convert('RGB')
+            s = None if args.adapter_only else Image.open(shuf).convert('RGB')
             A = Image.open(a_path).convert('RGB').resize(t.size)
             B = Image.open(b_path).convert('RGB').resize(t.size)
-            f = feats.dino([A, B, t, s])
+            images = [A, B, t] if args.adapter_only else [A, B, t, s]
+            f = feats.dino(images)
             per.append({
                 'stem': stem,
                 'gt_true': float(f[2] @ f[1]),
-                gain_key: float(f[2] @ f[1] - f[3] @ f[1]),
+                **({} if args.adapter_only else {gain_key: float(f[2] @ f[1] - f[3] @ f[1])}),
                 'copy_gap': float(f[2] @ f[0] - f[1] @ f[0]),
                 'copy': int(dhash_ham(t, A) <= args.copy_dhash),
                 'ccip_true': feats.ccip_same(t, B),
             })
-            rows.append([A, B, t, s])
+            rows.append(images)
         if not per:
             print(f'{d}: no complete rows')
             continue
@@ -102,13 +106,14 @@ def main():
         def mean(k):
             v = [p[k] for p in per if p[k] is not None]
             return round(sum(v) / len(v), 4) if v else None
-        summary = {'dir': str(d), 'n': len(per), **{k: mean(k) for k in ('gt_true', gain_key, 'copy_gap', 'ccip_true')},
+        summary = {'dir': str(d), 'n': len(per), **{k: mean(k) for k in (('gt_true', 'copy_gap', 'ccip_true') if args.adapter_only else ('gt_true', gain_key, 'copy_gap', 'ccip_true'))},
                    'copy_rate': mean('copy')}
         (d / 'metrics.json').write_text(json.dumps({'summary': summary, 'pairs': per}, indent=2))
         prefix = ('FP8 512 | micro2 | ' if 'fp8_512_micro2' in d.parts else
                   'FP8 512 | micro4 | ' if 'fp8_512' in d.parts else '')
         g = labeled_grid(rows, [row['stem'] for row in per], f'{prefix}{d.parent.name} | {d.name}',
-                         columns=('A - referencia', 'B - proxima cena real', 'Com LoRA treinada', 'Sem LoRA treinada') if args.compare_adapter else None)
+                         columns=(('A - referencia', 'B - proxima cena real', 'Com LoRA treinada') if args.adapter_only
+                                  else ('A - referencia', 'B - proxima cena real', 'Com LoRA treinada', 'Sem LoRA treinada') if args.compare_adapter else None))
         g.save(d / 'grid.png')
         print(json.dumps(summary))
 

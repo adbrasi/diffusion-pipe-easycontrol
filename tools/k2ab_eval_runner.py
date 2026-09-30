@@ -18,6 +18,7 @@ def main():
     parser.add_argument('--adapter', type=Path, required=True)
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--variant', choices=('Turbo', 'Raw'), required=True)
+    parser.add_argument('--adapter-only', action='store_true')
     parser.add_argument('--compare-adapter', action='store_true')
     parser.add_argument('--limit', type=int, default=13)
     parser.add_argument('--manifest', type=Path, default=ROOT / 'artifacts/heldout_manifest.json')
@@ -33,6 +34,8 @@ def main():
     for row in rows:
         conditions = ([('with_lora', row['reference']), ('without_lora', row['reference'])]
                       if args.compare_adapter else [('true', row['reference']), ('shuffled', row['shuffled_reference'])])
+        if args.adapter_only:
+            conditions = [('with_lora', row['reference'])]
         for kind, name in conditions:
             output = args.out / args.variant / f'{row["stem"]}_{kind}.png'
             if output.exists():

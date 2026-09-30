@@ -204,3 +204,11 @@ Esclarecimento ao usuário: ~0.72 no log era AMOSTRAS/s; microbatch2 resulta~0.3
 A_native_fp8_512_micro2_probe salvou step375; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step375/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$3.25, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 21:23 UTC — Apenas adapter treinado
+
+Usuário retirou também a geração sem adapter. Campanha agora Turbo8/CFG1, com adapter treinado e referência correta APENAS, steps250/500. Mantidos dois casos fixos:2imagens por checkpoint. Sem shuffle, sem versão sem adapter, sem Raw nem baselines extras. Arquivos históricos preservados para rastreabilidade. Grid novo3colunas A|B alvo|resultado com LoRA. Métricas gt_true,copy_gap,copy_rate,CCIP; sem ref_gain/adapter_gain porque suas contrapartes não serão geradas.
+
+Artefatos sem adapter já tinham aparecido em stock sem adapter na investigação anterior; Turbo oficial e base quantizado/conditioning continuam ativos nessas imagens. Causa exata não isolada, não atribuir automaticamente ao treino/quantização. Não gastar GPU em novo diagnóstico contrário à redução pedida.
+
+Treino A500 permaneceu ativo durante ajuste; só scheduler reiniciado. Suporte --adapter-only stock/runner e metrics validado por compile e teste funcional3imagens de entrada A/B/resultado, sem contraparte, grid3colunas e ausência de gains não calculáveis. Publicar código/log, manter upload HF contínuo.

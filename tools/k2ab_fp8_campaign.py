@@ -27,7 +27,7 @@ def run_job(name, argv, state, cwd=ops.REPO, train_output=None):
 def stock_args(out, adapter=None, limit=2):
     args = [ops.PYTHON, 'tools/k2ab_eval_stock.py', '--out', str(out),
             '--manifest', str(MANIFEST), '--base-model', 'krea2_raw_fp8_scaled.safetensors',
-            '--reference-pixels', 'target', '--limit', str(limit), '--variant', 'Turbo', '--compare-adapter']
+            '--reference-pixels', 'target', '--limit', str(limit), '--variant', 'Turbo', '--adapter-only']
     return args + (['--adapter', str(adapter)] if adapter else ['--t2i-base'])
 
 
@@ -46,7 +46,7 @@ def main():
     state.update(status='running', recipe=f'fp8_scaled_512_micro{MICRO_BATCH}_accum1', fresh=True,
                  checkpoint_arms=[f'{arm}_{RUN_SUFFIX}_probe' for arm in ('A_native', 'B_beta1_fixed')],
                  sampling_variants=['Turbo'], sampling_steps=[250, 500],
-                 sampling_cases=selected, images_per_checkpoint=4, extra_baselines=False, sampling_comparison='with_vs_without_adapter')
+                 sampling_cases=selected, images_per_checkpoint=2, extra_baselines=False, sampling_comparison='trained_adapter_only')
     ops.atomic(ops.STATE, state)
     for arm_index, arm in enumerate(('A_native', 'B_beta1_fixed')):
         output = ROOT / 'checkpoints' / f'{arm}_{RUN_SUFFIX}_probe'
@@ -95,11 +95,11 @@ def main():
                 for variant in ('Turbo',):
                     run_job(name+'_eval_'+variant, [ops.PYTHON, 'tools/k2ab_eval_runner.py',
                         '--config', str(config), '--adapter', str(adapter.parent), '--out', str(out),
-                        '--variant', variant, '--manifest', str(MANIFEST), '--limit', '2', '--compare-adapter'], state)
-            metrics = [ops.PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout'), '--compare-adapter']
+                        '--variant', variant, '--manifest', str(MANIFEST), '--limit', '2', '--adapter-only'], state)
+            metrics = [ops.PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout'), '--adapter-only']
             for variant in ('Turbo',):
                 metrics += ['--dir', str(out / variant)]
-            run_job(name+'_metrics', metrics, state)
+            run_job(name+'_metrics_adapter_only', metrics, state)
     state.update(status='awaiting_user_visual_verdict', current_job=None)
     ops.atomic(ops.STATE, state)
     ops.note(f'Novo A/B FP8/512500/micro{MICRO_BATCH} completo:{500*MICRO_BATCH}amostras por braço, '
