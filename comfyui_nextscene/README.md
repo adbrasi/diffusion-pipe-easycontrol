@@ -11,6 +11,6 @@ LoRAs em `models/loras/anima_nextscene/`: A = aligned; B = disjoint_w. Os finais
 
 Instalação nesta máquina: `python tools/install_nextscene_comfy.py`. Não altera o core ComfyUI. Usa ModelPatcher, condicionamento normal, operações e sampler nativos. Não precisa de dependências novas no ambiente ComfyUI.
 
-ComfyUI está gerenciado pelo supervisor `comfy_nextscene`, no endpoint já existente do portal (interno 18818 / externo 8818). Outputs em `/workspace/comfy/ComfyUI/output/NextScene/`, sincronizados pelo serviço externo `nextscene_sync` ao HF privado existente. Worker de treinamento parado e autostart desativado.
+A instância temporária `comfy_nextscene` usada no smoke foi parada e teve autostart desativado a pedido do usuário. A configuração original da porta 8818 foi restaurada; inicie seu ComfyUI pelo Arrakis habitual. Outputs em `/workspace/comfy/ComfyUI/output/NextScene/`, sincronizados pelo serviço externo `nextscene_sync` ao HF privado existente. Worker de treinamento parado e autostart desativado.
 
 Validado em ComfyUI 0.38.0 / RTX 5090: A e B a 512²/20 steps, 280 lineares LoRA carregadas integralmente, null, reference guidance 1.5, negativo zero, strength zero e batch 2. RoPE target igual à nativa e offset da referência igual ao treino. Workflows opcionais e históricos de validação em `/workspace/nextscene_artifacts/ComfyUI/`.
