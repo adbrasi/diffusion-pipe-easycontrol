@@ -1,0 +1,16 @@
+# Krea 2 A/B — dataset do braço B (krea2_multiref_grounded, contrato do beta1).
+# MESMOS pares do braço A. O loader multi_ref exige refs/<stem>_1.<ext>: crie por
+# symlink a partir de /workspace/k2ab/data/control (o sufixo numérico é o contrato).
+resolutions = [1024]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/k2ab/data/target'
+control_path = '/workspace/k2ab/data/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1

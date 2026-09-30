@@ -434,6 +434,9 @@ if __name__ == '__main__':
     elif model_type == 'krea2_ic_lora':
         from models import krea2_ic_lora
         model = krea2_ic_lora.Krea2ICLoRAPipeline(config)
+    elif model_type == 'krea2_native':
+        from models import krea2_native
+        model = krea2_native.Krea2NativePipeline(config)
     elif model_type == 'krea2_edit':
         from models import krea2_edit
         model = krea2_edit.Krea2EditPipeline(config)

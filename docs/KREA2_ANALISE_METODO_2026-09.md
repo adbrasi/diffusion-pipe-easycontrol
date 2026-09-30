@@ -249,3 +249,26 @@ Barato, vale fazer antes de retreinar:
 | LoRA degrada a qualidade | base fp8 re-quantizada sem escala (até 26,8% de pesos zerados) | base bf16 exata ou fp8 com escala preservada |
 | precisa de patch no ComfyUI | base diferente + TE diferente + routing + geometria custom | contrato nativo: `ReferenceLatent` + `index_timestep_zero` + `TextEncodeQwenImageEditPlus`, LoRA global |
 | devolve a mesma imagem | catraca do routing + 49% de dados de cópia + caption dropout + 13k steps sem freio + grounding | LoRA global, sem pico/quase duplicados, sem caption dropout, legendas curtas, avaliação contra o alvo real e parada pelo `copy_rate` |
+
+---
+
+## 7. Revisão após a conversa com o usuário (mesmo dia)
+
+- **"O nativo só dá uma guinada fraca de estilo"**: sem LoRA treinado, sim. O caminho
+  nativo é só o encanamento (onde os tokens da ref entram); a fidelidade vem do LoRA.
+  Prova: o `krea2_style_reference` do ostris, publicado pelo Comfy-Org, roda nesse caminho
+  sem patch.
+- **Risco que eu tinha subestimado:** a geometria nativa (frame 1, h/w alinhados) tem núcleo
+  RoPE **0,987**, o mesmo atrator de cópia do Anima. O beta1 usava `width_shift` (0,806).
+  Ir para o nativo pode piorar o "devolve a mesma imagem". Por isso a decisão é um A/B, não
+  uma aposta.
+- **Plano aprovado:** A (nativo puro) × B (beta1 corrigido), 500 steps cada; C (nativo +
+  deslocamento via hook `post_input`) só se A copiar. As três correções valem para
+  qualquer braço: base numérica, encoder de texto e dados sem aulas de cópia.
+  Execução: `docs/HANDOFF_KREA2_AB.md`.
+- **Implementado e verificado em CPU:** `models/krea2_native.py`. O forward de treino bate
+  com o `_forward` do ComfyUI upstream `fb2315f1` (relL2 ~1e-7 em `index_timestep_zero` e
+  `index`, ref com grid próprio de tamanho diferente); o controle negativo com `width_shift`
+  reprova (3e-3). Tamanhos e resize da ref e do VL são idênticos à conta do node. A paridade
+  do encoder de texto precisa dos pesos reais (`tools/krea2_native_parity.py te-*`, na GPU).
+- **Duas referências:** suportadas pelo nativo (até 3, frames 1..3). Ficam para depois do A/B.
