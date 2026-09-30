@@ -176,3 +176,9 @@ Leitura visual limitada a n=3: CFG1 degradou o mecha para a cena larga de fogo; 
 Erro operacional meu nesta auditoria: a pausa do controlador parou stock enquanto o job de avaliação A125 ainda estava ativo, deixando3 imagens Raw faltantes. Snapshot da falha preservado, job reexecutado sem sobrescrever49 imagens existentes,3 faltantes recuperadas,52PNGs e métricas completos. Corrigido wait_job: flag de pausa aguarda o job ativo terminar antes de desmontar o serviço; estado stopped terminal e SystemExit normal evitam loop no supervisor. Teste com job temporário running→done comprovou espera e saída stopped. Sem treino perdido.
 
 Retomar A micro2 do seu próprio125 até500, depois B fresco500. Proibido continuar A74; parâmetros de treino/captions intocados. Custo Krea acumulado estimado desde16:09UTC:US$3.11, inclui setup/cache/ociosidade/auditoria, não é extrato Vast.
+
+## 2026-09-30 21:16 UTC — Campanha
+
+Novo A_native/FP8/512/micro2 salvou step250, 500 amostras; nenhum peso do A74 utilizado. Avaliando apenas Turbo antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$3.17, inclui setup/cache/ociosidade, não é extrato.
