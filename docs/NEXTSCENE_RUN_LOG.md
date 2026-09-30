@@ -132,7 +132,7 @@ sem depender da caption exaustiva. Manifesto dos 24 prompts em
 
 Rating por classificador anime_rating (amostra seed fixa de 100 B/subset):
 SFW/R15/R18 = ds1 23/5/72, ds2 87/3/10, ds3 5/11/84, ds4 85/7/8.
-Estimativa R18 ponderada por pares/repeats finais ~42% (amostra do bruto, não
+Estimativa R18 ponderada por pares/repeats finais ~44% (amostra do bruto, não
 classificação exata do filtrado; incerteza amostral e do classificador). Não
 alterei o balanceamento além de repetir ds4 duas vezes.
 

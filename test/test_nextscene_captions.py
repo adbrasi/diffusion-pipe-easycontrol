@@ -11,7 +11,7 @@ def test_does_not_turn_credits_into_character_action():
 
 
 def test_leaves_no_incomplete_article_after_cutting_appearance():
-    caption = 'Close-up, a girl looking forward with a surprised hair silhouette.'
+    caption = 'Close-up, a girl with long blue hair and a gray jacket looking forward with a surprised hair silhouette, wearing a silver necklace.'
     short = action_caption(caption)
     assert short.endswith('with a surprised expression.')
 
