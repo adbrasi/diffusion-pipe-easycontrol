@@ -36,7 +36,7 @@ def main():
     state = json.loads(ops.STATE.read_text()) if ops.STATE.exists() else dict(milestones=[])
     # Terminal failure is actionable state, not permission to replay failed
     # jobs forever under supervisor's autorestart=unexpected policy.
-    if state.get('status') in ('failed', 'awaiting_user_visual_verdict'):
+    if state.get('status') in ('failed', 'stopped', 'awaiting_user_visual_verdict'):
         print(f'Campaign already {state["status"]}; explicit recovery required.', flush=True)
         return
     state.setdefault('reported_stages', [])
@@ -146,6 +146,10 @@ if __name__ == '__main__':
         ops.STATE = ART / 'campaign_state.json'
     try:
         main()
+    except SystemExit:
+        # wait_job already records stopped. An intentional scheduling hold
+        # must not trigger supervisor's unexpected-exit restart policy.
+        sys.exit(0)
     except Exception as error:
         state = json.loads(ops.STATE.read_text()) if ops.STATE.exists() else {}
         state.update(status='failed', error=str(error))

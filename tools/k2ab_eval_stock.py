@@ -15,10 +15,14 @@ ROOT = Path('/workspace/k2ab')
 
 
 def graph(row, reference, variant, adapter_name, prefix, reference_method=True, t2i=False,
-          base_model='krea2_raw_bf16.safetensors', reference_pixels='node_1mp'):
+          base_model='krea2_raw_bf16.safetensors', reference_pixels='node_1mp',
+          steps=None, cfg=None, mu=None):
     turbo = variant == 'Turbo'
+    steps = (8 if turbo else 28) if steps is None else steps
+    cfg = (1. if turbo else 5.5) if cfg is None else cfg
+    mu = 1.15 if turbo and mu is None else mu
     sigmas, _ = build_krea2_timesteps((row['width']//16)*(row['height']//16),
-                                    8 if turbo else 28, mu=1.15 if turbo else None)
+                                    steps, mu=mu)
     nodes = {}
 
     def add(name, node_type, **inputs):
@@ -56,7 +60,7 @@ def graph(row, reference, variant, adapter_name, prefix, reference_method=True, 
                        reference_latents_method='index_timestep_zero')
         negative = add('10', 'FluxKontextMultiReferenceLatentMethod', conditioning=negative,
                        reference_latents_method='index_timestep_zero')
-    guider = add('11', 'CFGGuider', model=model, positive=positive, negative=negative, cfg=1. if turbo else 5.5)
+    guider = add('11', 'CFGGuider', model=model, positive=positive, negative=negative, cfg=cfg)
     latent = add('12', 'EmptyLatentImage', width=row['width'], height=row['height'], batch_size=1)
     noise = add('13', 'RandomNoise', noise_seed=row['seed'])
     sampler = add('14', 'KSamplerSelect', sampler_name='euler')

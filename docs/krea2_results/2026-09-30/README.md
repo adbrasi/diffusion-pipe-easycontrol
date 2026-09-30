@@ -43,3 +43,5 @@ vencedor nem prova que a tarefa foi resolvida.
 Métricas de triagem: Turbo ref_gain0,0705/gt0,4746; Raw ref_gain0,0922/gt0,5307.
 copy_rate(dHash)=0 em ambos não detecta por si só a repetição de composição.
 JSONs completos ao lado dos grids.
+
+Auditoria Raw no A125 **micro2** (não confundir com A125 micro4 anterior): [grid de CFG/steps](A125_micro2_Raw_settings_grid.jpg), [auditoria oficial](A125_micro2_Raw_configuration_audit.json), [parâmetros completos](A125_micro2_Raw_settings_manifest.json). As três linhas usam a mesma seed, checkpoint, prompt e referência. Nenhuma variante mostrou melhora consistente; Raw28/CFG5.5 permanece no A/B.

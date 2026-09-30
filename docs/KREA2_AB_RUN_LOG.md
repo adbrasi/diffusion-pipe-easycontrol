@@ -162,3 +162,17 @@ Custo Krea acumulado estimado desde16:09UTC:US$2.87, inclui setup/cache/ociosida
 A_native_fp8_512_micro2_probe salvou step125; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step125/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$2.88, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 21:09 UTC — Auditoria Raw e comparação de configuração, A125 micro2
+
+Pedido do usuário: investigar Raw abaixo do Turbo, incluindo CFG. Conferido contra krea-ai/krea-2 commit db3984fbc6e13b34c0064990fc2d95ac64d00058, sampling.py e README, e a documentação oficial Diffusers. CFG Krea usa cond+guidance*(cond-uncond); Comfy usa uncond+cfg*(cond-uncond). Logo guidance4.5 Krea = CFG5.5 Comfy, sem erro de off-by-one. Raw28/5.5 corresponde aos defaults oficiais; README também apresenta Raw52/guidance3.5 (=CFG4.5 Comfy). Turbo8/CFG1 é correto.
+
+13 workflows auditados: Raw sem TurboLoRA, mesma referência no conditioning positivo/negativo, método index_timestep_zero, scheduler dinâmico pelo número de tokens do alvo. Divergência máxima dos sigmas vs implementação oficial8.46e-8; fórmula de guidance1.91e-6 (float32). Sem evidência de erro de CFG/schedule ou Turbo aplicado no Raw.
+
+Sweep stock, checkpoint A125 NOVO micro2, seed76/prompt/referência/Euler/baseFP8scaled idênticos, três casos críticos (perfil, noite/binóculo, mecha): Raw28 CFG1/3/4.5, Raw52 CFG4.5 e Raw52 CFG4.5 mu1.15; comparados aos baselines Turbo8/CFG1 e Raw28/CFG5.5.15 imagens novas,309.54s (~US$0.053 GPU pelo tempo do job). Cada PNG acompanha workflow API JSON; manifest contém os sigmas/mu. Grid em /workspace/k2ab/artifacts/fp8_512_micro2/raw_settings_check/A_native_step125/grid.jpg, cópia versionada docs/krea2_results/2026-09-30/A125_micro2_Raw_settings_grid.jpg.
+
+Leitura visual limitada a n=3: CFG1 degradou o mecha para a cena larga de fogo; CFG3 manteve melhor tons quentes nesse exemplo mas mudou o desenho.52steps não melhorou consistentemente a28; mu1.15 pouco mudou52. Nenhuma alternativa resolveu a falta de mudança de pose na cena noturna. Não selecionar receita a partir desse n pequeno: manter Raw28/5.5/dynamicmu para comparabilidade A/B; não afirmar que Turbo superior prova bug ou treino ruim. Turbo continua distinto por sua LoRA de destilação.
+
+Erro operacional meu nesta auditoria: a pausa do controlador parou stock enquanto o job de avaliação A125 ainda estava ativo, deixando3 imagens Raw faltantes. Snapshot da falha preservado, job reexecutado sem sobrescrever49 imagens existentes,3 faltantes recuperadas,52PNGs e métricas completos. Corrigido wait_job: flag de pausa aguarda o job ativo terminar antes de desmontar o serviço; estado stopped terminal e SystemExit normal evitam loop no supervisor. Teste com job temporário running→done comprovou espera e saída stopped. Sem treino perdido.
+
+Retomar A micro2 do seu próprio125 até500, depois B fresco500. Proibido continuar A74; parâmetros de treino/captions intocados. Custo Krea acumulado estimado desde16:09UTC:US$3.11, inclui setup/cache/ociosidade/auditoria, não é extrato Vast.

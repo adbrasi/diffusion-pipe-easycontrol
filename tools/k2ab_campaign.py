@@ -67,12 +67,16 @@ def prune_old_states():
 def wait_job(path, campaign):
     state_path = path.with_suffix('.state.json')
     while True:
-        if (ROOT / 'ops/stop_campaign').exists():
-            campaign['status'] = 'stopped'
-            atomic(STATE, campaign)
-            raise SystemExit('Campaign stopped before scheduling dependent work')
-        prune_old_states()
         status = json.loads(state_path.read_text()) if state_path.exists() else {}
+        if (ROOT / 'ops/stop_campaign').exists():
+            # Finish the current queued operation before unwinding callers'
+            # service cleanup. Previously a scheduling hold stopped ComfyUI
+            # while its evaluation request was still generating images.
+            campaign['status'] = 'stopping' if status.get('status') == 'running' else 'stopped'
+            atomic(STATE, campaign)
+            if status.get('status') != 'running':
+                raise SystemExit('Campaign stopped before scheduling dependent work')
+        prune_old_states()
         campaign['current_job'] = path.stem
         campaign['job_status'] = status
         for arm in campaign.get('checkpoint_arms', ('A_native_probe', 'B_beta1_fixed_probe')):
