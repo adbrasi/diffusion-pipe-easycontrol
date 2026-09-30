@@ -21,10 +21,10 @@ import sys
 from pathlib import Path
 
 import torch
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from tools.nextscene_eval import Feats, dhash_ham, grid  # noqa: E402
+from tools.nextscene_eval import Feats, dhash_ham  # noqa: E402
 
 IMG_EXT = {'.png', '.jpg', '.jpeg', '.webp'}
 
@@ -34,6 +34,25 @@ def find(d, stem):
         if p.suffix.lower() in IMG_EXT:
             return p
     return None
+
+
+def labeled_grid(rows, stems, title, cell=384):
+    header, label = 64, 28
+    canvas = Image.new('RGB', (4*cell, header + len(rows)*(cell+label)), 'white')
+    draw = ImageDraw.Draw(canvas)
+    font = ImageFont.truetype('DejaVuSans.ttf', 18)
+    small = ImageFont.truetype('DejaVuSans.ttf', 14)
+    draw.text((8, 6), title, fill='black', font=font)
+    for column, text in enumerate(('A - referencia', 'B - proxima cena real', 'Ref certa - resultado', 'Ref trocada - resultado')):
+        draw.text((column*cell+8, 35), text, fill='black', font=font)
+    for index, (row, stem) in enumerate(zip(rows, stems)):
+        y = header + index*(cell+label)
+        draw.text((8, y+4), f'{index+1:02d} | {stem}', fill='black', font=small)
+        for column, image in enumerate(row):
+            image = image.copy()
+            image.thumbnail((cell, cell))
+            canvas.paste(image, (column*cell+(cell-image.width)//2, y+label+(cell-image.height)//2))
+    return canvas
 
 
 def main():
@@ -75,7 +94,7 @@ def main():
         summary = {'dir': str(d), 'n': len(per), **{k: mean(k) for k in ('gt_true', 'ref_gain', 'copy_gap', 'ccip_true')},
                    'copy_rate': mean('copy')}
         (d / 'metrics.json').write_text(json.dumps({'summary': summary, 'pairs': per}, indent=2))
-        g = grid(rows)
+        g = labeled_grid(rows, [row['stem'] for row in per], f'{d.parent.name} | {d.name}')
         g.save(d / 'grid.png')
         print(json.dumps(summary))
 

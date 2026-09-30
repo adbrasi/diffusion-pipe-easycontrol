@@ -39,3 +39,12 @@ A500 do zero iniciado após gates e smokes; native worktree atualizado para38c94
 Ablation com/sem FluxKontextMultiReferenceLatentMethod: saídas diferentes,MAEpixel0.2842,same seed/prompt, prova de caminho VAE ativo. Arquivos /workspace/k2ab/artifacts/smoke/A_native_no_method. Smokes foram pontuados em apenas UM par e não servem para selecionar método; grids de4colunas locais. A30testes+worktreeA13testes passaram.
 
 Controller serial supervisor k2ab_campaign:segueA500→B500→A250/500stock→T2Ibase→B250/500runner→metrics. C só após revisão visual/evidência; não enfileirado. Stop_campaign interrompe agendamento futuro; trainer ativo deve sair via save_quit. Mantém dois optimizerstates recentes e latest;smokes5/10states obsoletos removidos depois do resume12validado. Checkpoints/outputs preservados. Cache A só será removido se o disco não comportarB (reprodutível,dados/configs mantidos). HFupload contínuo ativo.
+
+## 2026-09-30 17:22 UTC — Régua beta1 e preparação da avaliação
+
+- A/probe500 está no treino, ~25,3 s/step, sem overflow. A sequência B/probe500 continua automática, sem concorrência de dois modelos na GPU.
+- Comparação beta1 original preparada em uma segunda instância oficial do ComfyUI `fb2315f11db0ebfaafa9099a5df5227dc6bb42bc`, localhost18820, desligada durante o treino. Nodes de `adbrasi/ctxrush-edit` fixados em `5b0250d79a0449dd50e3eaa38c007e9f602123d0`; o ComfyUI stock do A permanece sem custom nodes.
+- Adapter original `AdwolfCzar/k2-context-rush-ofc-beta1/step13250` e base oficial `krea2_raw_fp8_scaled.safetensors` baixados **apenas para a inferência histórica** `CtxRush v2 + K2 Training Base`. Essa régua reproduz o grid FP8 sem escala e a fusão Turbo histórica, que ignora sete biases `diff_b`. A/B continuam com base BF16 exata e Turbo oficial com os sete biases aplicados.
+- `tools/k2ab_eval_legacy.py`: mesmos13heldout, seed76 em CPU, Turbo8/CFG1 e Raw28/CFG5,5, referências certa/trocada. Nodes/lora/modelo não foram instalados na sessão ComfyUI do usuário.
+- Grids agora identificam braço/checkpoint/variante e cada stem, nas quatro colunas A | B | resultado/ref certa | resultado/ref trocada. Workflows API ficam junto de cada PNG.
+- Corrigida a espera de prontidão da API: Supervisor RUNNING não implica que os nodes já foram importados. Reiniciar o controlador da campanha agora também aceita o serviço stock já rodando. O worker e o processo de treino não são reiniciados.

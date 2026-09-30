@@ -56,8 +56,18 @@ def graph(row, reference, variant, adapter_name, prefix, reference_method=True, 
     return nodes
 
 
-def execute(prompt, destination):
-    response = requests.post(URL + '/prompt', json={'prompt': prompt}, timeout=30)
+def execute(prompt, destination, url=URL, output_root=None):
+    # Supervisor reports RUNNING before ComfyUI finishes importing nodes.
+    ready_deadline = time.time() + 120
+    while True:
+        try:
+            requests.get(url + '/system_stats', timeout=5).raise_for_status()
+            break
+        except requests.RequestException:
+            if time.time() >= ready_deadline:
+                raise
+            time.sleep(2)
+    response = requests.post(url + '/prompt', json={'prompt': prompt}, timeout=30)
     response.raise_for_status()
     result = response.json()
     if result.get('node_errors'):
@@ -65,7 +75,7 @@ def execute(prompt, destination):
     prompt_id = result['prompt_id']
     start = time.time()
     while time.time() - start < 1200:
-        history = requests.get(URL + '/history/' + prompt_id, timeout=30).json()
+        history = requests.get(url + '/history/' + prompt_id, timeout=30).json()
         if prompt_id in history:
             entry = history[prompt_id]
             if entry.get('status', {}).get('status_str') == 'error':
@@ -73,7 +83,7 @@ def execute(prompt, destination):
             images = entry.get('outputs', {}).get('18', {}).get('images', [])
             if images:
                 row = images[0]
-                source = ROOT / 'artifacts/stock_outputs' / row['subfolder'] / row['filename']
+                source = (output_root or ROOT / 'artifacts/stock_outputs') / row['subfolder'] / row['filename']
                 shutil.copyfile(source, destination)
                 return
         time.sleep(2)

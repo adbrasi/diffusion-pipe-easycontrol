@@ -96,6 +96,12 @@ def adapter_for(arm, step):
     return files[-1]
 
 
+def start_service(name):
+    status = subprocess.run(['supervisorctl', 'status', name], capture_output=True, text=True)
+    if 'RUNNING' not in status.stdout:
+        subprocess.run(['supervisorctl', 'start', name], check=True)
+
+
 def main():
     state = json.loads(STATE.read_text()) if STATE.exists() else dict(status='running', milestones=[])
     state['status'] = 'running'
@@ -119,7 +125,7 @@ def main():
     wait_job(job, state)
     note(f'B/beta1_fixed500 completo: {adapter_for("B_beta1_fixed_probe",500)}. '
          'Avaliando250/500,13heldout,seed76,Turbo/Raw,certa/trocada.')
-    subprocess.run(['supervisorctl', 'start', 'k2ab_stock'], check=True)
+    start_service('k2ab_stock')
     try:
         for step in (250, 500):
             job = enqueue(f'030_A{step}_eval', [PYTHON, 'tools/k2ab_eval_stock.py', '--adapter',
@@ -137,11 +143,19 @@ def main():
                 '--config', str(config), '--adapter', str(adapter_for('B_beta1_fixed_probe', step).parent),
                 '--out', str(ROOT / 'artifacts/eval' / f'B_beta1_fixed_step{step}'), '--variant', variant])
             wait_job(job, state)
+    start_service('k2ab_legacy')
+    try:
+        wait_job(enqueue('055_beta1_original', [PYTHON, 'tools/k2ab_eval_legacy.py', '--out',
+            str(ROOT / 'artifacts/eval/beta1_original_step13250')]), state)
+    finally:
+        subprocess.run(['supervisorctl', 'stop', 'k2ab_legacy'], check=True)
     command = [PYTHON, 'tools/k2ab_metrics.py', '--pairs', str(ROOT / 'heldout')]
     for arm in ('A_native', 'B_beta1_fixed'):
         for step in (250, 500):
             for variant in ('Turbo', 'Raw'):
                 command += ['--dir', str(ROOT / 'artifacts/eval' / f'{arm}_step{step}' / variant)]
+    for variant in ('Turbo', 'Raw'):
+        command += ['--dir', str(ROOT / 'artifacts/eval/beta1_original_step13250' / variant)]
     wait_job(enqueue('060_metrics', command), state)
     state.update(status='awaiting_visual_review', current_job=None)
     atomic(STATE, state)
