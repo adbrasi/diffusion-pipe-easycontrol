@@ -511,6 +511,17 @@ def scale_adapter(pipeline, scale: float) -> int:
     return count
 
 
+def _merge_linear_delta(module, delta, name):
+    from models.base import ScaledFP8Linear
+    if isinstance(module, ScaledFP8Linear):
+        import comfy.utils
+        module.fuse_weight_delta(delta, seed=comfy.utils.string_to_seed('diffusion_model.' + name + '.weight'))
+    else:
+        with torch.no_grad():
+            base = module.weight
+            module.weight.data = (base.detach().float() + delta.to(base.device)).to(base.dtype)
+
+
 def apply_turbo_lora(pipeline, lora_path: Path, strength: float = 1.0) -> int:
     """Funde a LoRA turbo oficial nos pesos base ANTES do nosso adapter.
 
@@ -557,9 +568,7 @@ def apply_turbo_lora(pipeline, lora_path: Path, strength: float = 1.0) -> int:
         # dequantiza -> soma -> volta ao dtype original. Em fp8 isto
         # requantiza, mas o delta da turbo é de magnitude alta o bastante
         # para sobreviver (ao contrário de um adapter recém-treinado).
-        with torch.no_grad():
-            novo = base.detach().to(torch.float32) + delta.to(base.device)
-            modulo.weight.data = novo.to(base.dtype)
+        _merge_linear_delta(modulo, delta, nome)
         aplicados += 1
     for key, value in tensors.items():
         if not key.endswith('.diff_b'):
@@ -636,8 +645,7 @@ def _fuse_loras_accumulated(pipeline, itens):
                   f'o resto foi ignorado')
         print(f'LoRA extra acumulada (forca {forca}): {Path(caminho).name} -> {aplicados} modulos')
     for nome, delta in acumulado.items():
-        peso = modulos[nome].weight
-        peso.data = (peso.detach().to(torch.float32) + delta.to(peso.device)).to(peso.dtype)
+        _merge_linear_delta(modulos[nome], delta, nome)
     print(f'{len(itens)} LoRA(s) extra fundidas em {len(acumulado)} modulos '
           f'(1 requantizacao por modulo)')
     return len(acumulado)

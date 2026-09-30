@@ -78,3 +78,13 @@ Usuário autorizou smoke e A/B, nesta ordem A depois B, ambos **do zero**. A74 p
 - Smoke A fresh enfileirado100,semresume,10steps,saves5/10; B será enfileirado após resultado A e escolha do batch que realmente cabe. Probes não iniciam antes dos gates/smokes. Configs novas não sobrescrevem os artefatos BF16.
 - Comparação antiga: A1024/micro1×accum4/swap20 ~25,15s/step =0,159amostras/s; Bsmoke1024 ~35,75s/step =0,112amostras/s. Relatar ganho inclui mudança de resolução/batch/offload, não atribuí-lo só à quantização.
 - W8A8 opcional somente após A/B rodando e se o throughput incomodar; implementação própria, sem código AGPL OneTrainer; troca de padrão condicionada a paridade/seed fixa/grids e ganho medido. Variante seguinte se A copiar/ficar atrás de B: reference_timestep=target / método index stock, como orientação nova de Claude.
+
+## 2026-09-30 18:21 UTC — Smokes FP8 e correção de fusão Turbo
+
+A512/micro4×accum1/swap0:10steps,mediana5.8295s/step=0.6865amostras/s,pico31687MiB. B:10steps,6.7415s/step=0.5935amostras/s,pico32033MiB. Picos incluem ~776MiB do ComfyUI do usuário; margem B apertada, monitorar batches longos. Ganho observado contra antigos1024micro1×accum4:4.32×A e5.30×B; resolução,batch e remoção de swap mudaram juntos, portanto não medir isso como ganho isolado de quantização.
+
+Ambos converters registraram256ScaledFP8Linear. A resume10→12 passou,LR1e-4 preservado. B resume10→12 em andamento. Sem carregamento de A74.
+
+Integração descoberta antes do sampling B: `apply_turbo_lora` e fusão de extras somavam delta diretamente ao parâmetro weight; no ScaledFP8Linear esse parâmetro são códigos FP8 crus. Corrigi para dequantizar com escala, somar em FP32 e requantizar com escala recalculada/arredondamento estocástico e seed da chave, igual ao set_weight do ComfyUI. Adapter de referência segue separado/routado, nunca fundido. Teste novo compara qdata,escala e peso dequantizado contra QuantizedTensor.requantize_from_float:3testesScaledFP8passaram. Isso é correção de inferência, não W8A8 nem mudança no forward de treino.
+
+Avaliação512 A preparada com nodes exclusivamente stock: TextEncodeQwenImageEditPlus semVAE (grounding original384²) + ImageScale/VAEEncode/ReferenceLatent (ref no bucket512) + método index_timestep_zero. O node Qwen comVAE sempre faria ref1MP e quebraria a relação de grids do novo probe; não utilizar essa variante aqui. O resize PIL do treino e bicubic Comfy não são bit-idênticos em pixels; geometria/posições/método/texto são os mesmos. B runner512 com basefp8_scaled e semswap. Manifest512 separado; captions e manifest1024preservados.

@@ -60,3 +60,16 @@ def test_peft_wraps_it_and_only_lora_gets_grad():
     grads = {n: p.grad for n, p in model.named_parameters() if p.requires_grad}
     assert grads and all('lora_' in n for n in grads) and all(g is not None for g in grads.values())
     assert x.grad is not None
+
+
+def test_global_delta_requantizes_like_comfy_without_losing_scale():
+    base = _import_base()
+    lin, q = _comfy_fp8_linear()
+    module = base.ScaledFP8Linear.from_comfy(lin)
+    delta = torch.randn(48, 32) * .01
+    expected = q.requantize_from_float(q.dequantize().float() + delta,
+        scale='recalculate', stochastic_rounding=17, inplace_ops=True).to(q.dtype)
+    module.fuse_weight_delta(delta, seed=17)
+    assert torch.equal(module.weight, expected._qdata)
+    assert torch.equal(module.weight_scale, expected._params.scale)
+    assert torch.equal(module.dequantized_weight(q.dtype), expected.dequantize())

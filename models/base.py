@@ -317,6 +317,8 @@ class ScaledFP8Linear(nn.Linear):
         new.weight = nn.Parameter(w._qdata.detach().clone(), requires_grad=False)
         new.register_buffer('weight_scale', w._params.scale.detach().clone().float(), persistent=False)
         new.orig_dtype = w._params.orig_dtype
+        new.fp8_layout = w._layout_cls
+        new.fp8_requant_kwargs = w.layout_cls.requantize_kwargs(w)
         if bias is not None:
             b = bias.dequantize() if bias.__class__.__name__ == 'QuantizedTensor' else bias
             new.bias = nn.Parameter(b.detach().clone(), requires_grad=False)
@@ -333,6 +335,22 @@ class ScaledFP8Linear(nn.Linear):
     def forward(self, x):
         bias = None if self.bias is None else self.bias.to(x.dtype)
         return F.linear(x, self.dequantized_weight(x.dtype), bias)
+
+    def fuse_weight_delta(self, delta, seed):
+        """Inference-only global LoRA fusion, using ComfyUI's scaled requantization.
+
+        Adding a delta directly to weight would add it to raw FP8 codes. Decode
+        first, then recalculate the scale and round like ComfyUI set_weight.
+        Reference adapters remain separate and are never fused here.
+        """
+        from comfy_kitchen.tensor.base import QuantizedTensor
+        with torch.no_grad():
+            merged = self.dequantized_weight(torch.float32) + delta.to(self.weight.device)
+            options = dict(self.fp8_requant_kwargs)
+            options.update(scale='recalculate', stochastic_rounding=seed, inplace_ops=True)
+            quantized = QuantizedTensor.from_float(merged, self.fp8_layout, **options).to(self.orig_dtype)
+            self.weight.data = quantized._qdata
+            self.weight_scale.copy_(quantized._params.scale)
 
 
 class BasePipeline(CommonPipeline):
