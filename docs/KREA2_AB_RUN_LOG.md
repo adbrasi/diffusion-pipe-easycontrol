@@ -198,3 +198,9 @@ Stock A: versão sem adapter omite nó LoRA treinada, mantém Turbo oficial e co
 Treino não interrompido: só scheduler reiniciado,worker/GPUjob A250 permaneceu rodando. Próximo segmento A250→500 direto (sem pausa375), checkpoints de recuperação/upload continuam125. B250 inicia fresco e segue até500. Dry-run de agendamento validou reutilização do job A250, B fresco, intervalos corretos e ausência de Raw/baselines.
 
 Esclarecimento ao usuário: ~0.72 no log era AMOSTRAS/s; microbatch2 resulta~0.36steps/s (~2.8s/step,~23min/500steps computação). Além do treino, A125 consumiu52PNGs Turbo/Raw e auditoria adicionou15Raw; também houve inicialização/cache e incidentes previamente registrados. Redução atual elimina a maior parte do sampling.
+
+## 2026-09-30 21:23 UTC — Campanha
+
+A_native_fp8_512_micro2_probe salvou step375; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step375/adapter_model.safetensors. Sync HF contínuo ativo.
+
+Custo Krea acumulado estimado desde16:09UTC:US$3.25, inclui setup/cache/ociosidade, não é extrato.
