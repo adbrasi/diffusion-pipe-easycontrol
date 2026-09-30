@@ -298,3 +298,9 @@ Há sinal de polo de cópia no A nativo t_ref0 conforme hipótese do handoff. Ma
 A_native_fp8_512_micro2_probe salvou step875; adapter local: /workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step875/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$3.90, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 22:32 UTC — Campanha
+
+Novo A_native/FP8/512/micro2 salvou step1000, 2000 amostras; nenhum peso do A74 utilizado. Avaliando apenas Turbo antes do próximo segmento.
+
+Custo Krea acumulado estimado desde16:09UTC:US$3.96, inclui setup/cache/ociosidade, não é extrato.
