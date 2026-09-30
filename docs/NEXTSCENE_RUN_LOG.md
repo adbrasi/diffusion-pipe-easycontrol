@@ -253,3 +253,40 @@ consistentes, PNGs íntegros e PDF válido. Mantido sync para HF privado.
 ```bash
 python tools/nextscene_review_grid.py
 ```
+
+### Push solicitado e continuação até1.000 (07:30 UTC)
+
+Usuário autorizou explicitamente push dos códigos e1.000steps em ambos os
+layouts. Interpretação:1.000totais por método, retomando os mesmos pesos/optimizer
+a partir de750; sem reiniciar do zero nem adicionar novos braços. A1000 em
+execução, B1000 enfileirado com resume.
+
+Tempo dos primeiros500: soma dos tempos de iteração A512,15s/B511,48s
+(~8min32 de cálculo por método). Somando duração dos processos250+500:
+A661,57s (11min02, incluiu primeiro cache), B554,39s (9min14). Avaliações,
+esperas na fila e testes de outros braços estão fora desses tempos.
+
+Versionados6scripts operacionais em `tools/nextscene_gpu_ops/`; credenciais
+não estão no repo. Finalizado evaluator opcional `--match-target-ar`, com
+encode por dimensão e config original preservada. E1 continua512quadrado:
+não mudei parâmetros nem avaliação da comparação em andamento. Dimensões
+AR verificadas em CPU; flag opcional ainda sem smoke de sampling em GPU.
+
+### Pacote para agente com acesso somente ao repo (07:35 UTC)
+
+Usuário pediu push e imagens250/500/750 para revisão externa. Pacote em
+`docs/nextscene_results/2026-09-30/`:6grids de3colunas, layouts/steps/condição
+rotulados;6pares cobrindo4subsets, referência original+shuffle,72outputs
+existentes. Seleção ilustrativa inclui falhas e progresso, não ranking.
+Métricas/metadata incluem todos12pares, prompts e contrato de cada checkpoint.
+Sem dependência de HF privado para abrir os PNGs; cópia também em
+`/workspace/nextscene_artifacts/review_for_agent/2026-09-30/`.
+
+A750: GT0,5832/ref_gain0,0865/null_gain0,0982/CCIP0,4167/copy_rate0.
+B750: GT0,5446/ref_gain0,0386/null_gain0,0394/CCIP0,4167/copy_rate0.
+A melhora métricas médias vs500; B conserva o caso3D mas sua média de
+ref_gain oscila. Identidade ainda fraca nos exemplos de perfil/mecha; sem
+vencedor visual robusto. A1000 terminou treino; avaliação e B1000 na fila.
+
+Validação pré-push:23testes relevantes passaram; scripts operacionais com
+sintaxe verificada. Grid/manifest da exportação são verificados antes do commit.

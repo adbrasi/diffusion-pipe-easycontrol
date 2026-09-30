@@ -1,0 +1,198 @@
+{
+  "layout": "disjoint_w",
+  "step": 500,
+  "evaluation_config": {
+    "dit": "/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors",
+    "vae": "/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors",
+    "llm": "/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors",
+    "pairs": "/workspace/heldout_short",
+    "ckpt": [
+      "/workspace/checkpoints/anima_nextscene/E1_B/20260930_06-43-16/step500"
+    ],
+    "out": "/workspace/nextscene_artifacts/E1/B500",
+    "limit": 12,
+    "width": 512,
+    "height": 512,
+    "match_target_ar": false,
+    "steps": 20,
+    "cfg": 4.0,
+    "flow_shift": 3.0,
+    "ref_cfg": 1.0,
+    "uncond_ref": "keep",
+    "lora_strength": 1.0,
+    "rope_layout": null,
+    "ref_temporal_index": null,
+    "negative_prompt": "worst quality, low quality, blurry, jpeg artifacts",
+    "seed": 76,
+    "copy_dhash": 6
+  },
+  "checkpoint_contract": {
+    "version": "1",
+    "layout": "target_first",
+    "rope_layout": "disjoint_w",
+    "ref_temporal_index": 1,
+    "ref_timestep": 0.0,
+    "null_ref": "zeros"
+  },
+  "metrics": {
+    "summary": {
+      "ckpt": "E1_B_20260930_06-43-16_step500",
+      "adapter": "/workspace/checkpoints/anima_nextscene/E1_B/20260930_06-43-16/step500/adapter_model.safetensors",
+      "n": 12,
+      "gt_true": 0.5331,
+      "ref_gain": 0.0673,
+      "null_gain": 0.0216,
+      "copy_gap": -0.0944,
+      "ccip_true": 0.25,
+      "copy_rate": 0.0
+    },
+    "pairs": [
+      {
+        "stem": "00_ds1_bj579mxzos_image_0006",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.254665344953537,
+        "ref_gain": 0.009728193283081055,
+        "null_gain": -0.023016363382339478,
+        "copy_gap": 0.1617799997329712,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "01_ds2_002518",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.3659592568874359,
+        "ref_gain": 0.007737249135971069,
+        "null_gain": -0.11940428614616394,
+        "copy_gap": -0.058138489723205566,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "02_ds3_006895",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.7459035515785217,
+        "ref_gain": 0.13124293088912964,
+        "null_gain": 0.09298640489578247,
+        "copy_gap": -0.12211447954177856,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "03_ds4_imagem000268",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.45370015501976013,
+        "ref_gain": 0.18209168314933777,
+        "null_gain": -0.0912306010723114,
+        "copy_gap": -0.15728190541267395,
+        "copy": 0,
+        "ccip_true": true
+      },
+      {
+        "stem": "04_ds1_3j2gjwh4kb_image_0002",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.3802613615989685,
+        "ref_gain": -0.08139309287071228,
+        "null_gain": 0.0015180706977844238,
+        "copy_gap": -0.07592356204986572,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "05_ds2_004723",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.47159576416015625,
+        "ref_gain": 0.1660780906677246,
+        "null_gain": 0.13946175575256348,
+        "copy_gap": -0.4712074398994446,
+        "copy": 0,
+        "ccip_true": true
+      },
+      {
+        "stem": "06_ds3_005003",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.6737110614776611,
+        "ref_gain": 0.09662175178527832,
+        "null_gain": 0.06452333927154541,
+        "copy_gap": -0.08911508321762085,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "07_ds4_imagem000543",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.6211356520652771,
+        "ref_gain": -0.07129675149917603,
+        "null_gain": -0.14141881465911865,
+        "copy_gap": 0.1762189120054245,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "08_ds1_40zjrzfdij_image_0013",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.7889924645423889,
+        "ref_gain": 0.010917246341705322,
+        "null_gain": -0.03320354223251343,
+        "copy_gap": -0.07223734259605408,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "09_ds2_000248",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.5635889768600464,
+        "ref_gain": -0.008484125137329102,
+        "null_gain": 0.08051079511642456,
+        "copy_gap": -0.208902508020401,
+        "copy": 0,
+        "ccip_true": false
+      },
+      {
+        "stem": "10_ds3_002590",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.5209560394287109,
+        "ref_gain": 0.14058378338813782,
+        "null_gain": 0.10962504148483276,
+        "copy_gap": -0.26964646577835083,
+        "copy": 0,
+        "ccip_true": true
+      },
+      {
+        "stem": "11_ds4_imagem001466",
+        "width": 512,
+        "height": 512,
+        "gt_true": 0.5562198162078857,
+        "ref_gain": 0.2243388295173645,
+        "null_gain": 0.17888498306274414,
+        "copy_gap": 0.053737640380859375,
+        "copy": 0,
+        "ccip_true": false
+      }
+    ]
+  },
+  "prompts": {
+    "00_ds1_bj579mxzos_image_0006": "Close-up profile view. The same character turns sharply to the left.",
+    "01_ds2_002518": "Medium shot from a low angle. The same boy yells with his arms outstretched, wielding a weapon overhead amid glowing green energy.",
+    "02_ds3_006895": "A comic page with the same knight looking nervously at the purple creature, then being struck and falling face down.",
+    "03_ds4_imagem000268": "Medium frontal shot of three of the same spectators behind the railing, reacting with surprise; the center man holds binoculars to his face.",
+    "04_ds1_3j2gjwh4kb_image_0002": "Extreme close-up from a high angle of a woman with short dark hair and glasses, smiling slightly and looking down, one hand near her chest.",
+    "05_ds2_004723": "Medium shot. The same boy leans forward on the desk and looks down at a small paper bag while the boy opposite him looks up, surprised.",
+    "06_ds3_005003": "A manga page in the same corridor. The woman leans back against the wall while the man holds her face; another character checks a phone.",
+    "07_ds4_imagem000543": "Extreme frontal close-up of the same character narrowing their eyes with a skeptical expression.",
+    "08_ds1_40zjrzfdij_image_0013": "Close-up of the same woman looking at the viewer, surprised and flustered, mouth slightly open.",
+    "09_ds2_000248": "Extreme angled profile close-up of the same robot head, tightly framed around its eye and jaw.",
+    "10_ds3_002590": "Three comic panels inside the same car, moving from a side view of both passengers to a close-up of the woman smiling while driving and talking.",
+    "11_ds4_imagem001466": "Close-up of the same man staring toward the camera with wide, hollow eyes and his mouth slightly parted in shock."
+  }
+}

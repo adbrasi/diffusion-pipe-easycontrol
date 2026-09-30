@@ -32,6 +32,7 @@ Usage:
 import argparse
 import csv
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -99,6 +100,17 @@ def fit(img, w, h):
     return ImageOps.fit(img.convert('RGB'), (w, h))
 
 
+def eval_dimensions(target, width, height, match_target_ar):
+    if not match_target_ar:
+        return width, height
+    # Same 7 aspect buckets as the probes, with constant pixel budget.
+    ar = target.width / target.height
+    bucket = min((2 ** (i / 3) for i in range(-3, 4)), key=lambda r: abs(math.log(ar / r)))
+    area = width * height
+    return (round(math.sqrt(area * bucket) / 16) * 16,
+            round(math.sqrt(area / bucket) / 16) * 16)
+
+
 class Runner:
     def __init__(self, args, device, dtype):
         self.args, self.device, self.dtype = args, device, dtype
@@ -132,12 +144,16 @@ class Runner:
         ie.load_peft_lora(self.dit, path, self.device, self.dtype, lora_strength=self.args.lora_strength)
         return path
 
-    def ref_latent(self, path):
-        return ie.encode_control(self.vae, path, self.args.height, self.args.width, self.device, self.dtype)
+    def ref_latent(self, path, width=None, height=None):
+        width = self.args.width if width is None else width
+        height = self.args.height if height is None else height
+        return ie.encode_control(self.vae, path, height, width, self.device, self.dtype)
 
-    def generate(self, ctx, ref_lat, seed):
+    def generate(self, ctx, ref_lat, seed, width=None, height=None):
         a = self.args
-        lat = ie.sample_nextscene(self.dit, ctx, self.neg, ref_lat, a.height, a.width, a.steps, a.cfg,
+        width = a.width if width is None else width
+        height = a.height if height is None else height
+        lat = ie.sample_nextscene(self.dit, ctx, self.neg, ref_lat, height, width, a.steps, a.cfg,
                                   a.flow_shift, seed, self.device, self.dtype, ref_cfg=a.ref_cfg,
                                   uncond_ref=a.uncond_ref)
         with torch.no_grad():
@@ -173,6 +189,7 @@ def main():
     ap.add_argument('--limit', type=int, default=24)
     ap.add_argument('--width', type=int, default=768)
     ap.add_argument('--height', type=int, default=768)
+    ap.add_argument('--match-target-ar', action='store_true', help='use target aspect buckets at the same pixel budget')
     ap.add_argument('--steps', type=int, default=30)
     ap.add_argument('--cfg', type=float, default=4.0)
     ap.add_argument('--flow_shift', type=float, default=3.0)
@@ -194,9 +211,13 @@ def main():
     ctxs = [run.encode(cap) for _, _, _, cap in pairs]
     run.te.to('cpu')
     torch.cuda.empty_cache()
-    refs = [run.ref_latent(c) for _, c, _, _ in pairs]
-    A = [fit(Image.open(c), args.width, args.height) for _, c, _, _ in pairs]
-    B = [fit(Image.open(t), args.width, args.height) for _, _, t, _ in pairs]
+    dimensions = []
+    for _, _, target, _ in pairs:
+        with Image.open(target) as im:
+            dimensions.append(eval_dimensions(im, args.width, args.height, args.match_target_ar))
+    refs = [run.ref_latent(c, w, h) for (_, c, _, _), (w, h) in zip(pairs, dimensions)]
+    A = [fit(Image.open(c), w, h) for (_, c, _, _), (w, h) in zip(pairs, dimensions)]
+    B = [fit(Image.open(t), w, h) for (_, _, t, _), (w, h) in zip(pairs, dimensions)]
     fA, fB = feats.dino(A), feats.dino(B)
 
     os.makedirs(args.out, exist_ok=True)
@@ -212,14 +233,17 @@ def main():
         rows, per = [], []
         for i, (stem, _, _, _) in enumerate(pairs):
             j = (i + 1) % len(pairs)
-            o_true = run.generate(ctxs[i], refs[i], args.seed)
-            o_shuf = run.generate(ctxs[i], refs[j], args.seed)
-            o_null = run.generate(ctxs[i], torch.zeros_like(refs[i]), args.seed)
+            w, h = dimensions[i]
+            shuffled_ref = refs[j] if dimensions[i] == dimensions[j] else run.ref_latent(pairs[j][1], w, h)
+            o_true = run.generate(ctxs[i], refs[i], args.seed, w, h)
+            o_shuf = run.generate(ctxs[i], shuffled_ref, args.seed, w, h)
+            o_null = run.generate(ctxs[i], torch.zeros_like(refs[i]), args.seed, w, h)
             for tag, im in [('true', o_true), ('shuffled', o_shuf), ('null', o_null)]:
                 im.save(d / f'{stem}_{tag}.png')
             f = feats.dino([o_true, o_shuf, o_null])
             m = {
                 'stem': stem,
+                'width': w, 'height': h,
                 'gt_true': float(f[0] @ fB[i]),
                 'ref_gain': float(f[0] @ fB[i] - f[1] @ fB[i]),
                 'null_gain': float(f[0] @ fB[i] - f[2] @ fB[i]),

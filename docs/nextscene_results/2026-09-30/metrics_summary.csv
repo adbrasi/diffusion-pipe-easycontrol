@@ -1,0 +1,7 @@
+layout,step,ckpt,adapter,n,gt_true,ref_gain,null_gain,copy_gap,ccip_true,copy_rate
+aligned,250,E1_A_20260930_06-36-45_step250,/workspace/checkpoints/anima_nextscene/E1_A/20260930_06-36-45/step250/adapter_model.safetensors,12,0.5099,0.0263,0.0265,-0.1497,0.4167,0.0
+disjoint_w,250,E1_B_20260930_06-43-16_step250,/workspace/checkpoints/anima_nextscene/E1_B/20260930_06-43-16/step250/adapter_model.safetensors,12,0.5191,0.0543,0.0428,-0.1235,0.4167,0.0
+aligned,500,E1_A_20260930_06-36-45_step500,/workspace/checkpoints/anima_nextscene/E1_A/20260930_06-36-45/step500/adapter_model.safetensors,12,0.5678,0.0677,0.0798,-0.1148,0.4167,0.0
+disjoint_w,500,E1_B_20260930_06-43-16_step500,/workspace/checkpoints/anima_nextscene/E1_B/20260930_06-43-16/step500/adapter_model.safetensors,12,0.5331,0.0673,0.0216,-0.0944,0.25,0.0
+aligned,750,E1_A_20260930_06-36-45_step750,/workspace/checkpoints/anima_nextscene/E1_A/20260930_06-36-45/step750/adapter_model.safetensors,12,0.5832,0.0865,0.0982,-0.0902,0.4167,0.0
+disjoint_w,750,E1_B_20260930_06-43-16_step750,/workspace/checkpoints/anima_nextscene/E1_B/20260930_06-43-16/step750/adapter_model.safetensors,12,0.5446,0.0386,0.0394,-0.102,0.4167,0.0
