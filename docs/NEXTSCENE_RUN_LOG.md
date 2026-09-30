@@ -234,3 +234,22 @@ A/B são recortados exatamente como o evaluator (512 quadrado); outputs512
 são preservados integralmente. O crop corta os frames largos, portanto uma
 validação posterior em buckets de aspecto é apropriada, sem alterar E1 atual.
 Scripts de montagem arquivados em `artifacts/setup/ops/`.
+
+### Revisão visual simplificada solicitada (07:21 UTC)
+
+Criado `tools/nextscene_review_grid.py`: usa somente outputs existentes; nenhum
+sampling adicional. Reúne A250/B250/A500/B500,12pares, original+shuffle
+(96linhas), estritamente3colunas A|B|Resultado. Agrupado por par, com
+layout/step/condição/nome da referência efetiva em cada linha. No shuffle,
+A mostra o input realmente trocado, não a referência original.
+
+Em `/workspace/nextscene_artifacts/comparacoes/`: `REVISAO_250_500_3_COLUNAS.png`,
+PDF do mesmo nome (12páginas,1par/8resultados por página), PNGs separados250/500
+e manifest com correspondências. Baselines LoRA0 e null continuam nos arquivos
+anteriores; esta revisão foca os4checkpoints treinados e seus shuffles solicitados.
+Validado:96combinações únicas, todos os inputs/outputs existem, original/shuffle
+consistentes, PNGs íntegros e PDF válido. Mantido sync para HF privado.
+
+```bash
+python tools/nextscene_review_grid.py
+```
