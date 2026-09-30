@@ -361,3 +361,9 @@ Campanha supervisionada está em execução; B começa automaticamente depois
 da época deA. Confirmado push da receita/código e backup HF dos configs,
 captions exatas e smokeAR. Uma atualização remota de documentação Krea2 foi
 integrada via merge; não alterou código/configs de treino.
+
+### E2 — 2026-09-30 08:32 UTC
+
+`train_A_epoch1` salvou step1000 (4,000 amostras vistas). Adapter: `/workspace/checkpoints/anima_nextscene/E2_A/20260930_08-15-31/step1000`. Treino segue até o fim da época.
+
+Custo estimado acumulado desde06:05 UTC: US$1.53 (2.47h × US$0.62/h; inclui setup, cache e ociosidade).
