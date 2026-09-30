@@ -51,3 +51,5 @@ A500/A750 micro2, Turbo com adapter apenas: [A500 512](A500_micro2_Turbo_samplin
 A1000 micro2: [Turbo512](A1000_micro2_Turbo_sampling512.jpg), [Turbo1024](A1000_micro2_Turbo_sampling1024.jpg). Noite agora frontal com binóculo, preservando ambiente; mecha muda enquadramento mas troca vermelho por amarelo. B ainda em andamento; comparação de dois exemplos não elege vencedor.
 
 B250/B500 micro2 também disponíveis em512 e1024 nos arquivos B<step>_micro2_Turbo_sampling<resolution>.jpg, com métricas adjacentes. B500 mantém a noite de costas;1024 adiciona personagem. Comparação homogênea1000 ainda em andamento.
+
+B750 micro2: [Turbo512](B750_micro2_Turbo_sampling512.jpg), [Turbo1024](B750_micro2_Turbo_sampling1024.jpg). Mudança frontal parcial em512/completa em1024; herança exata do desenho/identidade continua limitada. Uma preparação de base gerou4PNGs em204.16s. B1000 em treino.

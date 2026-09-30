@@ -354,3 +354,9 @@ Custo Krea acumulado estimado desde16:09UTC:US$4.22, inclui setup/cache/ociosida
 B_beta1_fixed_fp8_512_micro2_probe salvou step750; adapter local: /workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe/20260930_21-33-41/step750/adapter_model.safetensors. Sync HF contínuo ativo.
 
 Custo Krea acumulado estimado desde16:09UTC:US$4.22, inclui setup/cache/ociosidade, não é extrato.
+
+## 2026-09-30 23:03 UTC — B750 e primeira avaliação das duas resoluções com uma carga
+
+B750 salvo às22:57:31UTC,512keys auditadas,sem erro. Job novo gerou4PNGs688×384/1376×768 em204.16s com uma única preparação/fusão de base; todasas dimensões/seed/CFG/steps do manifest preservadas. Não é A/B numérico contra reload com pesos idênticos,mas código do forward/preprocessing permanece igual; ganho operacional é evitar uma segunda preparaçãoCPU. B750→1000 resume751,LR1e-4,~3.2s/step.
+
+Visual B750:512 dois personagens frontais,terceiro ainda de costas;1024 três frontais,com binóculo no centro,mas expressões/identidade/iluminação continuam divergindo. Mecha tem vermelho nas laterais, porém cabeça/desenho não herda fielmente B; gera subtítulos em1024. DINOgt512=.7150 e1024=.7214,copy_rate0 ambos,CCIP1/.5. Melhora em relação aB500;n=2 seed76 não bastam para seleçãogeral. A750 eB750 não têm o mesmo comportamento: A750 copiava ambos512;B750 muda cena parcialmente. Avaliar comparaçãohomogênea1000 antes de qualquer variante/decisão. Grids versionados no Git/HF.
