@@ -1,0 +1,26 @@
+{
+  "summary": {
+    "dir": "/workspace/k2ab/artifacts/fp8_512_micro2/eval/A_native_step1000/resolution_1024/Turbo",
+    "n": 2,
+    "gt_true": 0.6022,
+    "copy_gap": -0.061,
+    "ccip_true": 1.0,
+    "copy_rate": 0.0
+  },
+  "pairs": [
+    {
+      "stem": "03_ds4_imagem000268",
+      "gt_true": 0.627867579460144,
+      "copy_gap": 0.027368158102035522,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "09_ds2_000248",
+      "gt_true": 0.5764584541320801,
+      "copy_gap": -0.14944571256637573,
+      "copy": 0,
+      "ccip_true": true
+    }
+  ]
+}
