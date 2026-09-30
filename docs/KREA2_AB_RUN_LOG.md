@@ -48,3 +48,16 @@ Controller serial supervisor k2ab_campaign:segueA500→B500→A250/500stock→T2
 - `tools/k2ab_eval_legacy.py`: mesmos13heldout, seed76 em CPU, Turbo8/CFG1 e Raw28/CFG5,5, referências certa/trocada. Nodes/lora/modelo não foram instalados na sessão ComfyUI do usuário.
 - Grids agora identificam braço/checkpoint/variante e cada stem, nas quatro colunas A | B | resultado/ref certa | resultado/ref trocada. Workflows API ficam junto de cada PNG.
 - Corrigida a espera de prontidão da API: Supervisor RUNNING não implica que os nodes já foram importados. Reiniciar o controlador da campanha agora também aceita o serviço stock já rodando. O worker e o processo de treino não são reiniciados.
+
+## 2026-09-30 17:47 UTC — Parada solicitada e teste rápido A74
+
+Usuário pediu parar qualquer treinamento enquanto Claude prepara mudanças. Campanha e worker desligados, autostart=false, `/workspace/k2ab/ops/stop_campaign` mantido. Nenhum processo train.py/deepspeed ativo; GPU ociosa após sampling. Serviços de backup HF continuam ativos.
+
+- A/probe encerrou por `save_quit` no **step74**, LR1e-4, código0. Estado completo local: `/workspace/k2ab/checkpoints/A_native_probe/20260930_17-06-17/global_step74`; latest aponta para esse estado. **B/probe500 não iniciou; nenhum braço chegou a250/500.** Smokes anteriores A/B chegaram a12 incluindo resume.
+- Atenção: o Saver atual salva apenas o estado DeepSpeed ao receber save_quit, sem exportar adapter. Exportei os pesos LoRA no CPU, sem retomar treinamento, com `tools/k2ab_export_checkpoint.py`: layer00=txtfusion, layer01..28=blocks0..27;512chaves e shapes conferidos contra adapter nativo compatível, todos finitos/BF16. Proveniência real do treinamento38c94bf-dirty registrada; configuração runtime preservada. Adapter em `step74/adapter_model.safetensors`, HF privado SHA256 confirmado. Loader stock:256patches, zero chaves não carregadas.
+- Usuário pediu testar74. Avaliação rápida em3heldout (perfil/chapéu, noite/binóculo, mecha), Turbo8/CFG1, CPU seed76, dimensões1360×768, refs certa/trocada, ComfyUI stock sem custom nodes. SEIS imagens e workflows em `/workspace/k2ab/artifacts/quick_A_native_step74/Turbo`. Grid compacto identificado: `grid.png`.
+- Triagem n=3: gt_true0.4450, ref_gain−0.0017, copy_gap0.1717, CCIP0.3333, copy_rate0.0 (dHash). Não comparar com métricas smoke n=1 como se fossem o mesmo conjunto.
+- Visual: shuffle muda bastante os resultados; noite/paleta já recebem influência da ref. Ainda falha ação/câmera (grupo continua de costas em vez do frontal pedido), identidade e cor do mecha (branco/preto em vez de vermelho). A74 é evidência preliminar, sem veredito do método, sem disparar braço C.
+- Estado recuperável da campanha anotado como stopped_by_user. A marca `done` do job010 indica saída normal após parada manual, não conclusão de500; não reativar controlador automaticamente a partir desse job.
+
+Custo Krea acumulado estimado desde16:09UTC: **US$1.01**, inclui setup/cache/ociosidade/teste; não é extrato Vast.

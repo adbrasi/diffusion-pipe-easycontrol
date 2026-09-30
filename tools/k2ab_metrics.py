@@ -38,20 +38,28 @@ def find(d, stem):
 
 def labeled_grid(rows, stems, title, cell=384):
     header, label = 64, 28
-    canvas = Image.new('RGB', (4*cell, header + len(rows)*(cell+label)), 'white')
+    resized_rows = []
+    for row in rows:
+        resized = []
+        for image in row:
+            image = image.copy()
+            image.thumbnail((cell, cell))
+            resized.append(image)
+        resized_rows.append(resized)
+    heights = [max(image.height for image in row) for row in resized_rows]
+    canvas = Image.new('RGB', (4*cell, header + sum(heights) + len(rows)*label), 'white')
     draw = ImageDraw.Draw(canvas)
     font = ImageFont.truetype('DejaVuSans.ttf', 18)
     small = ImageFont.truetype('DejaVuSans.ttf', 14)
     draw.text((8, 6), title, fill='black', font=font)
     for column, text in enumerate(('A - referencia', 'B - proxima cena real', 'Ref certa - resultado', 'Ref trocada - resultado')):
         draw.text((column*cell+8, 35), text, fill='black', font=font)
-    for index, (row, stem) in enumerate(zip(rows, stems)):
-        y = header + index*(cell+label)
+    y = header
+    for index, (row, stem, height) in enumerate(zip(resized_rows, stems, heights)):
         draw.text((8, y+4), f'{index+1:02d} | {stem}', fill='black', font=small)
         for column, image in enumerate(row):
-            image = image.copy()
-            image.thumbnail((cell, cell))
-            canvas.paste(image, (column*cell+(cell-image.width)//2, y+label+(cell-image.height)//2))
+            canvas.paste(image, (column*cell+(cell-image.width)//2, y+label+(height-image.height)//2))
+        y += height + label
     return canvas
 
 
