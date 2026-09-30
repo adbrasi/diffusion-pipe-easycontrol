@@ -49,7 +49,8 @@ def render(rows, cell, title):
             previous = row['stem']
         background = '#dbeafe' if row['layout'] == 'aligned' else '#dcfce7'
         draw.rectangle((0, y, canvas.width, y + band), fill=background)
-        condition = 'REF ORIGINAL' if row['condition'] == 'true' else 'SHUFFLE / REF TROCADA'
+        condition = {'true': 'REF ORIGINAL', 'shuffled': 'SHUFFLE / REF TROCADA',
+                     'null': 'NULL / SEM REFERENCIA'}[row['condition']]
         label = f"{row['run']} | {row['layout']} | step {row['step']} | {condition}"
         draw.text((10, y + 5), label, font=font(13 if cell < 512 else 21), fill='#111827')
         draw.text((10, y + (29 if cell < 512 else 39)),
@@ -57,7 +58,8 @@ def render(rows, cell, title):
                   font=font(11 if cell < 512 else 17), fill='#374151')
         y += band
         for col, key in enumerate(('reference', 'target', 'output')):
-            im = read_image(row[key], row['width'], row['height'])
+            im = (read_image(row[key], row['width'], row['height'])
+                  if row[key] is not None else Image.new('RGB', (row['width'], row['height']), '#e5e7eb'))
             im.thumbnail((cell, cell), Image.Resampling.LANCZOS)
             canvas.paste(im, (col * cell + (cell - im.width) // 2,
                               y + (cell - im.height) // 2))

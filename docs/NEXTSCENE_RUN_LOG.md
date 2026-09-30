@@ -685,3 +685,25 @@ Custo estimado acumulado desde06:05 UTC: US$4.12 (6.64h × US$0.62/h; inclui set
 E2 concluído: uma época em cada braço; checkpoints1000/2000/3000/5000 e epoch1 avaliados em24pares, seeds76/142, com buckets de aspecto. Métricas em `/workspace/nextscene_artifacts/E2/summary_all_seeds.csv`; outputs e grids sob `E2/eval_seed*/`. A escolha visual de checkpoint continua necessária; a campanha não declara identidade resolvida automaticamente.
 
 Custo estimado acumulado desde06:05 UTC: US$4.12 (6.64h × US$0.62/h; inclui setup, cache e ociosidade).
+
+### Grid solicitado — somente os últimos checkpoints E2 (13:16 UTC)
+
+Campanha concluída às12:43UTC: A/Bepoch1 com5.685steps cada;20avaliações
+(5checkpoints ×2braços ×2seeds) completas. Usuário solicitou visualizar
+somente o último de cada método. Montagem em
+`/workspace/nextscene_artifacts/E2/comparacoes_ultimo_checkpoint/`.
+
+PNGprincipal:48linhas de3colunas A|B|resultado (24pares ×2layouts),
+seed76/refcorreta. PDFcompleto:24páginas,1par/página,12resultados por par
+(2layouts ×2seeds76/142 ×original/shuffled/null),288resultados. Nomes
+indicam E2/layout/step/seed/condição. No shuffleAé a referência realmente
+fornecida; nullcinza é marcador de latentzero. Proporção das imagens preservada.
+Sem sampling adicional; arquivos originais intactos. Manifest/metr CSV juntos.
+Validado:288combinações, sóepoch1/step5685, correspondências inputs/outputs,
+PNGs íntegros ePDF24páginas. Código `tools/nextscene_e2_final_grid.py`.
+
+Tempos da campanha: A106,3min (inclui cache)/B98,2min; cálculo logado
+A97,6/B96,9min; avaliações~70,5min. Total4h35m37s (~US$2,85 da campanha).
+Estimativa acumulada desde06:05UTC agora:US$4.46, incluindo ociosidade
+após a conclusão; não é extrato de cobrança. Nenhum vencedor escolhido
+por essas métricas sem revisão visual completa.
