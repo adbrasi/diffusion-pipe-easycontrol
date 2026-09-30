@@ -1,0 +1,155 @@
+{
+  "utc": "2026-09-30T23:34:51.422683+00:00",
+  "n_cases": 10,
+  "n_outputs": 20,
+  "adapter": "A_native step1000 micro2",
+  "training_paused": true,
+  "sampling_resolution": 512,
+  "square_only": false,
+  "seed": 76,
+  "caption_sha256": "f2a13e2f8913b44824578cb41cbcc9df63f24de39b650e8c3f18f21825ee36a4",
+  "outputs": [
+    {
+      "variant": "Turbo",
+      "stem": "00_ds1_bj579mxzos_image_0006",
+      "width": 688,
+      "height": 384,
+      "sha256": "1a931acba1077bae7d51e0d0bf743f8813f8f157838c5b11906f6977dcfbedea"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "07_ds4_imagem000543",
+      "width": 688,
+      "height": 384,
+      "sha256": "aa1ff696cb94a06411e07f5f348c2f3f31b0e7c3d09fd2002c2c5f23d71b3a20"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "01_ds2_002518",
+      "width": 688,
+      "height": 384,
+      "sha256": "014d99dda9b5e1e5f382506541597082d075d82fc42e12a8427a69bb7215109b"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "11_ds4_imagem001466",
+      "width": 688,
+      "height": 384,
+      "sha256": "3e7f491986cefd4fbc8bcf913ff7f2dd9bf4e3494397e7e5d5e0317d02433877"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "10_ds3_002590",
+      "width": 416,
+      "height": 624,
+      "sha256": "6ea0c16b22ba348cf578847bd7af0608bb48ed32587486ecbf6e21a7b3a43e2e"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "15_ds4_imagem001559",
+      "width": 688,
+      "height": 384,
+      "sha256": "c52e9694c01b602bda421091002609bef67ea0f8f34b99f3bbbe6a0dd149477a"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "19_ds4_imagem001451",
+      "width": 688,
+      "height": 384,
+      "sha256": "00986c450bc3ac3d04e918163ad30601fd2e89654ebb38f8bbffc6ea27d1826c"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "23_ds4_imagem000762",
+      "width": 688,
+      "height": 384,
+      "sha256": "e0f990563181c1f17304ac3b8068ff7c2d7d4aeec8213ed117ab0b9a4c99df4a"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "08_ds1_40zjrzfdij_image_0013",
+      "width": 688,
+      "height": 384,
+      "sha256": "e99146cd7842f1f54ad4b65d5703660dd6d2c11b5aa7b7e06e4e66832dd019f0"
+    },
+    {
+      "variant": "Turbo",
+      "stem": "05_ds2_004723",
+      "width": 688,
+      "height": 384,
+      "sha256": "610c641fd001078a3fd7cbc43f2cb1833e174f2f3f4700f064f55c47506d572a"
+    },
+    {
+      "variant": "Raw",
+      "stem": "00_ds1_bj579mxzos_image_0006",
+      "width": 688,
+      "height": 384,
+      "sha256": "b32e025eaca48e16dc2463bbfac317bb78f845fe71a7da9dacfbf317b6ad56db"
+    },
+    {
+      "variant": "Raw",
+      "stem": "07_ds4_imagem000543",
+      "width": 688,
+      "height": 384,
+      "sha256": "f5599b2f23760606d4fe0a605b5f3261505112e8d49923424d0f399ccbdf79ee"
+    },
+    {
+      "variant": "Raw",
+      "stem": "01_ds2_002518",
+      "width": 688,
+      "height": 384,
+      "sha256": "533c7202ba8b0d31504a569f512928c1a70809a1ba54d644fcb54fbe6ac94afd"
+    },
+    {
+      "variant": "Raw",
+      "stem": "11_ds4_imagem001466",
+      "width": 688,
+      "height": 384,
+      "sha256": "a089bf35630beaa451f073ba0ec0a35e16f23a59095d0935e2aca9884a6a395a"
+    },
+    {
+      "variant": "Raw",
+      "stem": "10_ds3_002590",
+      "width": 416,
+      "height": 624,
+      "sha256": "b52acc0251a7447241dd9c7a639537cfd7c017211e294cf7f290bba82e822141"
+    },
+    {
+      "variant": "Raw",
+      "stem": "15_ds4_imagem001559",
+      "width": 688,
+      "height": 384,
+      "sha256": "1f59a27c06938d5bffb67281f45786707ad54b47e0aa2a2af36b30104bddd082"
+    },
+    {
+      "variant": "Raw",
+      "stem": "19_ds4_imagem001451",
+      "width": 688,
+      "height": 384,
+      "sha256": "4dfeb9d06e6c1c16fbc7576d10a6e2bc941ffead02b5fcf09a44646f3029f8eb"
+    },
+    {
+      "variant": "Raw",
+      "stem": "23_ds4_imagem000762",
+      "width": 688,
+      "height": 384,
+      "sha256": "0f639bc5337c871e74adba749e1046e7ea274d2aeb780cde3f600d5462927ffc"
+    },
+    {
+      "variant": "Raw",
+      "stem": "08_ds1_40zjrzfdij_image_0013",
+      "width": 688,
+      "height": 384,
+      "sha256": "ba0b83a45df45a48d4251cf52efda974852a5877a2b7a3e0661dcf75c330b749"
+    },
+    {
+      "variant": "Raw",
+      "stem": "05_ds2_004723",
+      "width": 688,
+      "height": 384,
+      "sha256": "b8af833b44d4ddd5d4484bee99ef0421f5d2da6d3108594ea5247492de9be46e"
+    }
+  ],
+  "Turbo_job_seconds": 46.451290130615234,
+  "Raw_job_seconds": 165.61270022392273
+}

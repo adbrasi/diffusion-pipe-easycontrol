@@ -1,6 +1,6 @@
 # Review A/native step1000 — Turbo e Raw em 512
 
-Treinos pausados a pedido do usuário; B está encerrado e preservado. A e B já chegaram a1000steps. Não continuar A74. Review atual:10pares held-out, mesma seed76 e prompt nos dois modos, apenas adapter treinado/referência correta;20outputs no total. Sem1024 neste lote. A geração Raw está em andamento; grid completo será adicionado no próximo commit.
+Treinos pausados a pedido do usuário; B está encerrado e preservado. A e B já chegaram a1000steps. Não continuar A74. Review atual:10pares held-out, mesma seed76 e prompt nos dois modos, apenas adapter treinado/referência correta;20outputs no total. Sem1024 neste lote. As 20 imagens estão completas. Grid: [todos os10casos](A1000_Turbo_Raw_512_all10.jpg); versões ampliadas [01–05](A1000_Turbo_Raw_512_cases01-05.jpg) e [06–10](A1000_Turbo_Raw_512_cases06-10.jpg).
 
 Contrato A comprovado no **ComfyUI stock** commit `fb2315f11db0ebfaafa9099a5df5227dc6bb42bc`, sem custom node. Veja `workflow_Turbo.json` e `workflow_Raw.json`: payloads reais enviados à API, com nomes de modelos/LoRA da instância. Os arquivos `manifest_512.json` e os workflows preservam prompts/dimensões/seeds.512 significa área dos buckets:688x384 em9casos,416x624 em1; nenhuma imagem1024 é solicitada.
 
@@ -14,4 +14,4 @@ Contrato A comprovado no **ComfyUI stock** commit `fb2315f11db0ebfaafa9099a5df52
 
 Reprodução: `tools/k2ab_eval_stock.py --adapter <adapter> --manifest <manifest_512.json> --limit 10 --adapter-only --variant Turbo --variant Raw --base-model krea2_raw_fp8_scaled.safetensors --reference-pixels target --out <out>`. Servidor stock local18819; Comfy do usuário8818 preservado. Builder `tools/k2ab_compare_variants.py` compõe imagemA|alvoB|Turbo|Raw com nomes/prompts.
 
-Resultados originais: `/workspace/k2ab/artifacts/fp8_512_micro2/A1000_ten_case_review/sampling512/{Turbo,Raw}`. Backup contínuo privado: https://huggingface.co/AdwolfCzar/krea2-ab-runs . Adapters ficam em `adapters/`; resultados em `artifacts/`. Acesso depende da conta do usuário. Histórico e grids A/B250/500/750/1000 já estão no diretório pai deste review e em `docs/KREA2_AB_RUN_LOG.md`.
+Resultados originais: `/workspace/k2ab/artifacts/fp8_512_micro2/A1000_ten_case_review/sampling512/{Turbo,Raw}`. Backup contínuo privado: https://huggingface.co/AdwolfCzar/krea2-ab-runs . Adapters ficam em `checkpoints/`; resultados em `artifacts/`. Acesso depende da conta do usuário. Histórico e grids A/B250/500/750/1000 já estão no diretório pai deste review e em `docs/KREA2_AB_RUN_LOG.md`.

@@ -1,0 +1,82 @@
+{
+  "summary": {
+    "dir": "/workspace/k2ab/artifacts/fp8_512_micro2/A1000_ten_case_review/sampling512/Raw",
+    "n": 10,
+    "gt_true": 0.5437,
+    "copy_gap": -0.0549,
+    "ccip_true": 0.7,
+    "copy_rate": 0.0
+  },
+  "pairs": [
+    {
+      "stem": "00_ds1_bj579mxzos_image_0006",
+      "gt_true": 0.3163950741291046,
+      "copy_gap": 0.21590790152549744,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "01_ds2_002518",
+      "gt_true": 0.4582984149456024,
+      "copy_gap": 0.03648489713668823,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "05_ds2_004723",
+      "gt_true": 0.43994390964508057,
+      "copy_gap": -0.504853367805481,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "07_ds4_imagem000543",
+      "gt_true": 0.689314067363739,
+      "copy_gap": -0.0036540329456329346,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "08_ds1_40zjrzfdij_image_0013",
+      "gt_true": 0.7654896974563599,
+      "copy_gap": 0.04133698344230652,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "10_ds3_002590",
+      "gt_true": 0.6803157329559326,
+      "copy_gap": -0.08331263065338135,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "11_ds4_imagem001466",
+      "gt_true": 0.37650376558303833,
+      "copy_gap": -0.15590280294418335,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "15_ds4_imagem001559",
+      "gt_true": 0.6616100668907166,
+      "copy_gap": -0.0875394344329834,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "19_ds4_imagem001451",
+      "gt_true": 0.7303906083106995,
+      "copy_gap": 0.046485960483551025,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "23_ds4_imagem000762",
+      "gt_true": 0.3187410831451416,
+      "copy_gap": -0.05395829677581787,
+      "copy": 0,
+      "ccip_true": false
+    }
+  ]
+}
