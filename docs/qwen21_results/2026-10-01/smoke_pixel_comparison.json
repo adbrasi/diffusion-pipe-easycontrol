@@ -1,0 +1,14 @@
+[
+  {
+    "heldout_index": 0,
+    "stage": "smoke10",
+    "base_vs_adapter_rgb_mean_abs": 1.1810312271118164,
+    "note": "Execution/learning smoke, not a visual-quality conclusion"
+  },
+  {
+    "heldout_index": 1,
+    "stage": "smoke10",
+    "base_vs_adapter_rgb_mean_abs": 5.711370468139648,
+    "note": "Execution/learning smoke, not a visual-quality conclusion"
+  }
+]

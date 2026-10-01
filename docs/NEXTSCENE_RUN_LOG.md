@@ -796,3 +796,53 @@ GPU100%/400W; NVML reporta power limit400W, default/max600W, SWPowerCap ativo,
 sem thermal slowdown. Impacto de aumentar potência não foi medido; nenhuma
 configuração de GPU, precisão ou frequência de avaliação alterada nesta consulta.
 Dados em docs/nextscene_results/2026-10-01/anima1024_smoke/performance_report.json.
+
+## 2026-10-01 — Anima stopped; native DiffSynth Qwen21 Edit launched
+
+User replaced Anima with Qwen Image 2.1 Edit, explicitly choosing DiffSynth-Studio,
+full available dataset and three epochs, authorizing training without confirmation
+and Anima-test deletion after upload. Anima saved and stopped at **1830**; idle
+workers were disabled. Final adapter was exported from layer states with exact
+key/shape checks. All remaining Anima tests/checkpoints/artifacts were backed up
+and hash-verified in public `AdwolfCzar/anima-nextscene-archive` before checkpoint
+cleanup. The regenerable 37.70 GiB old cache was deleted; E2 A and step1830 remain.
+
+Native support is present in DiffSynth's pinned `974cfa37` Qwen21 edit example.
+Original model revision `d26bb612` downloaded and LFS hashes verified, including
+its new 64-channel RGBA VAE. No legacy Qwen/Krea VAE was reused. Every one of the
+**11526** eligible A/B/original-caption pairs is included, **repeat 1, three genuine
+epochs, 34578 updates**, 1024-area preserving aspect ratio. Heldout24 and missing-A51
+are the same technical exclusions as before; no content filters/sample budget cap.
+
+Native DiT scaled FP8 W8A8, BF16 compute, FP32 adapters/moments; rank/alpha32;
+448 native LoRA tensors across all32 blocks. Real batch1/accumulation1 (upstream
+reference/loader contract is batch1). Peak LR1e-4, warmup200, cosine to1e-5.
+Full optimizer/RNG/global-position resume and verified public backup added as
+operational wrappers around the unmodified native training module and loss.
+
+Found and patched an upstream Qwen3-VL forward-hook leak before full caching:
+remove final-norm hook in finally; assert no growth per cached image. Real FP8
+512 smoke updated all224 A/224 B tensors. Full model output and first/last block
+LoRA gradients are identical with checkpointing off/on. Uncheckpointed audit
+initially OOMed; generic saved-tensor CPU offload failed on QuantizedTensor; custom
+plain-tensor storage offload fixed the diagnostic without changing model math.
+Resume10→12 replay produced bit-identical448 tensors. File-SHA comparison was
+initially invalid because SafeTensors metadata serialization order changed;
+actual tensor comparison established exact replay.
+
+1024 smoke10:0.2205 pairs/s cold, ~0.238 pairs/s warmed, peak13.295 GiB PyTorch
+allocated. Two true-reference and one shuffled-reference images generated before
+and aftersmoke10. Native inference uses40steps/CFG1/seed76/KV-cacheoff to preserve
+full-token tensorwise FP8 scaling. These are execution checks, not quality claims.
+Full-epoch24-pair matched/shuffled evaluation scheduled; previews at100/250/500/etc.
+Lossless BF16 cache uses disk plus regenerable shared-memory overflow instead of
+truncating data. Supervisor **qwen21_training** is running the fresh long run.
+
+Evidence/config/reports/original PNGs: `docs/qwen21_results/2026-10-01/README.md`.
+Public checkpoint/results repo: `AdwolfCzar/qwen-image-21-nextscene-edit`.
+Local grid: `/workspace/qwen21/samples/grid_smoke.png`.
+
+Production cycle confirmed: main run saved **100**, full optimizer/adapter hashes
+and samples verified on public Hub, generated3 previews, then restored its full
+state and continued past **120** toward250. Native live per-update progress is
+in `/workspace/qwen21/progress.json`; PNG grid at `samples/grid_step000100.png`.

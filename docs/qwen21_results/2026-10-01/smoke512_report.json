@@ -1,0 +1,136 @@
+{
+  "step": 10,
+  "starting_step": 0,
+  "steps": 10,
+  "samples_per_second": 1.2194229486788386,
+  "trainable_parameters": 83886080,
+  "trainable_tensors": 448,
+  "batch": 1,
+  "accumulation": 1,
+  "peak_allocated_gib": 9.10329532623291,
+  "finite_gradients": true,
+  "logs": [
+    {
+      "step": 1,
+      "epoch": 1,
+      "pair_index": 6071,
+      "loss": 0.3571743071079254,
+      "gradient_norm": 0.015311972238123417,
+      "lr": 1.0000000000000002e-06,
+      "seconds": 1.470559436827898,
+      "samples_per_second": 0.6800129975523342,
+      "allocated_gib": 8.451977252960205
+    },
+    {
+      "step": 2,
+      "epoch": 1,
+      "pair_index": 7590,
+      "loss": 0.22698451578617096,
+      "gradient_norm": 0.01771426387131214,
+      "lr": 1.5e-06,
+      "seconds": 0.7800227848347276,
+      "samples_per_second": 1.282013372373484,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 3,
+      "epoch": 1,
+      "pair_index": 6383,
+      "loss": 0.253010094165802,
+      "gradient_norm": 0.03844742849469185,
+      "lr": 2.0000000000000003e-06,
+      "seconds": 0.7012012011837214,
+      "samples_per_second": 1.4261233432491887,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 4,
+      "epoch": 1,
+      "pair_index": 3277,
+      "loss": 0.25321727991104126,
+      "gradient_norm": 0.038503605872392654,
+      "lr": 2.5e-06,
+      "seconds": 0.696337616071105,
+      "samples_per_second": 1.4360842912237841,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 5,
+      "epoch": 1,
+      "pair_index": 4865,
+      "loss": 0.16370393335819244,
+      "gradient_norm": 0.005928405094891787,
+      "lr": 3e-06,
+      "seconds": 0.7000399779062718,
+      "samples_per_second": 1.4284891311013665,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 6,
+      "epoch": 1,
+      "pair_index": 864,
+      "loss": 0.34891340136528015,
+      "gradient_norm": 0.009169568307697773,
+      "lr": 3.5000000000000004e-06,
+      "seconds": 0.7019285049755126,
+      "samples_per_second": 1.4246457867170355,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 7,
+      "epoch": 1,
+      "pair_index": 6850,
+      "loss": 0.1270616054534912,
+      "gradient_norm": 0.04561827331781387,
+      "lr": 4.000000000000001e-06,
+      "seconds": 0.7023491831496358,
+      "samples_per_second": 1.4237925034201322,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 8,
+      "epoch": 1,
+      "pair_index": 3888,
+      "loss": 0.19240878522396088,
+      "gradient_norm": 0.008263197727501392,
+      "lr": 4.5e-06,
+      "seconds": 0.7038723530713469,
+      "samples_per_second": 1.4207113974840757,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 9,
+      "epoch": 1,
+      "pair_index": 4614,
+      "loss": 0.28373563289642334,
+      "gradient_norm": 0.031020348891615868,
+      "lr": 5e-06,
+      "seconds": 0.6990098969545215,
+      "samples_per_second": 1.4305941924359715,
+      "allocated_gib": 9.10329532623291
+    },
+    {
+      "step": 10,
+      "epoch": 1,
+      "pair_index": 4937,
+      "loss": 0.007844989188015461,
+      "gradient_norm": 0.00534723699092865,
+      "lr": 5.500000000000001e-06,
+      "seconds": 0.7015972989611328,
+      "samples_per_second": 1.4253183046153495,
+      "allocated_gib": 9.10329532623291
+    }
+  ],
+  "changed_lora_A": 224,
+  "changed_lora_B": 224,
+  "checkpoint_parity": {
+    "output_max_abs": 0.0,
+    "worst_relative_gradient": 0.0,
+    "layers": [
+      0,
+      31
+    ],
+    "gradient_tensors": 28,
+    "plain_saved_tensors": "CPU"
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "steps": 40,
+  "seed": 76,
+  "cfg": 1,
+  "quant": "comfy_kitchen_fp8_w8a8",
+  "kv_cache": false,
+  "adapter": "/workspace/qwen21/smoke1024/step000010/adapter.safetensors",
+  "cases": [
+    {
+      "name": "heldout00_true",
+      "cache": "/workspace/qwen21/eval_cache/heldout00_true.pt.zst",
+      "row": {
+        "id": "00_ds1_bj579mxzos_image_0006",
+        "image": "/workspace/ds/ds1_recortados/images_B/ds1_bj579mxzos_image_0006.jpg",
+        "edit_image": "/workspace/ds/ds1_recortados/images_A/ds1_bj579mxzos_image_0006.jpg",
+        "prompt": "close-up, profile view, a person turning quickly to the left wearing a tall cylindrical dark blue hat with a thick black band, tan skin visible in profile, a flowing mane of long white feathers or hair sweeping behind them, a dark blue tunic with a black collar and a small yellow insignia on the shoulder strap, abstract background filled with white and light gray diagonal speed lines radiating outward to suggest intense movement, the composition is tightly cropped on the upper torso and head of the figure, emphasizing the dynamic motion of the white plumage swirling through the air"
+      }
+    },
+    {
+      "name": "heldout01_true",
+      "cache": "/workspace/qwen21/eval_cache/heldout01_true.pt.zst",
+      "row": {
+        "id": "01_ds2_002518",
+        "image": "/workspace/ds/ds2_poxima_v2/images_B/ds2_002518.jpg",
+        "edit_image": "/workspace/ds/ds2_poxima_v2/images_A/ds2_002518.jpg",
+        "prompt": "medium shot from a slightly low angle, a young male character with spiky dark hair and piercing glowing white eyes, mouth wide open in an intense yell, arms outstretched as he wields a large weapon overhead, the entire scene saturated in a brilliant glowing green aura that obscures the background and casts light on the figure, floating white text credits for staff and production companies visible in the foreground, energetic atmosphere with the figure centered and braced, intense bright light emanating from behind the character creating a high contrast silhouette effect against the vibrant green magical energy"
+      }
+    },
+    {
+      "name": "heldout00_shuffled",
+      "cache": "/workspace/qwen21/eval_cache/heldout00_shuffled.pt.zst",
+      "row": {
+        "id": "00_ds1_bj579mxzos_image_0006",
+        "image": "/workspace/ds/ds1_recortados/images_B/ds1_bj579mxzos_image_0006.jpg",
+        "edit_image": "/workspace/ds/ds2_poxima_v2/images_A/ds2_002518.jpg",
+        "prompt": "close-up, profile view, a person turning quickly to the left wearing a tall cylindrical dark blue hat with a thick black band, tan skin visible in profile, a flowing mane of long white feathers or hair sweeping behind them, a dark blue tunic with a black collar and a small yellow insignia on the shoulder strap, abstract background filled with white and light gray diagonal speed lines radiating outward to suggest intense movement, the composition is tightly cropped on the upper torso and head of the figure, emphasizing the dynamic motion of the white plumage swirling through the air"
+      }
+    }
+  ]
+}

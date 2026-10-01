@@ -1,0 +1,20 @@
+{
+  "repo": "AdwolfCzar/qwen-image-21-nextscene-edit",
+  "files": [
+    {
+      "path": "checkpoints/step000100/adapter.safetensors",
+      "bytes": 335602272,
+      "sha256": "8c26447ee6bd83713786b3199d2737059522c7088403c6fd3af41e76f9c5168f"
+    },
+    {
+      "path": "checkpoints/step000100/report.json",
+      "bytes": 31046,
+      "sha256": "4212b7a695793d23a6af461fea1517b5263c3c3275e8b68d20fc691090d50050"
+    },
+    {
+      "path": "checkpoints/step000100/resume.pt",
+      "bytes": 671472973,
+      "sha256": "fb62bb43a092abf4cd60d8dbbff5786ecf230f367b385b641d4723f330dc1800"
+    }
+  ]
+}

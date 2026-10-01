@@ -1,0 +1,8 @@
+{
+  "tensor_bit_identical": true,
+  "verified_tensors": 448,
+  "resumed_at": 10,
+  "verified_through": 12,
+  "restored": "LoRA + AdamW + LR scheduler + RNG + exact dataset position",
+  "serialization_note": "SafeTensors metadata key order can change file SHA; all weight tensors are bit-identical"
+}

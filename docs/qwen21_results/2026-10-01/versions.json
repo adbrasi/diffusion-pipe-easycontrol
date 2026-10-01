@@ -1,0 +1,11 @@
+{
+  "diffsynth": "2.1.8",
+  "torch": "2.14.0",
+  "transformers": "5.17.0",
+  "peft": "0.21.1",
+  "safetensors": "0.8.0",
+  "accelerate": "1.15.0",
+  "comfy-kitchen": "0.2.36",
+  "zstandard": "0.25.0",
+  "huggingface-hub": "1.30.0"
+}

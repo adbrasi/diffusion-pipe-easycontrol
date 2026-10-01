@@ -1,0 +1,25 @@
+{
+  "repo": "AdwolfCzar/qwen-image-21-nextscene-edit",
+  "files": [
+    {
+      "path": "samples/step000100/heldout00_shuffled.png",
+      "bytes": 1260409,
+      "sha256": "7692df6bec62be27ff8d39fa2383de29be74457fdf64af771ad8e82bc35bb95d"
+    },
+    {
+      "path": "samples/step000100/heldout00_true.png",
+      "bytes": 1052513,
+      "sha256": "750df41491bc13e3a382b42899686998333089a57d90d4c3efb96297ab08ec24"
+    },
+    {
+      "path": "samples/step000100/heldout01_true.png",
+      "bytes": 1495879,
+      "sha256": "94f4b2ff55f3a3a4e5a6d3a941fc6e814ee69eca3f99bdbd09a48ec81b7570a4"
+    },
+    {
+      "path": "samples/step000100/report.json",
+      "bytes": 3088,
+      "sha256": "6aa3b67db7139946be526449cf73de67c307f8707775340e5ced8dd490b4d59b"
+    }
+  ]
+}

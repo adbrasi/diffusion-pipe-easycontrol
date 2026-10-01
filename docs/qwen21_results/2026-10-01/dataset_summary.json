@@ -1,0 +1,34 @@
+{
+  "pairs": 11526,
+  "by_subset": {
+    "ds1_recortados": 2796,
+    "ds2_poxima_v2": 4594,
+    "ds3_comikontext": 2887,
+    "ds4_contexto_curado": 1249
+  },
+  "technical_exclusions": {
+    "heldout_pairs": 24,
+    "missing_or_ambiguous_scene1": 51
+  },
+  "source_sha256": {
+    "/workspace/ds/ds1_recortados/captions.jsonl": "d6727c5dd5e0e646537ef0272391ac2b80538fba41034c8a968dc208941cdc39",
+    "/workspace/ds/ds1_recortados/images_B/*.txt (eligible caption digest)": "173b8572e8fc9ac9c425241f8444f2681b5b0da2a5ed9f664011a85104222717",
+    "/workspace/ds/ds2_poxima_v2/captions.jsonl": "33591c0691801e1d62ad604135b78730f9d867251e0591e1aa4dd5f8ac4dc442",
+    "/workspace/ds/ds2_poxima_v2/images_B/*.txt (eligible caption digest)": "0222ba1866b8a137127aaf3170ac2df7a6f05daddf71aacd4ddb6f29e00c0981",
+    "/workspace/ds/ds3_comikontext/captions.jsonl": "2e75c89739d3de6a61724984efd550b23bdb767b79588384cf9b4f993bcf541b",
+    "/workspace/ds/ds3_comikontext/images_B/*.txt (eligible caption digest)": "ca56496fec8c0bea9275ca3332abb44cb6e36981d9d4450c50c1222e7d8541c4",
+    "/workspace/ds/ds4_contexto_curado/captions.jsonl": "ab64c6ef457b28b7702701a71725b693cd8e9a58704a06101703c499c0b9d8ba",
+    "/workspace/ds/ds4_contexto_curado/images_B/*.txt (eligible caption digest)": "67d3a23d8e44063149fcbbd997467905511b6243730b3445729c3f27bfd0793b"
+  },
+  "dataset_sha256": "753db3f9508680917397ef62b880560388fcaaf5a0e5087932611db1c63c2e6e",
+  "epochs": 3,
+  "presentations": 34578,
+  "repeat": 1,
+  "caption_policy": "one original unmodified caption per pair",
+  "pairing": "image=scene B; edit_image=scene A",
+  "resolution": "1024-area, native aspect ratio, dimensions divisible by 32",
+  "batch_size": 1,
+  "gradient_accumulation_steps": 1,
+  "framework": "DiffSynth-Studio",
+  "upstream_commit": "974cfa37f27ac55eba3b6d10efa21f876900572d"
+}
