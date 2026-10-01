@@ -16,8 +16,10 @@ import toml
 
 ROOT = Path('/workspace/k2ab')
 REPO = Path('/workspace/diffusion-pipe-easycontrol')
-ART = ROOT / 'artifacts/fullbudget_20261001'
-OUTPUT = ROOT / 'checkpoints/A_native_fullbudget_fromscratch_5000'
+ART = Path(os.environ.get('KREA2_CAMPAIGN_ARTIFACTS', str(ROOT / 'artifacts/fullbudget_20261001')))
+OUTPUT = Path(os.environ.get('KREA2_CAMPAIGN_OUTPUT', str(ROOT / 'checkpoints/A_native_fullbudget_fromscratch_5000')))
+LR = float(os.environ.get('KREA2_CAMPAIGN_LR', '.0004'))
+JOB_PREFIX = os.environ.get('KREA2_CAMPAIGN_JOB_PREFIX', 'fullbudget')
 QUEUE = ROOT / 'ops/jobs'
 STATE = ART / 'campaign_state.json'
 PYTHON = '/venv/main/bin/python'
@@ -36,7 +38,7 @@ def validate_recipe(recipe):
         raise RuntimeError('Wrong model contract or base precision')
     if recipe['micro_batch_size_per_gpu'] != 2 or recipe['gradient_accumulation_steps'] != 1:
         raise RuntimeError('Batch contract mismatch')
-    if not math.isclose(recipe['optimizer']['lr'], .0004):
+    if not math.isclose(recipe['optimizer']['lr'], LR):
         raise RuntimeError('LR differs from the approved value')
     if recipe.get('resume_from_checkpoint') or recipe['adapter'].get('init_from_existing'):
         raise RuntimeError('Fresh training recipe must not initialize from an existing run')
@@ -52,7 +54,12 @@ def training_losses(logs):
         r'^steps:\s+\d+\s+loss:\s+(\S+)', logs, flags=re.MULTILINE)]
 
 
+def job_name(name):
+    return JOB_PREFIX + name.removeprefix('fullbudget')
+
+
 def job(name, argv, state, train=False, env=None):
+    name = job_name(name)
     path = QUEUE / (name + '.job.json')
     if not path.exists():
         value = dict(argv=argv, cwd=str(ROOT / 'native_worktree') if train else str(REPO),
@@ -114,7 +121,8 @@ def prune(run):
 
 def publish_milestone(step, evaluation, state):
     from PIL import Image
-    destination = REPO / 'docs/krea2_results/2026-10-01/native_fullbudget'
+    report_name = 'native_fullbudget' if JOB_PREFIX == 'fullbudget' else ART.name
+    destination = REPO / 'docs/krea2_results/2026-10-01' / report_name
     destination.mkdir(exist_ok=True)
     metrics = evaluation / 'Turbo/metrics.json'
     grid = evaluation / 'Turbo/grid.png'
@@ -151,19 +159,20 @@ def main():
     if state.get('status') in ('failed', 'stopped', 'complete'):
         print('Campaign terminal state:', state['status'], flush=True)
         return
-    if not json.loads((ART / 'smoke_report.json').read_text()).get('passed'):
+    smoke = json.loads((ART / 'smoke_report.json').read_text())
+    if not smoke.get('passed') or not math.isclose(smoke.get('final_lr', 0), LR):
         raise RuntimeError('Smoke gate has not passed')
     recipe = toml.load(ART / 'configs/train_from_scratch_5000.toml')
     validate_recipe(recipe)
-    state.update(status='caching', target_steps=5000, lr=.0004, initialized_from='random LoRA')
+    state.update(status='caching', target_steps=5000, lr=LR, initialized_from='random LoRA')
     atomic(STATE, state)
     args = ['/venv/main/bin/deepspeed', '--num_gpus=1', '--master_port=29601', 'train.py',
             '--deepspeed', '--config', str(ART / 'configs/train_from_scratch_5000.toml'), '--cache_only']
     # Cache-only still imports the native model; use the validated native checkout.
-    cache_path = QUEUE / 'fullbudget_010_cache.job.json'
+    cache_path = QUEUE / (job_name('fullbudget_010_cache') + '.job.json')
     if not cache_path.exists():
         atomic(cache_path, dict(argv=args, cwd=str(ROOT / 'native_worktree'),
-                               log=str(ART / 'fullbudget_010_cache.log'),
+                               log=str(ART / (job_name('fullbudget_010_cache') + '.log')),
                                env={'KREA2_CACHE_MIN_FREE_BYTES': str(8 * 1024 ** 3)}))
     job('fullbudget_010_cache', args, state)
     plan = json.loads((ART / 'data_plan_final.json').read_text())
@@ -187,7 +196,7 @@ def main():
             if len(runs) != 1:
                 raise RuntimeError('Expected exactly one NEW run to resume')
             args += ['--resume_from_checkpoint', runs[0].parent.name]
-        elif not (QUEUE / 'fullbudget_train000250.job.json').exists() and list(OUTPUT.glob('*/latest')):
+        elif not (QUEUE / (job_name('fullbudget_train000250') + '.job.json')).exists() and list(OUTPUT.glob('*/latest')):
             raise RuntimeError('First segment already has a checkpoint; refusing accidental restart')
         log = job(f'fullbudget_train{step:06d}', args, state, train=True)
         logs = log.read_text(errors='replace')
@@ -197,7 +206,7 @@ def main():
         if not losses or not all(math.isfinite(x) for x in losses):
             raise RuntimeError('Nonfinite loss')
         lrs = re.findall(r'lr=\[([^\]]+)\]', logs)
-        if not lrs or not math.isclose(float(lrs[-1]), .0004):
+        if not lrs or not math.isclose(float(lrs[-1]), LR):
             raise RuntimeError('Unexpected LR after warmup/resume')
         adapters = list(OUTPUT.glob(f'*/step{step}/adapter_model.safetensors'))
         if len(adapters) != 1:
@@ -244,8 +253,8 @@ def main():
             state['milestones'].append(milestone)
             with (REPO / 'docs/KREA2_AB_RUN_LOG.md').open('a') as stream:
                 stream.write(f'\n\n## {milestone["utc"]} — A native novo step{step}\n\n'
-                             f'Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; '
-                             f'{step * 2}amostras vistas, lossfinal{losses[-1]}. '
+                             f'Do zero, dataset completo por orçamento de disco, LR {LR} confirmado; '
+                             f'{step * 2} amostras vistas, loss final {losses[-1]}. '
                              '4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; '
                              'backup verificado antes da poda. Não é retomada do A1000 antigo.\n')
         state['status'] = 'training'

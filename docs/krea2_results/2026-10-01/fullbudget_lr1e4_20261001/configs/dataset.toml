@@ -1,0 +1,11 @@
+resolutions = [ 512,]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [ 1,]
+[[directory]]
+path = "/workspace/k2ab/data_fullbudget_20261001_v2/target"
+control_path = "/workspace/k2ab/data_fullbudget_20261001_v2/control"
+num_repeats = 1
+

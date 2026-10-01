@@ -23,6 +23,16 @@ class CampaignSafetyTests(unittest.TestCase):
                     adapter=dict(rank=64), optimizer=dict(lr=.0004),
                     micro_batch_size_per_gpu=2, gradient_accumulation_steps=1)
 
+    def test_campaign_lr_rejects_previous_lr_and_namespaces_jobs(self):
+        recipe = self.recipe()
+        with patch.object(campaign, 'LR', .0001), patch.object(campaign, 'JOB_PREFIX', 'fullbudget_lr1e4'):
+            with self.assertRaisesRegex(RuntimeError, 'LR differs'):
+                campaign.validate_recipe(recipe)
+            recipe['optimizer']['lr'] = .0001
+            campaign.validate_recipe(recipe)
+            self.assertEqual(campaign.job_name('fullbudget_train000250'),
+                             'fullbudget_lr1e4_train000250')
+
     def test_scratch_recipe_rejects_old_run_and_adapter_initialization(self):
         recipe = self.recipe()
         campaign.validate_recipe(recipe)

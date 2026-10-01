@@ -464,3 +464,8 @@ Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 1000amos
 ## 2026-10-01T04:36:28.482179+00:00 — A native novo step750
 
 Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 1500amostras vistas, lossfinal0.1218. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.
+
+
+## 2026-10-01T04:44:32.338264+00:00 — reinício solicitado com LR 0,0001
+
+O usuário interrompeu a campanha LR 0,0004. Encerramento seguro via save_quit no passo 843; checkpoint final completo verificado no HF privado. Nova execução do zero, LR 0,0001 (valor original), mesmo cache de 6.138 pares, output/fila separados e smoke novo antes de 5.000 passos. Os primeiros 250 passos da campanha anterior terminaram corretamente; o controlador tinha parado ao interpretar `loss: loss_fn` do dump do modelo, corrigido para ler somente as linhas de métricas `steps:`. A geração e os backups de 250, 500 e 750 foram concluídos depois da correção.

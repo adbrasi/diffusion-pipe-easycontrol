@@ -1,0 +1,11 @@
+{
+  "lr": 0.0001,
+  "previous_lr": 0.0004,
+  "initialize": "from scratch",
+  "old_stopped_step": 843,
+  "old_output": "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000",
+  "new_output": "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000",
+  "cached_pairs": 6138,
+  "reuse_cache": true,
+  "max_steps": 5000
+}

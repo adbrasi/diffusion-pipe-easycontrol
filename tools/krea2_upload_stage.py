@@ -22,6 +22,8 @@ def main():
     parser.add_argument('--run', type=Path, required=True)
     parser.add_argument('--step', type=int, required=True)
     parser.add_argument('--status-only', action='store_true')
+    parser.add_argument('--checkpoint-only', action='store_true',
+                        help='Back up a save_quit state without requiring an adapter export')
     args = parser.parse_args()
     repo = 'AdwolfCzar/krea2-ab-runs'
     with tempfile.TemporaryDirectory(prefix='krea-upload-', dir='/workspace/.tmp') as tmp:
@@ -33,7 +35,11 @@ def main():
             raise RuntimeError('Refusing to upload to a public model repository')
         destinations = []
         folders = [] if args.status_only else [args.run / f'step{args.step}', args.run / f'global_step{args.step}']
+        if args.checkpoint_only and not args.status_only:
+            folders = [args.run / f'global_step{args.step}']
         for folder in folders:
+            if not folder.is_dir():
+                raise RuntimeError(f'Missing checkpoint folder: {folder}')
             destination = 'checkpoints/' + str(folder.relative_to('/workspace/k2ab/checkpoints'))
             api.upload_folder(repo_id=repo, folder_path=folder, path_in_repo=destination)
             files = list(folder.rglob('*'))
@@ -53,7 +59,7 @@ def main():
         api.upload_file(repo_id=repo, path_or_fileobj=args.run / 'latest', path_in_repo=base + '/latest')
         api.upload_folder(repo_id=repo, folder_path=args.artifacts,
                           path_in_repo='artifacts/' + args.artifacts.name,
-                          ignore_patterns=['*.tmp', 'fullbudget_backup*.log', 'fullbudget_backup*.gpu.csv',
+                          ignore_patterns=['*.tmp', '*backup*.log', '*backup*.gpu.csv',
                                            'campaign_state.json'])
         state = args.artifacts / 'campaign_state.json'
         if state.exists():

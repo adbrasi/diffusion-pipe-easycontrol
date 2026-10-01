@@ -1,0 +1,87 @@
+{
+  "steps": [
+    {
+      "step": 1,
+      "loss": 0.1136,
+      "seconds": 3.286,
+      "samples_s": 0.609
+    },
+    {
+      "step": 2,
+      "loss": 0.1567,
+      "seconds": 2.751,
+      "samples_s": 0.727
+    },
+    {
+      "step": 3,
+      "loss": 0.0892,
+      "seconds": 2.745,
+      "samples_s": 0.729
+    },
+    {
+      "step": 4,
+      "loss": 0.1178,
+      "seconds": 2.778,
+      "samples_s": 0.72
+    },
+    {
+      "step": 5,
+      "loss": 0.1787,
+      "seconds": 2.762,
+      "samples_s": 0.724
+    },
+    {
+      "step": 6,
+      "loss": 0.2826,
+      "seconds": 2.788,
+      "samples_s": 0.717
+    },
+    {
+      "step": 7,
+      "loss": 0.1745,
+      "seconds": 2.751,
+      "samples_s": 0.727
+    },
+    {
+      "step": 8,
+      "loss": 0.1408,
+      "seconds": 2.76,
+      "samples_s": 0.725
+    },
+    {
+      "step": 9,
+      "loss": 0.2088,
+      "seconds": 2.761,
+      "samples_s": 0.724
+    },
+    {
+      "step": 10,
+      "loss": 0.1951,
+      "seconds": 2.767,
+      "samples_s": 0.723
+    }
+  ],
+  "median_seconds": 2.7615,
+  "median_samples_s": 0.724,
+  "peak_VRAM_MiB": 25396.0,
+  "keys_audited": 512,
+  "final_lr": 0.0001,
+  "passed": true,
+  "resume": {
+    "steps": [
+      11,
+      12
+    ],
+    "lr": 0.0001,
+    "returncode": 0
+  },
+  "final_selected_pairs": 6138,
+  "reused_validated_cache": true,
+  "initialize": "from scratch; smoke optimizer is not reused for production",
+  "inference": {
+    "stock_comfy": true,
+    "unloaded_lora_keys": 0,
+    "image": "smoke_eval/Turbo/03_ds4_imagem000268_with_lora.png",
+    "visual": "valid image; subjects remain facing away; 10 steps do not demonstrate next-scene learning"
+  }
+}

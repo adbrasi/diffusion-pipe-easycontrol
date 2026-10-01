@@ -1,0 +1,50 @@
+[
+  {
+    "stem": "03_ds4_imagem000268",
+    "prompt": "Medium frontal shot of three of the same spectators behind the railing, reacting with surprise; the center man holds binoculars to his face.",
+    "reference": "03_ds4_imagem000268.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "19_ds4_imagem001451.jpg"
+  },
+  {
+    "stem": "09_ds2_000248",
+    "prompt": "Extreme angled profile close-up of the same robot head, tightly framed around its eye and jaw.",
+    "reference": "09_ds2_000248.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds2_poxima_v2",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "23_ds4_imagem000762.jpg"
+  },
+  {
+    "stem": "08_ds1_40zjrzfdij_image_0013",
+    "prompt": "Close-up of the same woman looking at the viewer, surprised and flustered, mouth slightly open.",
+    "reference": "08_ds1_40zjrzfdij_image_0013.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds1_recortados",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "01_ds2_002518.jpg"
+  },
+  {
+    "stem": "23_ds4_imagem000762",
+    "prompt": "High-angle bird's-eye wide shot of the same castle, three figures silhouetted at the large glowing entrance.",
+    "reference": "23_ds4_imagem000762.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": true,
+    "shuffled_reference": "07_ds4_imagem000543.jpg"
+  }
+]

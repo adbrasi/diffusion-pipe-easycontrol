@@ -1,0 +1,46 @@
+output_dir = "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000"
+dataset = "/workspace/k2ab/artifacts/fullbudget_lr1e4_20261001/configs/dataset.toml"
+epochs = 1000
+max_steps = 2250
+micro_batch_size_per_gpu = 2
+gradient_accumulation_steps = 1
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 30
+activation_checkpointing = true
+save_dtype = "bfloat16"
+caching_batch_size = 1
+seed = 42
+
+[model]
+type = "krea2_native"
+diffusion_model = "/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors"
+vae = "/workspace/models/krea2/vae/qwen_image_vae.safetensors"
+dtype = "bfloat16"
+base_quant = "fp8_scaled"
+timestep_sample_method = "logit_normal"
+flux_shift = true
+blocks_to_swap = 0
+[[model.text_encoders]]
+path = "/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors"
+type = "krea2"
+
+[krea2_native]
+reference_timestep = "zero"
+vl_grounding = true
+caption_dropout = 0.0
+reference_pixels = "target"
+
+[adapter]
+type = "lora"
+rank = 64
+dtype = "bfloat16"
+
+[optimizer]
+type = "AdamW8bitKahan"
+lr = 0.0001
+betas = [ 0.9, 0.99,]
+weight_decay = 0.01
+stabilize = false

@@ -1,0 +1,111 @@
+{
+  "parts": [
+    {
+      "path": "uncond_text_embeddings_1",
+      "count": 1,
+      "bytes": 309029,
+      "mean_MB": 0.309,
+      "max_MB": 0.309
+    },
+    {
+      "path": "ar_frames_0.630_1/text_embeddings_1",
+      "count": 4,
+      "bytes": 64835348,
+      "mean_MB": 16.209,
+      "max_MB": 16.47
+    },
+    {
+      "path": "ar_frames_2.000_1/text_embeddings_1",
+      "count": 4,
+      "bytes": 68214996,
+      "mean_MB": 17.054,
+      "max_MB": 17.453
+    },
+    {
+      "path": "ar_frames_1.000_1/text_embeddings_1",
+      "count": 4,
+      "bytes": 65695572,
+      "mean_MB": 16.424,
+      "max_MB": 16.654
+    },
+    {
+      "path": "ar_frames_1.587_1/text_embeddings_1",
+      "count": 40,
+      "bytes": 653760904,
+      "mean_MB": 16.344,
+      "max_MB": 17.146
+    },
+    {
+      "path": "ar_frames_0.794_1/text_embeddings_1",
+      "count": 4,
+      "bytes": 64650964,
+      "mean_MB": 16.163,
+      "max_MB": 16.531
+    },
+    {
+      "path": "ar_frames_1.260_1/text_embeddings_1",
+      "count": 4,
+      "bytes": 65879956,
+      "mean_MB": 16.47,
+      "max_MB": 16.654
+    },
+    {
+      "path": "ar_frames_0.500_1/text_embeddings_1",
+      "count": 4,
+      "bytes": 64528148,
+      "mean_MB": 16.132,
+      "max_MB": 16.716
+    },
+    {
+      "path": "cache_0.630x400x640x1/latents",
+      "count": 4,
+      "bytes": 2058132,
+      "mean_MB": 0.515,
+      "max_MB": 0.515
+    },
+    {
+      "path": "cache_2.000x720x368x1/latents",
+      "count": 4,
+      "bytes": 2129940,
+      "mean_MB": 0.532,
+      "max_MB": 0.533
+    },
+    {
+      "path": "cache_1.000x512x512x1/latents",
+      "count": 4,
+      "bytes": 2107220,
+      "mean_MB": 0.527,
+      "max_MB": 0.527
+    },
+    {
+      "path": "cache_1.587x640x400x1/latents",
+      "count": 40,
+      "bytes": 20580744,
+      "mean_MB": 0.515,
+      "max_MB": 0.515
+    },
+    {
+      "path": "cache_0.794x464x576x1/latents",
+      "count": 4,
+      "bytes": 2148116,
+      "mean_MB": 0.537,
+      "max_MB": 0.537
+    },
+    {
+      "path": "cache_1.260x576x464x1/latents",
+      "count": 4,
+      "bytes": 2148372,
+      "mean_MB": 0.537,
+      "max_MB": 0.537
+    },
+    {
+      "path": "cache_0.500x368x720x1/latents",
+      "count": 4,
+      "bytes": 2129748,
+      "mean_MB": 0.532,
+      "max_MB": 0.532
+    }
+  ],
+  "total_bytes": 1081177189,
+  "mean_MB_per_pair": 16.893393578125
+}
