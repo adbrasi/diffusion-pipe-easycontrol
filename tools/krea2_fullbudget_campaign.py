@@ -46,6 +46,12 @@ class Stopped(Exception):
     pass
 
 
+def training_losses(logs):
+    """Read step metrics without matching model/module descriptions."""
+    return [float(value) for value in re.findall(
+        r'^steps:\s+\d+\s+loss:\s+(\S+)', logs, flags=re.MULTILINE)]
+
+
 def job(name, argv, state, train=False, env=None):
     path = QUEUE / (name + '.job.json')
     if not path.exists():
@@ -169,6 +175,8 @@ def main():
     state.update(status='training', cache_pairs=plan['selected_pairs'])
     atomic(STATE, state)
     for step in range(250, 5001, 250):
+        if step in [milestone['step'] for milestone in state['milestones']]:
+            continue
         config_path = ART / 'configs' / f'A_native_through{step}.toml'
         config = toml.load(config_path)
         validate_recipe(config)
@@ -185,7 +193,7 @@ def main():
         logs = log.read_text(errors='replace')
         if f'steps: {step} loss:' not in logs or '[krea2_native] adapter audit OK: 512 keys' not in logs:
             raise RuntimeError('Training endpoint or adapter audit missing')
-        losses = [float(x) for x in re.findall(r'loss: (\S+)', logs)]
+        losses = training_losses(logs)
         if not losses or not all(math.isfinite(x) for x in losses):
             raise RuntimeError('Nonfinite loss')
         lrs = re.findall(r'lr=\[([^\]]+)\]', logs)

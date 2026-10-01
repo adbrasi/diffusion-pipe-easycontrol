@@ -9,6 +9,14 @@ from tools import krea2_fullbudget_campaign as campaign
 
 
 class CampaignSafetyTests(unittest.TestCase):
+    def test_training_losses_ignore_module_dump_and_preserve_nonfinite(self):
+        logs = ('  loss: loss_fn\n'
+                'steps: 249 loss: 0.0868 iter time (s): 2.784\n'
+                'steps: 250 loss: 0.1612 iter time (s): 2.782\n')
+        self.assertEqual(campaign.training_losses(logs), [0.0868, 0.1612])
+        self.assertTrue(campaign.math.isnan(campaign.training_losses(
+            'steps: 251 loss: nan iter time (s): 2.8\n')[0]))
+
     def recipe(self):
         return dict(output_dir=str(campaign.OUTPUT),
                     model=dict(type='krea2_native', base_quant='fp8_scaled'),
