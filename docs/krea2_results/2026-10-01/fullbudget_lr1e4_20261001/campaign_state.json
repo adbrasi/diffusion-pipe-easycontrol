@@ -8,17 +8,17 @@
       "last_loss": 0.1618
     }
   ],
-  "status": "training",
+  "status": "failed",
   "target_steps": 5000,
   "lr": 0.0001,
   "initialized_from": "random LoRA",
-  "current_job": "fullbudget_lr1e4_backup000250",
+  "current_job": "fullbudget_lr1e4_backup000500",
   "job_status": {
-    "status": "done",
-    "start": 1790830855.2103066,
-    "end": 1790830877.4750102,
-    "seconds": 22.26470422744751,
-    "returncode": 0,
+    "status": "failed",
+    "start": 1790831656.0859604,
+    "end": 1790831672.2848606,
+    "seconds": 16.19890069961548,
+    "returncode": 1,
     "argv": [
       "/venv/main/bin/python",
       "tools/krea2_upload_stage.py",
@@ -27,10 +27,11 @@
       "--run",
       "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000/20261001_04-48-15",
       "--step",
-      "250"
+      "500"
     ]
   },
   "cache_pairs": 6138,
-  "step": 250,
-  "samples_seen": 500
+  "step": 500,
+  "samples_seen": 1000,
+  "error": "fullbudget_lr1e4_backup000500 failed; inspect /workspace/k2ab/artifacts/fullbudget_lr1e4_20261001/fullbudget_lr1e4_backup000500.log"
 }

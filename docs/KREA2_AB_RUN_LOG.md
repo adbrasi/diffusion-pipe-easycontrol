@@ -477,3 +477,8 @@ Smoke LR 0,0001 aprovado: 10 passos + retomada até 12, 512 chaves exportadas e 
 ## 2026-10-01T05:01:18.800651+00:00 — A native novo step250
 
 Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 500 amostras vistas, loss final 0.1618. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.
+
+
+## 2026-10-01T06:06:07.659040+00:00 — LR 0,0001, step500 e cota HF
+
+500 passos concluídos, LR 0,0001, loss final 0,1172, adapter audit de 512 chaves e quatro gerações Turbo. Backup do passo 500 falhou: limite de armazenamento privado do HF. Run parada no gate de backup; adapter e estado do passo 500 continuam locais, sem poda; backup completo verificado mais recente: 250. Grid, métricas e estado da falha salvos no Git.
