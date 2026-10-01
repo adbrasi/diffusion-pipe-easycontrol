@@ -512,3 +512,8 @@ Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 2500 am
 ## 2026-10-01T07:03:05.293019+00:00 — A native novo step1500
 
 Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 3000 amostras vistas, loss final 0.1547. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF AdwolfCzar/krea2-a-native-lr0001; backup verificado antes da poda. Não é retomada do A1000 antigo.
+
+
+## 2026-10-01T07:16:26.519224+00:00 — A native novo step1750
+
+Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 3500 amostras vistas, loss final 0.0919. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF AdwolfCzar/krea2-a-native-lr0001; backup verificado antes da poda. Não é retomada do A1000 antigo.

@@ -46,18 +46,26 @@
       "utc": "2026-10-01T07:03:05.293019+00:00",
       "last_loss": 0.1547,
       "backup_repo": "AdwolfCzar/krea2-a-native-lr0001"
+    },
+    {
+      "step": 1750,
+      "samples_seen": 3500,
+      "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000/20261001_04-48-15/step1750/adapter_model.safetensors",
+      "utc": "2026-10-01T07:16:26.519224+00:00",
+      "last_loss": 0.0919,
+      "backup_repo": "AdwolfCzar/krea2-a-native-lr0001"
     }
   ],
   "status": "training",
   "target_steps": 5000,
   "lr": 0.0001,
   "initialized_from": "random LoRA",
-  "current_job": "fullbudget_lr1e4_backup001500_public",
+  "current_job": "fullbudget_lr1e4_backup001750_public",
   "job_status": {
     "status": "done",
-    "start": 1790838166.9238284,
-    "end": 1790838185.1442323,
-    "seconds": 18.220404863357544,
+    "start": 1790838967.7230985,
+    "end": 1790838985.9417412,
+    "seconds": 18.21864366531372,
     "returncode": 0,
     "argv": [
       "/venv/main/bin/python",
@@ -67,15 +75,15 @@
       "--run",
       "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000/20261001_04-48-15",
       "--step",
-      "1500",
+      "1750",
       "--repo",
       "AdwolfCzar/krea2-a-native-lr0001",
       "--public"
     ]
   },
   "cache_pairs": 6138,
-  "step": 1500,
-  "samples_seen": 3000,
+  "step": 1750,
+  "samples_seen": 3500,
   "public_recovery": {
     "utc": "2026-10-01T06:09:31.046053+00:00",
     "previous_error": "fullbudget_lr1e4_backup000500 failed; inspect /workspace/k2ab/artifacts/fullbudget_lr1e4_20261001/fullbudget_lr1e4_backup000500.log",
