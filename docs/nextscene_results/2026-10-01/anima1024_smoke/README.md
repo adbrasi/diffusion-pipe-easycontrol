@@ -49,6 +49,11 @@ Configuração principal:
 Dataset:
 [`dataset_full.toml`](../../../../examples/anima_nextscene/gpu_20261001_1024/dataset_full.toml).
 
+**Campanha iniciada em 2026-10-01 09:23:46 UTC**, sem resume na primeira
+etapa. O cache novo de todos os pares está sendo construído; ainda não há
+passos do run principal neste registro. O serviço continuará automaticamente
+do cache ao treino e à avaliação do passo 500. Krea continua parado.
+
 ## Resultado do smoke
 
 **Passou treino, salvamento, retomada e execução da inferência.**

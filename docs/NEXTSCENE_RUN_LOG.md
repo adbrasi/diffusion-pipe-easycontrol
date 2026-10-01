@@ -760,3 +760,5 @@ Previsão baseada no smoke:10,18h de treino +cache/eval/uploads.
 Detalhes/evidências: docs/nextscene_results/2026-10-01/anima1024_smoke/README.md.
 Operação isolada supervisor anima1024_worker; status e logs em
 /workspace/nextscene_artifacts/anima1024_20261001/.
+
+09:23:46 UTC — Campanha principal lançada por anima1024_worker, commit fonte cfb0792. Primeiro estágio sem resume, cache 1024 novo ativo na GPU (~6,4pares/s na primeira família de bucket). Configuração prevê 6.636passos para a época completa, com retomadas/avaliações a cada500; Krea permanece parado.
