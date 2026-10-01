@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "dir": "/workspace/k2ab/artifacts/fullbudget_lr1e4_20261001/eval/step250/Turbo",
+    "n": 4,
+    "gt_true": 0.4338,
+    "copy_gap": 0.1053,
+    "ccip_true": 0.5,
+    "copy_rate": 0.0
+  },
+  "pairs": [
+    {
+      "stem": "03_ds4_imagem000268",
+      "gt_true": 0.3285024166107178,
+      "copy_gap": 0.12408146262168884,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "08_ds1_40zjrzfdij_image_0013",
+      "gt_true": 0.637519359588623,
+      "copy_gap": 0.10170277953147888,
+      "copy": 0,
+      "ccip_true": true
+    },
+    {
+      "stem": "09_ds2_000248",
+      "gt_true": 0.599879264831543,
+      "copy_gap": -0.12164580821990967,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "23_ds4_imagem000762",
+      "gt_true": 0.1691124439239502,
+      "copy_gap": 0.31725338101387024,
+      "copy": 0,
+      "ccip_true": false
+    }
+  ]
+}

@@ -472,3 +472,8 @@ O usuário interrompeu a campanha LR 0,0004. Encerramento seguro via save_quit n
 
 
 Smoke LR 0,0001 aprovado: 10 passos + retomada até 12, 512 chaves exportadas e uma imagem stock gerada sem chave LoRA rejeitada. Mediana 0,724 amostras/s, 2,7615 s/passo; pico amostrado 24,80 GiB. Backups privados de step10 e step12 verificados antes da limpeza dos checkpoints temporários. Produção LR 0,0001 começou no passo 1, com LoRA e otimizador novos, sem argumento de resume; warmup de 50 passos. Novo serviço supervisionado `krea2_lr1e4`, execução antiga parada.
+
+
+## 2026-10-01T05:01:18.800651+00:00 — A native novo step250
+
+Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 500 amostras vistas, loss final 0.1618. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.
