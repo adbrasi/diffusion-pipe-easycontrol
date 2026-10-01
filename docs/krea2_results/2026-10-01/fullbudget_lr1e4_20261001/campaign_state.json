@@ -6,19 +6,27 @@
       "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000/20261001_04-48-15/step250/adapter_model.safetensors",
       "utc": "2026-10-01T05:01:18.800651+00:00",
       "last_loss": 0.1618
+    },
+    {
+      "step": 500,
+      "samples_seen": 1000,
+      "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000/20261001_04-48-15/step500/adapter_model.safetensors",
+      "utc": "2026-10-01T06:09:46.903725+00:00",
+      "last_loss": 0.1172,
+      "backup_repo": "AdwolfCzar/krea2-a-native-lr0001"
     }
   ],
-  "status": "failed",
+  "status": "training",
   "target_steps": 5000,
   "lr": 0.0001,
   "initialized_from": "random LoRA",
-  "current_job": "fullbudget_lr1e4_backup000500",
+  "current_job": "fullbudget_lr1e4_backup000500_public",
   "job_status": {
-    "status": "failed",
-    "start": 1790831656.0859604,
-    "end": 1790831672.2848606,
-    "seconds": 16.19890069961548,
-    "returncode": 1,
+    "status": "done",
+    "start": 1790834976.9527636,
+    "end": 1790834985.0519264,
+    "seconds": 8.099163293838501,
+    "returncode": 0,
     "argv": [
       "/venv/main/bin/python",
       "tools/krea2_upload_stage.py",
@@ -27,11 +35,22 @@
       "--run",
       "/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000/20261001_04-48-15",
       "--step",
-      "500"
+      "500",
+      "--repo",
+      "AdwolfCzar/krea2-a-native-lr0001",
+      "--public"
     ]
   },
   "cache_pairs": 6138,
   "step": 500,
   "samples_seen": 1000,
-  "error": "fullbudget_lr1e4_backup000500 failed; inspect /workspace/k2ab/artifacts/fullbudget_lr1e4_20261001/fullbudget_lr1e4_backup000500.log"
+  "public_recovery": {
+    "utc": "2026-10-01T06:09:31.046053+00:00",
+    "previous_error": "fullbudget_lr1e4_backup000500 failed; inspect /workspace/k2ab/artifacts/fullbudget_lr1e4_20261001/fullbudget_lr1e4_backup000500.log",
+    "repo": "AdwolfCzar/krea2-a-native-lr0001",
+    "authorized_by_user": true,
+    "resume_step": 500
+  },
+  "backup_repo": "AdwolfCzar/krea2-a-native-lr0001",
+  "backup_visibility": "public"
 }

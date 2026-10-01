@@ -487,3 +487,8 @@ Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 500 amo
 ## 2026-10-01T06:09:31.046489+00:00 — backup público autorizado e continuação do 500
 
 O usuário solicitou upload público e continuação após o bloqueio de cota privada. Novo repo público AdwolfCzar/krea2-a-native-lr0001; repositório privado antigo preservado. Controlador configurado para backups públicos verificados, com fila independente para não repetir o job privado falho. Mesma run LR 0,0001, retomada do próprio checkpoint 500, meta 5.000. Step250 também enviado ao novo destino.
+
+
+## 2026-10-01T06:09:46.903725+00:00 — A native novo step500
+
+Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 1000 amostras vistas, loss final 0.1172. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF AdwolfCzar/krea2-a-native-lr0001; backup verificado antes da poda. Não é retomada do A1000 antigo.
