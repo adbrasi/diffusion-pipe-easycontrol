@@ -1,0 +1,26 @@
+{
+  "status": "smoke_resume_inference_and_backup_passed",
+  "precision": "BF16",
+  "micro_batch": 4,
+  "gradient_accumulation": 1,
+  "training_steps": 10,
+  "resume_steps": [
+    11,
+    12
+  ],
+  "lr": 0.0001,
+  "mean_seconds_per_step": 5.5215,
+  "samples_per_second": 0.7244408222403332,
+  "peak_polled_vram_mib": 20398,
+  "adapter_keys": 560,
+  "trainable_parameters": 91750400,
+  "smoke_cache_bytes": 94840307,
+  "cpu_tests_passed": 40,
+  "image_step": 10,
+  "image_note": "Fresh step-10 image is an execution check, not a quality verdict. Preserved E2 adapter reproduces both original held-out outputs pixel-for-pixel at 512; evaluated separately at 1024.",
+  "fresh_main_run": true,
+  "old_e2_pixel_parity": {
+    "00_ds1_bj579mxzos_image_0006_true.png": true,
+    "01_ds2_002518_true.png": true
+  }
+}

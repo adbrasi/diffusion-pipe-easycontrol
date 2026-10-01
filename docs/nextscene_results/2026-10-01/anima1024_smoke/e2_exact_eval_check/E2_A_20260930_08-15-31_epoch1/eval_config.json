@@ -1,0 +1,25 @@
+{
+  "dit": "/workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors",
+  "vae": "/workspace/models_anima/split_files/vae/qwen_image_vae.safetensors",
+  "llm": "/workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors",
+  "pairs": "/workspace/heldout_short",
+  "ckpt": [
+    "/workspace/checkpoints/anima_nextscene/E2_A/20260930_08-15-31/epoch1"
+  ],
+  "out": "/workspace/nextscene_artifacts/anima1024_20261001/e2_exact_eval_check",
+  "limit": 2,
+  "width": 512,
+  "height": 512,
+  "match_target_ar": true,
+  "steps": 20,
+  "cfg": 4.0,
+  "flow_shift": 3.0,
+  "ref_cfg": 1.0,
+  "uncond_ref": "keep",
+  "lora_strength": 1.0,
+  "rope_layout": null,
+  "ref_temporal_index": null,
+  "negative_prompt": "worst quality, low quality, blurry, jpeg artifacts",
+  "seed": 76,
+  "copy_dhash": 6
+}

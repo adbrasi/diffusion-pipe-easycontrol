@@ -1,0 +1,2 @@
+ckpt,adapter,n,gt_true,ref_gain,null_gain,copy_gap,ccip_true,copy_rate
+E2_A_20260930_08-15-31_epoch1,/workspace/checkpoints/anima_nextscene/E2_A/20260930_08-15-31/epoch1/adapter_model.safetensors,2,0.3423,0.004,0.0256,0.2371,0.0,0.0

@@ -726,3 +726,37 @@ Após os testes manuais no ComfyUI com referências e prompts próprios, o usuá
 ## 2026-09-30 16:09 UTC — Anima encerrado; vencedor A/aligned
 
 Após muitas imagens geradas, o usuário confirmou o veredito definitivo A/aligned. Treino final adiado para outro dia e dataset será refeito pelo usuário. Os 30 adapters (incluindo smokes, E1 e E2) foram conferidos por SHA256 contra o HF privado AdwolfCzar/anima-nextscene-runs, todos iguais. Preservados adapters, configs, logs, outputs/grids e dados filtrados. Limpeza autorizada removeu caches de treino, global_step* (optimizer/resume), clone duplicado ds_git, caches de download e base/TE Anima; liberou 63.88GiB. Manifest em /workspace/nextscene_artifacts/anima_cleanup_manifest.json. VAE Qwen retido em /workspace/models/krea2/vae/ para uso compartilhado, symlink ComfyUI atualizado. Base/TE Anima podem ser baixados novamente quando o projeto for retomado; estados de optimizer excluídos.
+
+
+## 2026-10-01 — Anima retomado do zero em 1024/BF16
+
+Usuário encerrou Krea e escolheu o método A/aligned vencedor do E2. Corrigiu
+explicitamente a inicialização: LoRA nova sobre Anima Base v1.0, sem carregar
+adapter E2 nem optimizer antigo. Confirmou BF16 e os quatro subsets existentes.
+Krea/worker parados e autostarts de ambos os serviços longos desativados.
+Cache Krea regenerável (96,55GiB) removido após preview; checkpoints e fontes
+preservados, dois pares da auditoria Krea salvos antes da remoção.
+
+Inventário sem filtros: 11.526 pares (2.796/4.594/2.887/1.249), 24 held-out,
+51 alvos sem referência válida. Receita full/short/short conserva a legenda
+original e gera26.532 apresentações; todas as fontes num_repeats=1, retirado
+peso extra2x de ds4 do E2 anterior. Novo pad_last_batch=true preserva todas
+as apresentações nas caudas de buckets, repetindo12;6.636steps/época.
+
+Smoke10steps+resume12 BF16 em1024 passou: batchreal4/accum1,5,5215s/step,
+0,7244amostra/s, pico observado20.398MiB. Audit560chaves,91.750.400parâmetros.
+LR1e-4 manteve-se após resume.40testes CPU passaram; atualizado mock antigo
+para prepare_inputs_per_microbatch. Imagem nova do passo10 foi gerada,
+sem declarar qualidade validada. Controle E2 reproduziu dois outputs originais
+pixel por pixel em512, e foi também executado em1024.77arquivos do smoke
+incluindo optimizer verificados remotamente no HF público, autorizado pelo usuário:
+AdwolfCzar/anima-nextscene-a-aligned-1024. Repos antigos continuam privados.
+
+Preparada primeira época completa, LR1e-4/warmup100/r64/ref_dropout0,1,
+high_noise0,2/diff_weight=false. Controller serial de500steps → avaliações
+1024 de8held-out (correta/trocada/nula) → backup verificado → resume.
+Estados antigos podados só após checksum remoto; todos adapters ficam.
+Previsão baseada no smoke:10,18h de treino +cache/eval/uploads.
+Detalhes/evidências: docs/nextscene_results/2026-10-01/anima1024_smoke/README.md.
+Operação isolada supervisor anima1024_worker; status e logs em
+/workspace/nextscene_artifacts/anima1024_20261001/.

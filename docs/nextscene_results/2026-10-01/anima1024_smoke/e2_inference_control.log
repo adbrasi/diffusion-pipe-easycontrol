@@ -1,0 +1,22 @@
+
+Job 003b_e2_inference_control.job 2026-10-01T09:12:19Z
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+Loading DiT: /workspace/models_anima/split_files/diffusion_models/anima-base-v1.0.safetensors
+  DiT loaded: 28 blocks, 2048 dim
+Loading VAE: /workspace/models_anima/split_files/vae/qwen_image_vae.safetensors
+Loading text encoder: /workspace/models_anima/split_files/text_encoders/qwen_3_06b_base.safetensors
+Loading PEFT LoRA: /workspace/checkpoints/anima_nextscene/E2_A/20260930_08-15-31/epoch1/adapter_model.safetensors
+  LoRA manually merged (280 weight matrices, scale=1.00)
+Encoding prompts...
+Running LLM adapter...
+Encoding control: /workspace/heldout_short/control/00_ds1_bj579mxzos_image_0006.jpg
+  Control latents: torch.Size([1, 16, 1, 128, 128])
+Generating 1024x1024, 30 steps, CFG=4.0, shift=3.0, seed=76
+  nextscene geometry: rope_layout=aligned ref_temporal_index=1
+  Mode: nextscene (cfg=4.0, ref_cfg=1.0, uncond_ref=keep, ref_renoise=0.0)
+Sampling (nextscene):   0%|          | 0/30 [00:00<?, ?it/s]Sampling (nextscene):   3%|▎         | 1/30 [00:00<00:15,  1.90it/s]Sampling (nextscene):   7%|▋         | 2/30 [00:01<00:16,  1.68it/s]Sampling (nextscene):  10%|█         | 3/30 [00:01<00:16,  1.62it/s]Sampling (nextscene):  13%|█▎        | 4/30 [00:02<00:16,  1.59it/s]Sampling (nextscene):  17%|█▋        | 5/30 [00:03<00:15,  1.58it/s]Sampling (nextscene):  20%|██        | 6/30 [00:03<00:15,  1.57it/s]Sampling (nextscene):  23%|██▎       | 7/30 [00:04<00:14,  1.56it/s]Sampling (nextscene):  27%|██▋       | 8/30 [00:05<00:14,  1.56it/s]Sampling (nextscene):  30%|███       | 9/30 [00:05<00:13,  1.55it/s]Sampling (nextscene):  33%|███▎      | 10/30 [00:06<00:12,  1.55it/s]Sampling (nextscene):  37%|███▋      | 11/30 [00:06<00:12,  1.55it/s]Sampling (nextscene):  40%|████      | 12/30 [00:07<00:11,  1.55it/s]Sampling (nextscene):  43%|████▎     | 13/30 [00:08<00:10,  1.55it/s]Sampling (nextscene):  47%|████▋     | 14/30 [00:08<00:10,  1.55it/s]Sampling (nextscene):  50%|█████     | 15/30 [00:09<00:09,  1.55it/s]Sampling (nextscene):  53%|█████▎    | 16/30 [00:10<00:09,  1.55it/s]Sampling (nextscene):  57%|█████▋    | 17/30 [00:10<00:08,  1.55it/s]Sampling (nextscene):  60%|██████    | 18/30 [00:11<00:07,  1.55it/s]Sampling (nextscene):  63%|██████▎   | 19/30 [00:12<00:07,  1.55it/s]Sampling (nextscene):  67%|██████▋   | 20/30 [00:12<00:06,  1.55it/s]Sampling (nextscene):  70%|███████   | 21/30 [00:13<00:05,  1.55it/s]Sampling (nextscene):  73%|███████▎  | 22/30 [00:14<00:05,  1.55it/s]Sampling (nextscene):  77%|███████▋  | 23/30 [00:14<00:04,  1.55it/s]Sampling (nextscene):  80%|████████  | 24/30 [00:15<00:03,  1.55it/s]Sampling (nextscene):  83%|████████▎ | 25/30 [00:16<00:03,  1.55it/s]Sampling (nextscene):  87%|████████▋ | 26/30 [00:16<00:02,  1.55it/s]Sampling (nextscene):  90%|█████████ | 27/30 [00:17<00:01,  1.55it/s]Sampling (nextscene):  93%|█████████▎| 28/30 [00:17<00:01,  1.55it/s]Sampling (nextscene):  97%|█████████▋| 29/30 [00:18<00:00,  1.55it/s]Sampling (nextscene): 100%|██████████| 30/30 [00:19<00:00,  1.55it/s]Sampling (nextscene): 100%|██████████| 30/30 [00:19<00:00,  1.56it/s]
+Decoding...
+Saved: /workspace/nextscene_artifacts/anima1024_20261001/e2_inference_control/20261001-091244_76.png

@@ -269,7 +269,10 @@ def test_pipeline_dataloader_preserves_and_splits_loss_weights():
     weight = torch.arange(4.).reshape(4, 1, 1, 1, 1).expand(4, 1, 1, 4, 4)
     loader = PipelineDataLoader.__new__(PipelineDataLoader)
     loader.dataloader = [{}]
-    loader.model = SimpleNamespace(prepare_inputs=lambda *a, **k: ((x,), (target, None, weight)))
+    loader.model = SimpleNamespace(
+        prepare_inputs=lambda *a, **k: ((x,), (target, None, weight)),
+        prepare_inputs_per_microbatch=False,
+    )
     loader.model_engine = SimpleNamespace(is_pipe_parallel=False)
     loader.eval_quantile = None
     loader.gradient_accumulation_steps = 2

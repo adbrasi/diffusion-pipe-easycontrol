@@ -1,0 +1,37 @@
+{
+  "summary": {
+    "ckpt": "E2_A_20260930_08-15-31_epoch1",
+    "adapter": "/workspace/checkpoints/anima_nextscene/E2_A/20260930_08-15-31/epoch1/adapter_model.safetensors",
+    "n": 2,
+    "gt_true": 0.3423,
+    "ref_gain": 0.004,
+    "null_gain": 0.0256,
+    "copy_gap": 0.2371,
+    "ccip_true": 0.0,
+    "copy_rate": 0.0
+  },
+  "pairs": [
+    {
+      "stem": "00_ds1_bj579mxzos_image_0006",
+      "width": 640,
+      "height": 400,
+      "gt_true": 0.30388158559799194,
+      "ref_gain": 0.02348470687866211,
+      "null_gain": -0.015577197074890137,
+      "copy_gap": 0.543630838394165,
+      "copy": 0,
+      "ccip_true": false
+    },
+    {
+      "stem": "01_ds2_002518",
+      "width": 640,
+      "height": 400,
+      "gt_true": 0.3806646466255188,
+      "ref_gain": -0.015389889478683472,
+      "null_gain": 0.06686946749687195,
+      "copy_gap": -0.06938290596008301,
+      "copy": 0,
+      "ccip_true": false
+    }
+  ]
+}

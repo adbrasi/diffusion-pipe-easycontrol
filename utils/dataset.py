@@ -412,8 +412,9 @@ class SizeBucketDataset:
 # Logical concatenation of multiple SizeBucketDataset, for the same size bucket. It returns items
 # as batches.
 class ConcatenatedBatchedDataset:
-    def __init__(self, datasets):
+    def __init__(self, datasets, pad_last_batch=False):
         self.datasets = datasets
+        self.pad_last_batch = pad_last_batch
         self.post_init_called = False
 
     def post_init(self, global_batch_size: dict, global_batch_size_image: dict, data_parallel_rank: int, data_parallel_world_size: int):
@@ -462,6 +463,12 @@ class ConcatenatedBatchedDataset:
         return [self.datasets[i.item()][j.item()] for i, j in self.iteration_order[start_idx : end_idx]]
 
     def _make_divisible_by(self, n):
+        if self.pad_last_batch and len(self.iteration_order):
+            missing = (-len(self.iteration_order)) % n
+            if missing:
+                extra = self.iteration_order[np.arange(missing) % len(self.iteration_order)]
+                self.iteration_order = np.concatenate([self.iteration_order, extra])
+            return
         new_length = (len(self.iteration_order) // n) * n
         self.iteration_order = self.iteration_order[:new_length]
         if new_length == 0 and is_main_process():
@@ -1072,7 +1079,8 @@ class Dataset:
                 datasets_by_size_bucket[size_bucket_dataset.size_bucket].append(size_bucket_dataset)
         self.buckets = []
         for datasets in datasets_by_size_bucket.values():
-            self.buckets.append(ConcatenatedBatchedDataset(datasets))
+            self.buckets.append(ConcatenatedBatchedDataset(
+                datasets, pad_last_batch=self.dataset_config.get('pad_last_batch', False)))
 
         for bucket in self.buckets:
             bucket.post_init(global_batch_size, global_batch_size_image, data_parallel_rank, data_parallel_world_size)

@@ -1,0 +1,12 @@
+resolutions = [ 1024,]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [ 1,]
+pad_last_batch = true
+[[directory]]
+path = "/workspace/anima1024_data_20261001/target"
+control_path = "/workspace/anima1024_data_20261001/control"
+num_repeats = 1
+

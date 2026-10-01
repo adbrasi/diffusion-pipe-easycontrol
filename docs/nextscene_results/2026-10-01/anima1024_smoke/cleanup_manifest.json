@@ -1,0 +1,15 @@
+{
+  "utc": "2026-10-01T08:58:16.635384+00:00",
+  "reason": "Switch to Anima aligned from scratch at1024; regenerable Krea cache obsolete for active task",
+  "removed": [
+    {
+      "path": "/workspace/k2ab/data_fullbudget_20261001_v2/target/cache/krea2_native",
+      "bytes": 103668713631
+    }
+  ],
+  "preserved_audit_snapshot": "/workspace/k2ab/artifacts/corrected_native_20261001/two_pair_cache_snapshot.pt",
+  "preserved_snapshot_bytes": 33842861,
+  "checkpoints_removed": false,
+  "dataset_sources_removed": false,
+  "free_after_bytes": 109848600576
+}
