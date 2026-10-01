@@ -412,3 +412,14 @@ Métricasn10:Turbo DINOgt.5832/copy_rate.30/copy_gap.1410/CCIP.50;Raw.5437/.00/-
 ## 2026-09-30 23:42 UTC — Modelos A disponíveis no ComfyUI do usuário
 
 Conferência no Comfy usuário /workspace/comfy/ComfyUI (8818): faltavam links da baseFP8,Qwen3VL,TurboLoRA e adaptersA; VAE já estava presente e válido. Criados symlinks para modelos centrais e A/native micro2 steps250/500/750/1000,sem copiar pesos ou expor runs antigos. API object_info do processo usuário confirmou todos os modelos atuais nos dropdowns (UNETLoader,CLIPLoader,VAELoader,LoraLoaderModelOnly),sem reiniciar sua sessão. Modelo base krea2_raw_fp8_scaled.safetensors,encoder qwen3vl_4b_bf16.safetensors,adapter A_native_fp8_512_micro2_probe_step1000.safetensors. Turbo usa também krea2_turbo_lora_rank_64_bf16.safetensors; Raw sóadapterA. Manifest de links em artifacts/fp8_512_micro2/user_comfy_symlinks.json. Treinos continuam pausados.
+
+
+## 2026-10-01 — Recuperação da conversa e preparação A native longo
+
+Transcrição anterior recuperada de /root/.codex/sessions; exportação local privada em /workspace/k2ab/artifacts/recovery_20261001/conversa_anterior.txt. Git principal limpo em cfd5456, idêntico à branch remota. Worktree native em 6355674: diferenças locais são a revisão de ComfyUI e symlinks dos demais submodules, não código perdido; registradas em source_state_before_cleanup.json. Scripts operacionais externos e configs dos checkpoints preservados neste commit antes da limpeza.
+
+Confirmado no tools/k2ab_prepare_data.py: seleção anterior usou /workspace/ns_E2, regex de legenda, classificador safe>=0.7 e corte rígido em 1500. O handoff anterior de probe prescrevia ~1500; pedido atual substitui essa seleção por todos os datasets originais, sem filtro de conteúdo/subset, limitada apenas por disco e integridade do trio A+B+legenda. Legendas originais não serão reescritas.
+
+Usuário autorizou apagar cache antigo e checkpoints, mantendo apenas último A native. Preservar step1000, global_step1000, latest e metadados do run micro2 20260930_20-41-00; evidências, imagens de avaliação, dados originais e modelos necessários permanecem. Adapter A1000/B1000 e grid10 verificados existentes no HF privado AdwolfCzar/krea2-ab-runs. Estado global de retomada permanece local e será protegido. Novo treino de 5000 passos requer apresentação da configuração ao usuário antes de execução; não iniciado.
+
+Achados anteriores preservados: A1000 ainda copia 3/10 em Turbo e Raw pode mudar identidade/estilo; aumento de passos por si só não demonstra correção dessas falhas. Novo smoke10 com audit/resume e amostras/s exigido antes do treino maior. Micro4 anterior falhou por memória; baseline medido micro2, accumulation1, FP8scaled com BF16, swap0, LR1e-4, rank64,512 com7buckets.

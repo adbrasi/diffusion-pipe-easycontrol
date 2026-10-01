@@ -1,0 +1,14 @@
+{
+  "main": {
+    "head": "cfd5456afe1bfc21b77d39b94c8b8927e7ce0aec",
+    "status": "?? docs/krea2_results/2026-10-01/\n"
+  },
+  "native": {
+    "head": "6355674c59496e824fbc296617c2755880b2988b",
+    "status": " M submodules/ComfyUI\n T submodules/Cosmos\n T submodules/HiDream\n T submodules/HunyuanImage-2.1\n T submodules/HunyuanVideo\n T submodules/LTX_Video\n T submodules/Lumina_2\n T submodules/OmniGen2\n T submodules/flow\n"
+  },
+  "native_comfy": {
+    "head": "fb2315f11db0ebfaafa9099a5df5227dc6bb42bc",
+    "status": ""
+  }
+}
