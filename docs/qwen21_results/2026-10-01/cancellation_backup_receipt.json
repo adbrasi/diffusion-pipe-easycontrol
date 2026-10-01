@@ -1,0 +1,23 @@
+{
+  "status": "final_backup_verified",
+  "step": 316,
+  "repo": "AdwolfCzar/qwen-image-21-nextscene-edit",
+  "files": [
+    {
+      "path": "checkpoints/step000316/adapter.safetensors",
+      "bytes": 335602272,
+      "sha256": "7f3eb2de38aec1b93798c33c77b5e1df04a2e94f8e09789094c06570ca4cdfd4"
+    },
+    {
+      "path": "checkpoints/step000316/report.json",
+      "bytes": 21198,
+      "sha256": "d4ffbe68d45114de6b02d0ab86b9cc93570a6e1e598c2b391f17822134553a85"
+    },
+    {
+      "path": "checkpoints/step000316/resume.pt",
+      "bytes": 671472973,
+      "sha256": "be9c6545dcc61774a2cb744ed5e3053bdeb7d744f9c54faab68d96d3ca7c48cb"
+    }
+  ],
+  "utc": 1790865022.7987618
+}

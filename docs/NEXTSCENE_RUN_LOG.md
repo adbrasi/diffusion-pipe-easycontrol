@@ -846,3 +846,14 @@ Production cycle confirmed: main run saved **100**, full optimizer/adapter hashe
 and samples verified on public Hub, generated3 previews, then restored its full
 state and continued past **120** toward250. Native live per-update progress is
 in `/workspace/qwen21/progress.json`; PNG grid at `samples/grid_step000100.png`.
+
+## 2026-10-01 14:28 UTC — user cancelled and requested full workspace deletion
+
+The user cancelled the proposed default/BF16 recipe change, requested stopping
+all jobs and then deleting everything in /workspace. Native training stopped
+cleanly at **316** with a full saved optimizer/RNG/adapter checkpoint. Remote
+hashes were rechecked before cleanup; public repo status/card now mark the run
+cancelled. No BF16 replacement training was started. All custom training, cache,
+sampling and sync services have autostart/autorestart disabled. The entire local
+workspace, including datasets, models, repositories, caches and samples, is being
+deleted at the user's explicit request. Public GitHub/Hugging Face backups remain.
