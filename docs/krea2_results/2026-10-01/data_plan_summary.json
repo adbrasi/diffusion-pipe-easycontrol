@@ -2,10 +2,10 @@
   "status": "materialized_without_cache",
   "seed": 42,
   "source": "/workspace/ds",
-  "destination": "/workspace/k2ab/data_fullbudget_20261001",
+  "destination": "/workspace/k2ab/data_fullbudget_20261001_v2",
   "eligible_pairs": 11526,
-  "selected_pairs": 4201,
-  "capacity_pairs": 4201,
+  "selected_pairs": 6138,
+  "capacity_pairs": 6138,
   "eligible_by_subset": {
     "ds1_recortados": 2796,
     "ds2_poxima_v2": 4594,
@@ -13,10 +13,10 @@
     "ds4_contexto_curado": 1249
   },
   "selected_by_subset": {
-    "ds1_recortados": 1054,
-    "ds2_poxima_v2": 1662,
-    "ds3_comikontext": 1050,
-    "ds4_contexto_curado": 435
+    "ds1_recortados": 1523,
+    "ds2_poxima_v2": 2444,
+    "ds3_comikontext": 1517,
+    "ds4_contexto_curado": 654
   },
   "technical_exclusions": {
     "heldout_pairs": 24,
@@ -32,46 +32,32 @@
     "/workspace/ds/ds4_contexto_curado/captions.jsonl": "ab64c6ef457b28b7702701a71725b693cd8e9a58704a06101703c499c0b9d8ba",
     "/workspace/ds/ds4_contexto_curado/images_B/*.txt (eligible caption digest)": "67d3a23d8e44063149fcbbd997467905511b6243730b3445729c3f27bfd0793b"
   },
-  "free_bytes": 123205492736,
+  "free_bytes": 122653339648,
   "reserve_bytes": 8589934592,
-  "estimated_bytes_per_pair": 24800000.0,
+  "estimated_bytes_per_pair": 16893393.578125,
   "cache_overhead": 1.1,
-  "estimated_cache_bytes": 104184800000.0,
-  "budgeted_cache_bytes": 114603280000.00002,
+  "estimated_cache_bytes": 103691649782.53125,
+  "budgeted_cache_bytes": 114060814760.78438,
   "selection_rule": "seeded global shuffle, no content filters or subset quotas",
   "estimate_warning": "Measure actual native cache bytes/pair before building the complete cache.",
   "captions": "original strings, one caption per pair, no rewriting",
-  "train_start": "fresh random LoRA initialization; frozen pretrained Krea2 FP8-scaled base",
+  "learning_rate": 0.0004,
+  "smoke_passed": true,
   "max_steps": 5000,
   "micro_batch": 2,
   "accumulation": 1,
   "samples_seen": 10000,
-  "approx_epochs": 2.38,
+  "approx_epochs": 1.629,
   "bucket_pairs": {
-    "0.5": 22,
-    "0.63": 577,
-    "0.794": 266,
-    "1.0": 89,
-    "1.26": 163,
-    "1.587": 2792,
-    "2.0": 292
+    "0.5": 32,
+    "0.63": 850,
+    "0.794": 382,
+    "1.0": 123,
+    "1.26": 251,
+    "1.587": 4080,
+    "2.0": 420
   },
-  "smoke_pairs": 64,
-  "sampling": {
-    "interval_steps": 250,
-    "count": 4,
-    "resolution": 512,
-    "variant": "Turbo",
-    "steps": 8,
-    "cfg": 1,
-    "seed": 76,
-    "reference": "correct",
-    "adapter": true
-  },
-  "gpu_execution": "not started; pending user review",
-  "effective_pairs_per_epoch_at_micro2": 4198,
-  "bucket_rounding_pairs": 3,
-  "checkpoint_retention_plan": "Keep baseline A1000 plus latest two checkpoints of new run; prune new-run older files only after HF upload verification.",
-  "learning_rate": 0.0004,
-  "learning_rate_previous_A1000": 0.0001
+  "effective_pairs_per_epoch_at_micro2": 6136,
+  "cache_measurement_pairs": 64,
+  "original_provisional_pairs": 4201
 }

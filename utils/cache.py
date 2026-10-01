@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 import os
 import io
+import shutil
 from collections import defaultdict
 
 import torch
@@ -112,6 +113,12 @@ class Cache:
         buffer = io.BytesIO()
         torch.save(item, buffer)
         bytes_view = buffer.getbuffer()
+        reserve = int(os.environ.get('KREA2_CACHE_MIN_FREE_BYTES', '0'))
+        if reserve and shutil.disk_usage(self.path).free < reserve + len(bytes_view):
+            # Commit completed rows before rejecting the next item, so a
+            # budget stop preserves the recoverable shard and metadata.
+            self.finalize_current_shard()
+            raise OSError('Cache disk budget reached: refusing to consume the configured free-space reserve')
         self.shard_file.write(bytes_view)
 
         # update items metadata

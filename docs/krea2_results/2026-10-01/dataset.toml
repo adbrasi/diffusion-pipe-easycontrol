@@ -5,7 +5,7 @@ max_ar = 2.0
 num_ar_buckets = 7
 frame_buckets = [ 1,]
 [[directory]]
-path = "/workspace/k2ab/data_fullbudget_20261001/target"
-control_path = "/workspace/k2ab/data_fullbudget_20261001/control"
+path = "/workspace/k2ab/data_fullbudget_20261001_v2/target"
+control_path = "/workspace/k2ab/data_fullbudget_20261001_v2/control"
 num_repeats = 1
 

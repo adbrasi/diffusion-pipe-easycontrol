@@ -442,3 +442,10 @@ Pedido explícito: aumentar LR para0,0005. Conferência: A1000/receitaoriginal u
 ## 2026-10-01 — Correção final LR0,0004
 
 Usuário confirmou que, sendo o LR anterior0,0001, deseja0,0004. Isso substitui o pedido imediatamente anterior de0,0005. Todas configs novas e smoke agora em0,0004(4×o LR do A1000), com warmup50 no treino principal. Nada executado naGPU; aguarda conferência do plano.
+
+
+## 2026-10-01 — Smoke aprovado e cache recalibrado
+
+Novo smoke10do zero:0,722amostra/s,2,7705s/step,VRAM24322MiB,lossfinita0,0665–0,1857;LR0,0004 apóswarmup. Resume11/12passou,LRinalterado. 512chavesauditadas,stockComfy1imagem688×384Turbo8CFG1semchavenãocarregada/semcorrupção; ainda copia referência,não alegar aprendizado em10steps. Cache64medido16,893MB/par,12camadasBF16 intactas,legendasverificadasoriginais.
+
+Seleção recalibrada6138pares (ds1:1523,ds2:2444,ds3:1517,ds4:654),seed42global,semcotas/filtros. Reserva8GiB+10%margem;Cache.add agora tem guard opt-in viaKREA2_CACHE_MIN_FREE_BYTES,sem mudar tensores. Teste confirma parada por disco preserva shard/linhascommitadas. Smokeexports/evidências confirmados noHFprivado antes de removerstates/cachetemporários. ControllerA-only novo fará cachecompleto,countaudit,5000passos novos,4Turbo512por250,HFadapters+estadosverificados,retenção2estadosnovos,pushmilestones. Nunca carrega A1000/smoke no treino principal.
