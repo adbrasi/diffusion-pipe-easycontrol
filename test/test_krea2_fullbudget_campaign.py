@@ -6,9 +6,24 @@ import unittest
 from unittest.mock import patch
 
 from tools import krea2_fullbudget_campaign as campaign
+from tools import krea2_upload_stage as upload
 
 
 class CampaignSafetyTests(unittest.TestCase):
+    def test_public_backups_require_explicit_mode_and_exclude_source_manifests(self):
+        upload.check_visibility(private=False, public=True)
+        upload.check_visibility(private=True, public=False)
+        for private, public in [(True, True), (False, False)]:
+            with self.assertRaisesRegex(RuntimeError, 'visibility'):
+                upload.check_visibility(private, public)
+        options = upload.artifact_upload_options(True)
+        self.assertNotIn('data_plan_final.json', options['allow_patterns'])
+        self.assertNotIn('hf_storage_audit.json', options['allow_patterns'])
+        with patch.object(campaign, 'BACKUP_REPO', 'owner/public'), patch.object(campaign, 'BACKUP_PUBLIC', True):
+            args = campaign.backup_args(Path('/new/run'), 500)
+            self.assertIn('--public', args)
+            self.assertEqual(args[args.index('--repo') + 1], 'owner/public')
+
     def test_training_losses_ignore_module_dump_and_preserve_nonfinite(self):
         logs = ('  loss: loss_fn\n'
                 'steps: 249 loss: 0.0868 iter time (s): 2.784\n'

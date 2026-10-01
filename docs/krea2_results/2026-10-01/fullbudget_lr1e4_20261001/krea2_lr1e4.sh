@@ -6,5 +6,7 @@ export KREA2_CAMPAIGN_ARTIFACTS=/workspace/k2ab/artifacts/fullbudget_lr1e4_20261
 export KREA2_CAMPAIGN_OUTPUT=/workspace/k2ab/checkpoints/A_native_fullbudget_lr1e4_fromscratch_5000
 export KREA2_CAMPAIGN_LR=0.0001
 export KREA2_CAMPAIGN_JOB_PREFIX=fullbudget_lr1e4
+export KREA2_BACKUP_REPO=AdwolfCzar/krea2-a-native-lr0001
+export KREA2_BACKUP_PUBLIC=1
 cd /workspace/diffusion-pipe-easycontrol
 exec /venv/main/bin/python -u tools/krea2_fullbudget_campaign.py

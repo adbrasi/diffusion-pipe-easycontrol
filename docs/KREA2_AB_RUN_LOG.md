@@ -482,3 +482,8 @@ Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 500 amo
 ## 2026-10-01T06:06:07.659040+00:00 — LR 0,0001, step500 e cota HF
 
 500 passos concluídos, LR 0,0001, loss final 0,1172, adapter audit de 512 chaves e quatro gerações Turbo. Backup do passo 500 falhou: limite de armazenamento privado do HF. Run parada no gate de backup; adapter e estado do passo 500 continuam locais, sem poda; backup completo verificado mais recente: 250. Grid, métricas e estado da falha salvos no Git.
+
+
+## 2026-10-01T06:09:31.046489+00:00 — backup público autorizado e continuação do 500
+
+O usuário solicitou upload público e continuação após o bloqueio de cota privada. Novo repo público AdwolfCzar/krea2-a-native-lr0001; repositório privado antigo preservado. Controlador configurado para backups públicos verificados, com fila independente para não repetir o job privado falho. Mesma run LR 0,0001, retomada do próprio checkpoint 500, meta 5.000. Step250 também enviado ao novo destino.

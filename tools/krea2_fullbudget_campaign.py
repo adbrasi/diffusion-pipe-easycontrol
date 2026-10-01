@@ -20,6 +20,8 @@ ART = Path(os.environ.get('KREA2_CAMPAIGN_ARTIFACTS', str(ROOT / 'artifacts/full
 OUTPUT = Path(os.environ.get('KREA2_CAMPAIGN_OUTPUT', str(ROOT / 'checkpoints/A_native_fullbudget_fromscratch_5000')))
 LR = float(os.environ.get('KREA2_CAMPAIGN_LR', '.0004'))
 JOB_PREFIX = os.environ.get('KREA2_CAMPAIGN_JOB_PREFIX', 'fullbudget')
+BACKUP_REPO = os.environ.get('KREA2_BACKUP_REPO', 'AdwolfCzar/krea2-ab-runs')
+BACKUP_PUBLIC = os.environ.get('KREA2_BACKUP_PUBLIC', '0') == '1'
 QUEUE = ROOT / 'ops/jobs'
 STATE = ART / 'campaign_state.json'
 PYTHON = '/venv/main/bin/python'
@@ -56,6 +58,14 @@ def training_losses(logs):
 
 def job_name(name):
     return JOB_PREFIX + name.removeprefix('fullbudget')
+
+
+def backup_args(run, step):
+    args = [PYTHON, 'tools/krea2_upload_stage.py', '--artifacts', str(ART),
+            '--run', str(run), '--step', str(step), '--repo', BACKUP_REPO]
+    if BACKUP_PUBLIC:
+        args.append('--public')
+    return args
 
 
 def job(name, argv, state, train=False, env=None):
@@ -151,7 +161,7 @@ def publish_milestone(step, evaluation, state):
                        cwd=REPO, env=env, check=True, timeout=45)
     except subprocess.SubprocessError as error:
         state['git_publish_pending'] = str(error)
-        print('Git publication pending; private HF backup already verified:', error, flush=True)
+        print('Git publication pending; HF backup already verified:', error, flush=True)
 
 
 def main():
@@ -164,7 +174,8 @@ def main():
         raise RuntimeError('Smoke gate has not passed')
     recipe = toml.load(ART / 'configs/train_from_scratch_5000.toml')
     validate_recipe(recipe)
-    state.update(status='caching', target_steps=5000, lr=LR, initialized_from='random LoRA')
+    state.update(status='caching', target_steps=5000, lr=LR, initialized_from='random LoRA',
+                 backup_repo=BACKUP_REPO, backup_visibility='public' if BACKUP_PUBLIC else 'private')
     atomic(STATE, state)
     args = ['/venv/main/bin/deepspeed', '--num_gpus=1', '--master_port=29601', 'train.py',
             '--deepspeed', '--config', str(ART / 'configs/train_from_scratch_5000.toml'), '--cache_only']
@@ -238,8 +249,8 @@ def main():
             str(ROOT / 'heldout'), '--dir', str(evaluation / 'Turbo'), '--adapter-only'], state)
         state['status'] = 'backing_up'
         atomic(STATE, state)
-        job(f'fullbudget_backup{step:06d}', [PYTHON, 'tools/krea2_upload_stage.py',
-            '--artifacts', str(ART), '--run', str(run), '--step', str(step)], state)
+        suffix = '_public' if BACKUP_PUBLIC else ''
+        job(f'fullbudget_backup{step:06d}{suffix}', backup_args(run, step), state)
         prune(run)
         link = Path('/workspace/comfy/ComfyUI/models/loras/A_native_fullbudget_latest.safetensors')
         if link.exists() and not link.is_symlink():
@@ -248,14 +259,15 @@ def main():
             link.unlink()
         link.symlink_to(adapter)
         milestone = dict(step=step, samples_seen=step * 2, adapter=str(adapter),
-                         utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), last_loss=losses[-1])
+                         utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), last_loss=losses[-1],
+                         backup_repo=BACKUP_REPO)
         if step not in [m['step'] for m in state['milestones']]:
             state['milestones'].append(milestone)
             with (REPO / 'docs/KREA2_AB_RUN_LOG.md').open('a') as stream:
                 stream.write(f'\n\n## {milestone["utc"]} — A native novo step{step}\n\n'
                              f'Do zero, dataset completo por orçamento de disco, LR {LR} confirmado; '
                              f'{step * 2} amostras vistas, loss final {losses[-1]}. '
-                             '4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; '
+                             f'4Turbo512+grid/métricas e adapter/estado completos enviados ao HF {BACKUP_REPO}; '
                              'backup verificado antes da poda. Não é retomada do A1000 antigo.\n')
         state['status'] = 'training'
         atomic(STATE, state)
@@ -263,8 +275,7 @@ def main():
         print('Milestone complete', step, flush=True)
     state.update(status='complete', current_job=None)
     atomic(STATE, state)
-    subprocess.run([PYTHON, 'tools/krea2_upload_stage.py', '--artifacts', str(ART), '--run', str(run),
-                    '--step', '5000', '--status-only'], cwd=REPO, check=True)
+    subprocess.run(backup_args(run, 5000) + ['--status-only'], cwd=REPO, check=True)
     print('A native fresh 5000 steps complete', flush=True)
 
 
