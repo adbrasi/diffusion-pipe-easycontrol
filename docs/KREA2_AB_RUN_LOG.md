@@ -522,3 +522,8 @@ Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 3500 am
 ## 2026-10-01T08:03:01.838783+00:00 — correção de padding e auditoria dos gradientes
 
 Run LR0,0001 interrompida via save_quit em1949 e estado completo verificado no HF público. Máscara adicionada à fusão textual antes dos refinadores em todos os caminhos Krea2; projeções de timestep reutilizadas como no stock; metadata informa Turbo congelado. 18 testes CPU passaram. Dois smokes FP8 scaled/BF16 (mask_only e mask_turbo), 10+2 passos cada, audit512, LR0,0001 e ~0,728 amostras/s. Auditoria real FP8/PEFT/checkpointing mostrou gradientes finitos, porém os gates estritos de paridade não passaram, inclusive controles numéricos; controle FP32 real a512 deu OOM. Não se atribui a regressão ao dataset. Probes250 preparados; treinamento longo não liberado sem resolver a divergência e validar receita Turbo. Detalhes e medições em corrected_native_20261001/RELATORIO_CORRECOES.md.
+
+
+## 2026-10-01 — galeria das amostras atuais
+
+Pedido do usuário: reunir todas as imagens geradas nas execuções novas. Galeria determinística com44 imagens de14 avaliações: LR0,0004 (smoke10 e250/500/750), LR0,0001 (smoke10 e250/500/750/1000/1250/1500/1750), mask_only e mask_turbo (uma imagem cada no passo10). Grids geral, por execução e por cena incluem referênciaA/alvoB, sem recorte. Manifesto SHA256 e originais publicados no HF público autorizado; prévias e gerador salvos no Git. Sem geração adicional nem retomada do treinamento.
