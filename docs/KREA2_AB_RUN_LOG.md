@@ -459,3 +459,8 @@ Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 500amost
 ## 2026-10-01T04:23:07.199388+00:00 — A native novo step500
 
 Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 1000amostras vistas, lossfinal0.1342. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.
+
+
+## 2026-10-01T04:36:28.482179+00:00 — A native novo step750
+
+Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 1500amostras vistas, lossfinal0.1218. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.

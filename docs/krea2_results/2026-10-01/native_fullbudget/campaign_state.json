@@ -13,18 +13,25 @@
       "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51/step500/adapter_model.safetensors",
       "utc": "2026-10-01T04:23:07.199388+00:00",
       "last_loss": 0.1342
+    },
+    {
+      "step": 750,
+      "samples_seen": 1500,
+      "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51/step750/adapter_model.safetensors",
+      "utc": "2026-10-01T04:36:28.482179+00:00",
+      "last_loss": 0.1218
     }
   ],
   "status": "training",
   "target_steps": 5000,
   "lr": 0.0004,
   "initialized_from": "random LoRA",
-  "current_job": "fullbudget_backup000500",
+  "current_job": "fullbudget_backup000750",
   "job_status": {
     "status": "done",
-    "start": 1790828565.1206179,
-    "end": 1790828583.3372834,
-    "seconds": 18.216665983200073,
+    "start": 1790829365.9713132,
+    "end": 1790829384.1899805,
+    "seconds": 18.21866774559021,
     "returncode": 0,
     "argv": [
       "/venv/main/bin/python",
@@ -34,7 +41,7 @@
       "--run",
       "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51",
       "--step",
-      "500"
+      "750"
     ]
   },
   "cache_pairs": 6138,
@@ -43,6 +50,6 @@
     "reason": "could not convert string to float: 'loss_fn'",
     "fix": "parse anchored step metrics; reuse completed step250 job and checkpoint"
   },
-  "step": 500,
-  "samples_seen": 1000
+  "step": 750,
+  "samples_seen": 1500
 }
