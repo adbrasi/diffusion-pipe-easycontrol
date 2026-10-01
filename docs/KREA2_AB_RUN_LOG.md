@@ -517,3 +517,8 @@ Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 3000 am
 ## 2026-10-01T07:16:26.519224+00:00 — A native novo step1750
 
 Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 3500 amostras vistas, loss final 0.0919. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF AdwolfCzar/krea2-a-native-lr0001; backup verificado antes da poda. Não é retomada do A1000 antigo.
+
+
+## 2026-10-01T08:03:01.838783+00:00 — correção de padding e auditoria dos gradientes
+
+Run LR0,0001 interrompida via save_quit em1949 e estado completo verificado no HF público. Máscara adicionada à fusão textual antes dos refinadores em todos os caminhos Krea2; projeções de timestep reutilizadas como no stock; metadata informa Turbo congelado. 18 testes CPU passaram. Dois smokes FP8 scaled/BF16 (mask_only e mask_turbo), 10+2 passos cada, audit512, LR0,0001 e ~0,728 amostras/s. Auditoria real FP8/PEFT/checkpointing mostrou gradientes finitos, porém os gates estritos de paridade não passaram, inclusive controles numéricos; controle FP32 real a512 deu OOM. Não se atribui a regressão ao dataset. Probes250 preparados; treinamento longo não liberado sem resolver a divergência e validar receita Turbo. Detalhes e medições em corrected_native_20261001/RELATORIO_CORRECOES.md.

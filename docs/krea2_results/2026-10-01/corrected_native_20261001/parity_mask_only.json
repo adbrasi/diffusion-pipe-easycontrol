@@ -1,0 +1,17 @@
+{
+  "text_lengths": [
+    266,
+    268
+  ],
+  "output_relative_l2": 0.013112406246364117,
+  "gradient_relative_l2": 0.20829426219480293,
+  "gradients_finite": true,
+  "trainable_tensors": 512,
+  "peak_allocated_GiB": 18.0291428565979,
+  "fp8_scaled": true,
+  "peft": true,
+  "activation_checkpointing": true,
+  "merge_adapters": [],
+  "precision": "BF16: batching may change rounding; FP32 regression is tested separately",
+  "passed": false
+}

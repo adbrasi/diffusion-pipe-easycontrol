@@ -1,0 +1,39 @@
+{
+  "text_lengths": [
+    266,
+    268
+  ],
+  "output_relative_l2": 0.006870525423437357,
+  "gradient_relative_l2": 1.593611590633332,
+  "gradients_finite": true,
+  "trainable_tensors": 512,
+  "peak_allocated_GiB": 18.028948307037354,
+  "fp8_scaled": true,
+  "peft": true,
+  "activation_checkpointing": true,
+  "merge_adapters": [],
+  "individual_padded": false,
+  "compute_dtype": "torch.bfloat16",
+  "latent_shape": [
+    2,
+    16,
+    1,
+    50,
+    80
+  ],
+  "real_pairs": true,
+  "dtype_trace": {
+    "initial_outputs": [
+      "torch.bfloat16",
+      "torch.bfloat16",
+      "torch.bfloat16",
+      "torch.float32",
+      "torch.bool",
+      "torch.int64"
+    ],
+    "autocast_enabled": false,
+    "autocast_dtype": "torch.float16"
+  },
+  "precision": "BF16 rounding is measured separately from FP32 structural parity",
+  "passed": false
+}

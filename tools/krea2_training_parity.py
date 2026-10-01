@@ -30,6 +30,7 @@ def main():
     parser.add_argument('--compute-fp32', action='store_true', help='Numerical control; keep base storage FP8')
     parser.add_argument('--latent-height', type=int, default=50)
     parser.add_argument('--latent-width', type=int, default=80)
+    parser.add_argument('--real-pairs', action='store_true', help='Use matching cached scene latents and flow targets')
     args = parser.parse_args()
     sys.path.insert(0, str(args.train_repo))
     import torch
@@ -81,10 +82,30 @@ def main():
     text = [first['text_embeds_0'].to('cuda',compute_dtype),other['text_embeds_0'].to('cuda',compute_dtype)]
     masks = [first['attention_mask_0'].to('cuda'),other['attention_mask_0'].to('cuda')]
     context, mask = pipe.get_conds(dict(text_embeds_0=text, attention_mask_0=masks))
-    # 512-pixel bucket; synthetic target/reference isolate batching from sample selection.
-    target = torch.randn(2,16,1,args.latent_height,args.latent_width,device='cuda')
-    reference = torch.randn_like(target)
     t = torch.full((2,),.63,device='cuda')
+    if args.real_pairs:
+        wanted = [json.dumps(item['image_spec']) for item in [first,other]]
+        latent_path = next(args.cache.glob('cache_1.587*/latents'))
+        with sqlite3.connect(f'file:{latent_path}/metadata.db?mode=ro',uri=True) as con:
+            count = con.execute('SELECT count(*) FROM items').fetchone()[0]
+        found = {}
+        for i in range(count):
+            item = read_cache(latent_path,i)
+            key = json.dumps(item['image_spec'])
+            if key in wanted:
+                found[key] = item
+            if len(found) == len(wanted):
+                break
+        clean = torch.stack([found[k]['latents'] for k in wanted]).to('cuda',torch.float32)
+        reference = torch.stack([found[k]['control_latents'] for k in wanted]).to('cuda',torch.float32)
+        noise = torch.randn_like(clean)
+        target = (1-t[:,None,None,None,None])*clean + t[:,None,None,None,None]*noise
+        expected_velocity = noise-clean
+    else:
+        # Synthetic latents are a numerical stress control, not a training sample.
+        target = torch.randn(2,16,1,args.latent_height,args.latent_width,device='cuda')
+        reference = torch.randn_like(target)
+        expected_velocity = None
     layers = pipe.to_layers()
     dtype_trace = {}
     def trace(module, inputs, outputs):
@@ -101,7 +122,8 @@ def main():
 
     torch.cuda.reset_peak_memory_stats()
     batched = forward(target,t,context,mask,reference)
-    expected_velocity = torch.randn_like(batched)
+    if expected_velocity is None:
+        expected_velocity = torch.randn_like(batched)
     (batched.float()-expected_velocity.float()).square().mean().backward()
     batched_out = batched.detach().float().cpu()
     batched_grad = {n:p.grad.detach().cpu().float() for n,p in params.items()}
@@ -131,6 +153,7 @@ def main():
                   merge_adapters=config['model'].get('merge_adapters',[]),
                   individual_padded=args.individual_padded,
                   compute_dtype=str(compute_dtype), latent_shape=list(target.shape),
+                  real_pairs=args.real_pairs,
                   dtype_trace=dtype_trace,
                   precision='BF16 rounding is measured separately from FP32 structural parity',
                   passed=finite and (output_rel<1e-4 and grad_rel<1e-3 if args.compute_fp32

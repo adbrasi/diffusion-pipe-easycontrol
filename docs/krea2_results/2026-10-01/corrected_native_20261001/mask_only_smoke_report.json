@@ -1,0 +1,96 @@
+{
+  "variant": "mask_only",
+  "execution_smoke_passed": true,
+  "steps": [
+    {
+      "step": 1,
+      "loss": 0.1129,
+      "seconds": 3.514,
+      "samples_s": 0.569
+    },
+    {
+      "step": 2,
+      "loss": 0.1567,
+      "seconds": 2.92,
+      "samples_s": 0.685
+    },
+    {
+      "step": 3,
+      "loss": 0.0896,
+      "seconds": 2.704,
+      "samples_s": 0.74
+    },
+    {
+      "step": 4,
+      "loss": 0.1179,
+      "seconds": 2.76,
+      "samples_s": 0.725
+    },
+    {
+      "step": 5,
+      "loss": 0.1775,
+      "seconds": 2.746,
+      "samples_s": 0.728
+    },
+    {
+      "step": 6,
+      "loss": 0.2822,
+      "seconds": 2.77,
+      "samples_s": 0.722
+    },
+    {
+      "step": 7,
+      "loss": 0.1738,
+      "seconds": 2.707,
+      "samples_s": 0.739
+    },
+    {
+      "step": 8,
+      "loss": 0.1404,
+      "seconds": 2.747,
+      "samples_s": 0.728
+    },
+    {
+      "step": 9,
+      "loss": 0.2077,
+      "seconds": 2.719,
+      "samples_s": 0.736
+    },
+    {
+      "step": 10,
+      "loss": 0.1957,
+      "seconds": 2.731,
+      "samples_s": 0.732
+    }
+  ],
+  "median_seconds": 2.7465,
+  "median_samples_s": 0.728,
+  "peak_VRAM_MiB": 25398.0,
+  "final_lr": 0.0001,
+  "rank": 64,
+  "micro_batch": 2,
+  "accumulation": 1,
+  "base_storage": "fp8_scaled",
+  "compute": "bfloat16",
+  "keys_audited": 512,
+  "resume_steps": [
+    11,
+    12
+  ],
+  "fusion_padding_masked": true,
+  "frozen_turbo": false,
+  "gradient_parity_gate_passed": false,
+  "long_training_authorized_by_validation": false,
+  "inference": {
+    "passed": true,
+    "stock_comfy": true,
+    "variant": "Turbo",
+    "unloaded_lora_keys": 0,
+    "image": "smoke_eval/Turbo/03_ds4_imagem000268_with_lora.png",
+    "visual": "valid image, subjects remain facing away; n=1, no quality conclusion"
+  },
+  "export_metadata": {
+    "text_fusion_padding": "masked_refiner_keys_v1",
+    "frozen_base_adapters": ""
+  }
+}

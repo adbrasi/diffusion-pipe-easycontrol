@@ -143,9 +143,13 @@ class Krea2ReferencePackingTest(unittest.TestCase):
         self.assertEqual(tuple(tvec.shape), (1, 10, 48))
         torch.testing.assert_close(sizes, torch.tensor([2, 4, 2, 2, 4, 4]))
 
-        per_token_embedding = model.tmlp.inputs[1]
-        torch.testing.assert_close(per_token_embedding[0, :6, 0], torch.full((6,), 0.25))
-        torch.testing.assert_close(per_token_embedding[0, 6:, 0], torch.zeros(4))
+        # Project the two unique timesteps once, then broadcast their modulation.
+        self.assertEqual(len(model.tmlp.inputs), 2)
+        torch.testing.assert_close(model.tmlp.inputs[0][0, :, 0], torch.tensor([0.25]))
+        torch.testing.assert_close(model.tmlp.inputs[1][0, :, 0], torch.tensor([0.0]))
+        torch.testing.assert_close(tvec[:, :6], model.tproj(target_timestep).expand(1, 6, -1))
+        reference_features = model.tmlp.projection(model.tmlp.inputs[1])
+        torch.testing.assert_close(tvec[:, 6:], model.tproj(reference_features).expand(1, 4, -1))
 
         positions = model.pe_embedder.last_positions
         torch.testing.assert_close(positions[0, 2:6, 0], torch.zeros(4))
