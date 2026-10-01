@@ -492,3 +492,8 @@ O usuário solicitou upload público e continuação após o bloqueio de cota pr
 ## 2026-10-01T06:09:46.903725+00:00 — A native novo step500
 
 Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 1000 amostras vistas, loss final 0.1172. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF AdwolfCzar/krea2-a-native-lr0001; backup verificado antes da poda. Não é retomada do A1000 antigo.
+
+
+## 2026-10-01T06:23:07.190905+00:00 — A native novo step750
+
+Do zero, dataset completo por orçamento de disco, LR 0.0001 confirmado; 1500 amostras vistas, loss final 0.1229. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF AdwolfCzar/krea2-a-native-lr0001; backup verificado antes da poda. Não é retomada do A1000 antigo.
