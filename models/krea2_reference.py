@@ -332,7 +332,11 @@ class Krea2ReferenceInitialLayer(nn.Module):
         target_tokens = self.first(target_tokens)
         reference_tokens = self.first(reference_tokens)
 
-        context = self.txtfusion(context, mask=None)
+        # Fusion first mixes encoder layers per token, then refines across text
+        # tokens. Mask padding before those refiners: masking only the DiT cannot
+        # undo contamination of valid embeddings by another sample's padding.
+        fusion_mask = text_attention_mask.to(device=context.device, dtype=torch.bool)[:, None, None, :]
+        context = self.txtfusion(context, mask=fusion_mask)
         context = self.txtmlp(context)
         text_length = context.shape[1]
         target_length = target_tokens.shape[1]

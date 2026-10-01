@@ -278,7 +278,8 @@ class InitialLayer(nn.Module):
         t = self.tmlp(timestep_embedding(timesteps, self.tdim).unsqueeze(1).to(img.dtype))
         tvec = self.tproj(t)
 
-        context = self.txtfusion(context, mask=None)
+        fusion_mask = attention_mask.to(device=context.device, dtype=torch.bool)[:, None, None, :]
+        context = self.txtfusion(context, mask=fusion_mask)
         context = self.txtmlp(context)
 
         txtlen, imglen = context.shape[1], img.shape[1]
