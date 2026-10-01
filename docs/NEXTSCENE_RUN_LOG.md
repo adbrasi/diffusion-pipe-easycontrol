@@ -780,3 +780,19 @@ Sinais de save_quit remanescentes do handover são removidos antes da retomada.
 43testes cobrem contrato, buckets, backups, passagem da época e precedência de stop.
 Metadata real do loader confirmou11.526pares nos sete buckets.
 Config/report/modelcard públicos atualizados para33.000steps.
+
+
+## 2026-10-01 — Medição da velocidade solicitada pelo usuário
+
+Treino1024 estável em~5,61s/step (0,713amostra/s); E2A512 tinha média1,0303s/step
+(3,88amostras/s), ambos4apresentações porupdate (E2micro2accum2; atualmicro4accum1).
+Passar512→1024 aumenta4x tokens espaciais; atenção acrescenta custo além disso.
+Três avaliações medidas:490/490/491s por24imagens, a cada500passos. Backup antes
+de avaliar35/33/33s; upload posterior atélauncher seguinte5/7/4s; soma com reload
+resulta aproximadamente9min de pausa por46min45 de treino. Ciclo medido~3358s
+por500steps: previsão61,56h para33mil, sem cache inicial (~35min) e sem assumir
+repetição exata de upload/IO. As51h informadas antes eram somente cálculo.
+GPU100%/400W; NVML reporta power limit400W, default/max600W, SWPowerCap ativo,
+sem thermal slowdown. Impacto de aumentar potência não foi medido; nenhuma
+configuração de GPU, precisão ou frequência de avaliação alterada nesta consulta.
+Dados em docs/nextscene_results/2026-10-01/anima1024_smoke/performance_report.json.

@@ -1,0 +1,45 @@
+{
+  "measured_utc": "2026-10-01T13:13:43.704468+00:00",
+  "precision": "BF16",
+  "real_batch": 4,
+  "gradient_accumulation": 1,
+  "current_resolution": 1024,
+  "old_e2_resolution": 512,
+  "mean_train_seconds_per_step": 5.61,
+  "old_e2_mean_seconds_per_step": 1.0302763412489007,
+  "current_samples_per_second": 0.7130124777183601,
+  "old_e2_samples_per_second": 3.8824535125704247,
+  "evaluation_seconds_per_500_step_stage": [
+    490,
+    490,
+    491
+  ],
+  "backup_before_evaluation_seconds": [
+    35,
+    33,
+    33
+  ],
+  "post_evaluation_to_next_launcher_seconds": [
+    5,
+    7,
+    4
+  ],
+  "typical_wall_seconds_per_500_steps": 3358,
+  "total_steps": 33000,
+  "estimated_compute_hours": 51.425,
+  "estimated_campaign_hours_excluding_initial_cache": 61.56333333333333,
+  "gpu_power_limit_w": 400,
+  "gpu_reported_default_limit_w": 600,
+  "gpu_reported_max_limit_w": 600,
+  "gpu_sw_power_cap": "Active",
+  "gpu_thermal_slowdown": "Not Active",
+  "gpu_utilization_snapshot_percent": 100,
+  "power_limit_speedup": "Not measured; no setting changed",
+  "interpretation": "Stable 1024 compute cost plus serial evaluation overhead; no growing per-step slowdown observed.",
+  "sources": [
+    "/workspace/nextscene_artifacts/anima1024_20261001/train_until_*.log",
+    "/workspace/nextscene_artifacts/anima1024_20261001/*.gpu.csv",
+    "/workspace/nextscene_artifacts/E2/train_A_epoch1.log",
+    "nvidia-smi"
+  ]
+}
