@@ -6,18 +6,25 @@
       "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51/step250/adapter_model.safetensors",
       "utc": "2026-10-01T04:09:41.644470+00:00",
       "last_loss": 0.1612
+    },
+    {
+      "step": 500,
+      "samples_seen": 1000,
+      "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51/step500/adapter_model.safetensors",
+      "utc": "2026-10-01T04:23:07.199388+00:00",
+      "last_loss": 0.1342
     }
   ],
   "status": "training",
   "target_steps": 5000,
   "lr": 0.0004,
   "initialized_from": "random LoRA",
-  "current_job": "fullbudget_backup000250",
+  "current_job": "fullbudget_backup000500",
   "job_status": {
     "status": "done",
-    "start": 1790827758.255472,
-    "end": 1790827778.4879096,
-    "seconds": 20.232438564300537,
+    "start": 1790828565.1206179,
+    "end": 1790828583.3372834,
+    "seconds": 18.216665983200073,
     "returncode": 0,
     "argv": [
       "/venv/main/bin/python",
@@ -27,7 +34,7 @@
       "--run",
       "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51",
       "--step",
-      "250"
+      "500"
     ]
   },
   "cache_pairs": 6138,
@@ -36,6 +43,6 @@
     "reason": "could not convert string to float: 'loss_fn'",
     "fix": "parse anchored step metrics; reuse completed step250 job and checkpoint"
   },
-  "step": 250,
-  "samples_seen": 500
+  "step": 500,
+  "samples_seen": 1000
 }

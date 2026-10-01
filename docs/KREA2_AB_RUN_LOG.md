@@ -454,3 +454,8 @@ Seleção recalibrada6138pares (ds1:1523,ds2:2444,ds3:1517,ds4:654),seed42global
 ## 2026-10-01T04:09:41.644470+00:00 — A native novo step250
 
 Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 500amostras vistas, lossfinal0.1612. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.
+
+
+## 2026-10-01T04:23:07.199388+00:00 — A native novo step500
+
+Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 1000amostras vistas, lossfinal0.1342. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.
