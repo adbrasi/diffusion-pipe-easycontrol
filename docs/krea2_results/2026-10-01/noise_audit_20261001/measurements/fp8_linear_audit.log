@@ -1,0 +1,10 @@
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/workspace/diffusion-pipe-easycontrol/tools/krea2_fp8_linear_audit.py:50: UserWarning: Converting a tensor with requires_grad=True to a scalar may lead to unexpected behavior.
+Consider using tensor.detach() first. (Triggered internally at /__w/pytorch/pytorch/torch/csrc/autograd/generated/python_variable_methods.cpp:820.)
+  return float((a.float()-b.float()).norm()/b.float().norm().clamp_min(1e-30))
+{"module": "blocks.0.attn.wq", "config": {"format": "float8_e4m3fn"}, "stock_full_precision_mm": false, "storage": "torch.float8_e4m3fn", "stock_train_vs_infer_relative_l2": 0.0, "native_vs_stock_output_relative_l2": 0.027354512363672256, "native_vs_stock_input_gradient_relative_l2": 0.027702264487743378}
+{"module": "blocks.0.attn.gate", "config": {"format": "float8_e4m3fn", "full_precision_matrix_mult": true}, "stock_full_precision_mm": true, "storage": "torch.float8_e4m3fn", "stock_train_vs_infer_relative_l2": 0.0, "native_vs_stock_output_relative_l2": 0.0, "native_vs_stock_input_gradient_relative_l2": 0.0}
+{"module": "txtfusion.refiner_blocks.0.attn.wq", "config": {"format": "float8_e4m3fn"}, "stock_full_precision_mm": false, "storage": "torch.float8_e4m3fn", "stock_train_vs_infer_relative_l2": 0.0, "native_vs_stock_output_relative_l2": 0.026651719585061073, "native_vs_stock_input_gradient_relative_l2": 0.026624508202075958}

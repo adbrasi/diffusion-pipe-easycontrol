@@ -1,0 +1,39 @@
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+base_quant=fp8_scaled: 256 ScaledFP8Linear modules, weights=float8_e4m3fn, per-tensor scales preserved, matmul=bf16
+[krea2_native] dual-conditioning LoRA targets: 256 linears (224 in DiT blocks, 32 in text fusion)
+trainable params: 228,524,032 || all params: 13,048,597,068 || trainable%: 1.7513
+{
+  "text_lengths": [
+    266,
+    268
+  ],
+  "output_relative_l2": 1.7307442249148153e-05,
+  "gradient_relative_l2": 0.015841681369714682,
+  "gradients_finite": true,
+  "trainable_tensors": 512,
+  "peak_allocated_GiB": 19.250929832458496,
+  "fp8_scaled": true,
+  "peft": true,
+  "activation_checkpointing": true,
+  "merge_adapters": [],
+  "individual_padded": false,
+  "compute_dtype": "torch.float32",
+  "latent_shape": [
+    2,
+    16,
+    1,
+    16,
+    16
+  ],
+  "precision": "BF16 rounding is measured separately from FP32 structural parity",
+  "passed": false
+}
+Traceback (most recent call last):
+  File "/workspace/diffusion-pipe-easycontrol/tools/krea2_training_parity.py", line 138, in <module>
+    main()
+  File "/workspace/diffusion-pipe-easycontrol/tools/krea2_training_parity.py", line 134, in main
+    raise RuntimeError('Real-path batching parity failed')
+RuntimeError: Real-path batching parity failed

@@ -5,6 +5,7 @@ import os
 import sys
 from collections import defaultdict
 import types
+from dataclasses import replace
 sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '../submodules/ComfyUI'))
 
 import peft
@@ -295,8 +296,9 @@ class CommonPipeline:
 class ScaledFP8Linear(nn.Linear):
     """Frozen Linear holding a ComfyUI fp8_scaled weight exactly (qdata + scale).
 
-    forward dequantizes with comfy_kitchen's own per-tensor kernel, so the base
-    the adapter trains on is bit-identical to the one ComfyUI samples with.
+    ``matmul='comfy'`` also preserves the per-layer matmul policy: ComfyUI
+    quantizes activations for eligible FP8 layers and keeps other layers in
+    compute precision. ``bf16`` is the legacy weight-only training policy.
     Subclasses nn.Linear so PEFT can wrap it; the weight never requires grad.
     """
 
@@ -308,7 +310,9 @@ class ScaledFP8Linear(nn.Linear):
         return type(w._params).__qualname__.startswith('TensorCoreFP8Layout')
 
     @classmethod
-    def from_comfy(cls, module):
+    def from_comfy(cls, module, matmul='bf16'):
+        if matmul not in ('bf16', 'comfy'):
+            raise ValueError(f'Unknown scaled-FP8 matmul policy: {matmul}')
         w = module.weight
         bias = getattr(module, 'bias', None)
         out_features, in_features = w.shape
@@ -319,6 +323,12 @@ class ScaledFP8Linear(nn.Linear):
         new.orig_dtype = w._params.orig_dtype
         new.fp8_layout = w._layout_cls
         new.fp8_requant_kwargs = w.layout_cls.requantize_kwargs(w)
+        new.fp8_params = w._params
+        new.fp8_matmul = matmul
+        new.fp8_full_precision_mm = bool(getattr(module, '_full_precision_mm', True))
+        for key in ('input_scale', 'pre_quant_scale'):
+            value = getattr(module, key, None)
+            new.register_buffer(key, None if value is None else value.detach().clone(), persistent=False)
         if bias is not None:
             b = bias.dequantize() if bias.__class__.__name__ == 'QuantizedTensor' else bias
             new.bias = nn.Parameter(b.detach().clone(), requires_grad=False)
@@ -333,7 +343,29 @@ class ScaledFP8Linear(nn.Linear):
         return w.to(dtype)
 
     def forward(self, x):
+        if self.pre_quant_scale is not None:
+            x = x * self.pre_quant_scale.to(device=x.device, dtype=x.dtype)
         bias = None if self.bias is None else self.bias.to(x.dtype)
+        if self.fp8_matmul == 'comfy' and not self.fp8_full_precision_mm:
+            from comfy_kitchen.tensor.base import QuantizedTensor
+            # Rebuild the lightweight wrapper around the existing FP8 codes.
+            # Registered buffers follow .to(device); saved CPU params must not
+            # supply a stale scale or a different compute dtype.
+            params = replace(self.fp8_params, scale=self.weight_scale, orig_dtype=x.dtype)
+            weight = QuantizedTensor(self.weight, self.fp8_layout, params)
+            if x.requires_grad:
+                # Stock's quantized forward and compute-precision backward.
+                # Frozen base weights need no gradient; PEFT still adds its
+                # trainable low-rank branch outside this Linear.
+                return comfy.ops.QuantLinearFunc.apply(
+                    x, weight, bias, self.fp8_layout, self.input_scale, x.dtype
+                )
+            shape = x.shape
+            quantized_input = QuantizedTensor.from_float(
+                x.reshape(-1, shape[-1]), self.fp8_layout, scale=self.input_scale
+            )
+            output = F.linear(quantized_input, weight, bias)
+            return output.reshape(*shape[:-1], self.out_features)
         return F.linear(x, self.dequantized_weight(x.dtype), bias)
 
     def fuse_weight_delta(self, delta, seed):
@@ -594,12 +626,13 @@ class ComfyPipeline(CommonPipeline):
         for mod_name, module in model.named_children():
             full_mod_name = f'{name_prefix}{mod_name}'
             if keep_fp8_scale and ScaledFP8Linear.accepts(module):
-                # fp8_scaled checkpoint kept EXACTLY as ComfyUI runs it: stored
-                # fp8 qdata + per-tensor scale, dequantized per forward with the
-                # same comfy_kitchen kernel. Never re-quantized (the old
+                # Keep FP8 codes/scales and optionally ComfyUI's per-layer
+                # activation-quantization/matmul policy. Never re-quantized (the old
                 # diffusion_model_dtype='float8' path below dropped the scale and
                 # zeroed up to ~27% of Krea 2 block weights).
-                model._modules[mod_name] = ScaledFP8Linear.from_comfy(module)
+                model._modules[mod_name] = ScaledFP8Linear.from_comfy(
+                    module, matmul=self.model_config.get('fp8_scaled_matmul', 'bf16')
+                )
                 continue
             is_quantized = False
             for p_name, p in module.named_parameters(recurse=False):
@@ -663,8 +696,11 @@ class ComfyPipeline(CommonPipeline):
             for module in quantized:
                 if module.weight.dtype != torch.float8_e4m3fn:
                     raise RuntimeError(f'Scaled FP8 weight lost its storage dtype: {module.weight.dtype}')
+            fp8_mm = sum(m.fp8_matmul == 'comfy' and not m.fp8_full_precision_mm for m in quantized)
             print(f'base_quant=fp8_scaled: {len(quantized)} ScaledFP8Linear modules, '
-                  'weights=float8_e4m3fn, per-tensor scales preserved, matmul=bf16')
+                  f'weights=float8_e4m3fn, per-tensor scales preserved, '
+                  f'matmul_policy={self.model_config.get("fp8_scaled_matmul", "bf16")}, '
+                  f'FP8 matmul={fp8_mm}, compute-precision matmul={len(quantized)-fp8_mm}')
 
         self.diffusion_model.train()
         for name, p in self.diffusion_model.named_parameters():

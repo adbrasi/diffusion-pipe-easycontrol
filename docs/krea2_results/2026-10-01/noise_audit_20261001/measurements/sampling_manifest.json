@@ -1,0 +1,14 @@
+[
+  {
+    "stem": "03_ds4_imagem000268",
+    "prompt": "Medium frontal shot of three of the same spectators behind the railing, reacting with surprise; the center man holds binoculars to his face.",
+    "reference": "03_ds4_imagem000268.jpg",
+    "width": 688,
+    "height": 384,
+    "seed": 76,
+    "subset": "ds4_contexto_curado",
+    "visual_review": "neutral_clothed",
+    "automatic_safe": false,
+    "shuffled_reference": "19_ds4_imagem001451.jpg"
+  }
+]

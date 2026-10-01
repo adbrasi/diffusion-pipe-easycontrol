@@ -1,0 +1,26 @@
+{
+  "status": "done",
+  "start": 1790842762.7801652,
+  "end": 1790842778.932149,
+  "seconds": 16.151984214782715,
+  "returncode": 0,
+  "argv": [
+    "/venv/main/bin/python",
+    "tools/k2ab_eval_stock.py",
+    "--adapter",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/diagnostic_zero/step0/adapter_model.safetensors",
+    "--out",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/zero_control",
+    "--manifest",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/sampling_manifest.json",
+    "--base-model",
+    "krea2_raw_fp8_scaled.safetensors",
+    "--reference-pixels",
+    "target",
+    "--limit",
+    "1",
+    "--variant",
+    "Turbo",
+    "--compare-adapter"
+  ]
+}

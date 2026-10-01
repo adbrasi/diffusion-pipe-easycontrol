@@ -27,9 +27,10 @@ Everything below mirrors that path; see docs/KREA2_ANALISE_METODO_2026-09.md.
 Base numerics: NEVER train with diffusion_model_dtype='float8' through
 models/base.py (it re-quantizes WITHOUT the fp8_scaled weight_scale and zeroes
 up to ~27% of block weights). Use [model] base_quant = 'fp8_scaled' with the
-*_fp8_scaled checkpoint: qdata + scale kept and dequantized per forward exactly
-like ComfyUI (models/base.py::ScaledFP8Linear) — same speed/VRAM class as the
-quanto fp8 used by ai-toolkit / krea2edit-trainer.
+*_fp8_scaled checkpoint: qdata + scale kept. ``fp8_scaled_matmul='comfy'`` also
+preserves ComfyUI's per-layer FP8-activation/compute-precision matmul policy.
+The legacy ``bf16`` policy dequantizes all weights before BF16 matmul and is
+not numerically equivalent to stock mixed-precision inference.
 
 Text-encoder parity: the Qwen3-VL implementation must be the one of the ComfyUI
 the user runs (DeepStack/MRoPE changed after 2026-06-23). Validate with
@@ -132,6 +133,9 @@ class Krea2NativePipeline(Krea2EditPipeline):
     adapter_allowed_key_substrings = ('.blocks.', '.txtfusion.')
 
     def __init__(self, config):
+        # Keep existing campaigns reproducible. The stock-compatible policy is
+        # explicit until full-model training and sampling have been validated.
+        config['model'].setdefault('fp8_scaled_matmul', 'bf16')
         section = config.setdefault(self.config_section, {})
         # Geometry is the stock contract, not a knob.
         for key, value in (('position_mode', 'subject'), ('reference_position_offset', 1.0),
@@ -144,7 +148,7 @@ class Krea2NativePipeline(Krea2EditPipeline):
             raise ValueError(
                 "krea2_native: diffusion_model_dtype='float8' re-quantizes the fp8_scaled base without "
                 "its weight_scale (see docs/KREA2_ANALISE_METODO_2026-09.md §1.1). Use base_quant = 'fp8_scaled' "
-                "(exact ComfyUI numerics, fast) or 'bfloat16'."
+                "(preserves the FP8 scales) or 'bfloat16'."
             )
         super().__init__(config)
         self.vl_grounding = bool(section.get('vl_grounding', True))
@@ -214,6 +218,7 @@ class Krea2NativePipeline(Krea2EditPipeline):
         meta = super().get_reference_metadata()
         meta.update({
             'text_fusion_padding': 'masked_refiner_keys_v1',
+            'fp8_scaled_matmul': self.model_config.get('fp8_scaled_matmul', 'bf16'),
             'frozen_base_adapters': ';'.join(
                 str(path).rsplit('/', 1)[-1] for path in self.model_config.get('merge_adapters', [])
             ),

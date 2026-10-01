@@ -1,0 +1,16 @@
+{
+  "status": "done",
+  "start": 1790841256.3783064,
+  "end": 1790841420.1241307,
+  "seconds": 163.7458255290985,
+  "returncode": 0,
+  "argv": [
+    "/venv/main/bin/deepspeed",
+    "--num_gpus=1",
+    "--master_port=29601",
+    "train.py",
+    "--deepspeed",
+    "--config",
+    "/workspace/k2ab/artifacts/corrected_native_20261001/configs/mask_turbo_smoke10.toml"
+  ]
+}

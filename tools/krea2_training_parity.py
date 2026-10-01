@@ -44,6 +44,9 @@ def main():
     from torch.utils.checkpoint import checkpoint
     torch.manual_seed(76)
     config = toml.load(args.config)
+    if args.compute_fp32:
+        # Explicit weight-only FP32 arithmetic control; FP8 GEMM is not FP32.
+        config['model']['fp8_scaled_matmul'] = 'bf16'
     config['model']['dtype'] = compute_dtype
     adapter = dict(config['adapter'], alpha=config['adapter']['rank'], dropout=0., dtype=compute_dtype)
     pipe = Krea2NativePipeline(config)

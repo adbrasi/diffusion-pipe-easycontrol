@@ -1,0 +1,21 @@
+{
+  "python": "3.12.14",
+  "packages": {
+    "torch": "2.14.0",
+    "peft": "0.21.1",
+    "deepspeed": "0.18.4",
+    "comfy-kitchen": "0.2.36",
+    "safetensors": "0.8.0"
+  },
+  "gpu": "NVIDIA GeForce RTX 5090, 595.71.05, 32607 MiB",
+  "source_versions": {
+    "/workspace/diffusion-pipe-easycontrol": "199622a235baadfbf76b5fdeb948d3817e9d684b",
+    "/workspace/k2ab/native_worktree": "cacc5f0a5fa7201e31dfb1b943f82e85ab6c5306",
+    "/workspace/ComfyUI_stock": "fb2315f11db0ebfaafa9099a5df5227dc6bb42bc",
+    "/workspace/k2ab/native_worktree/submodules/ComfyUI": "fb2315f11db0ebfaafa9099a5df5227dc6bb42bc",
+    "/workspace/diffusion-pipe-easycontrol/submodules/ComfyUI": "0ba903bd5bab918477f9adb290f35fdb907dc703"
+  },
+  "working_patch": "patch_under_review.diff; this commit also stores the tools and tests",
+  "long_training": "Stopped at1949; no new training launched",
+  "comfy_service": "STOPPED after controls; GPU released"
+}

@@ -1,0 +1,18 @@
+{
+  "status": "done",
+  "start": 1790841423.1285288,
+  "end": 1790841453.4803188,
+  "seconds": 30.35179042816162,
+  "returncode": 0,
+  "argv": [
+    "/venv/main/bin/deepspeed",
+    "--num_gpus=1",
+    "--master_port=29601",
+    "train.py",
+    "--deepspeed",
+    "--config",
+    "/workspace/k2ab/artifacts/corrected_native_20261001/configs/mask_only_smoke_resume12.toml",
+    "--resume_from_checkpoint",
+    "20261001_07-53-40"
+  ]
+}

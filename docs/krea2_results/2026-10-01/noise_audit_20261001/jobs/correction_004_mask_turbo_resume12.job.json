@@ -1,0 +1,16 @@
+{
+  "argv": [
+    "/venv/main/bin/deepspeed",
+    "--num_gpus=1",
+    "--master_port=29601",
+    "train.py",
+    "--deepspeed",
+    "--config",
+    "/workspace/k2ab/artifacts/corrected_native_20261001/configs/mask_turbo_smoke_resume12.toml",
+    "--resume_from_checkpoint",
+    "20261001_07-56-22"
+  ],
+  "cwd": "/workspace/k2ab/native_worktree",
+  "log": "/workspace/k2ab/artifacts/corrected_native_20261001/mask_turbo_smoke_resume12.log",
+  "train_output": "/workspace/k2ab/checkpoints/A_native_corrected_mask_turbo_probe"
+}

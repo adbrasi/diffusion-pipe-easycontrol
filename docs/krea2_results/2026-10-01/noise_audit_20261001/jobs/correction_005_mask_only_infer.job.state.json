@@ -1,0 +1,26 @@
+{
+  "status": "done",
+  "start": 1790841784.321068,
+  "end": 1790841794.4310117,
+  "seconds": 10.109944343566895,
+  "returncode": 0,
+  "argv": [
+    "/venv/main/bin/python",
+    "tools/k2ab_eval_stock.py",
+    "--adapter",
+    "/workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/step10/adapter_model.safetensors",
+    "--out",
+    "/workspace/k2ab/artifacts/corrected_native_mask_only_20261001/smoke_eval",
+    "--manifest",
+    "/workspace/k2ab/artifacts/corrected_native_mask_only_20261001/sampling_manifest.json",
+    "--base-model",
+    "krea2_raw_fp8_scaled.safetensors",
+    "--reference-pixels",
+    "target",
+    "--limit",
+    "1",
+    "--variant",
+    "Turbo",
+    "--adapter-only"
+  ]
+}

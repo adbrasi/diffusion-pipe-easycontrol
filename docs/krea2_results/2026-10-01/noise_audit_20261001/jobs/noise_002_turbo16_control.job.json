@@ -1,0 +1,18 @@
+{
+  "argv": [
+    "/venv/main/bin/python",
+    "tools/krea2_noise_probe.py",
+    "--out",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/turbo16_control",
+    "--manifest",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/sampling_manifest.json",
+    "--mask-adapter",
+    "/workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/step10/adapter_model.safetensors",
+    "--turbo-adapter",
+    "/workspace/k2ab/checkpoints/A_native_corrected_mask_turbo_probe/20261001_07-56-22/step10/adapter_model.safetensors",
+    "--steps",
+    "16"
+  ],
+  "cwd": "/workspace/diffusion-pipe-easycontrol",
+  "log": "/workspace/k2ab/artifacts/noise_audit_20261001/turbo16_control.log"
+}

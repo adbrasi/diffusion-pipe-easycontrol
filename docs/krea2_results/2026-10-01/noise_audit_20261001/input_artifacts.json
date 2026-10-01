@@ -1,0 +1,121 @@
+[
+  {
+    "role": "base",
+    "local_path": "/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors",
+    "size_bytes": 13141730784,
+    "sha256": "48cd5d6c100297968349b41a8e77c6591d1dac18a215807f5f25f59e5c54cd61",
+    "metadata": {
+      "_quantization_metadata": "{\"layers\": {\"blocks.0.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.0.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.0.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.0.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.0.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.0.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.0.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.0.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.1.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.1.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.1.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.1.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.1.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.1.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.1.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.1.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.10.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.10.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.10.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.10.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.10.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.10.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.10.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.10.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.11.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.11.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.11.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.11.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.11.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.11.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.11.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.11.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.12.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.12.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.12.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.12.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.12.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.12.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.12.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.12.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.13.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.13.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.13.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.13.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.13.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.13.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.13.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.13.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.14.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.14.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.14.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.14.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.14.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.14.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.14.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.14.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.15.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.15.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.15.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.15.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.15.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.15.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.15.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.15.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.16.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.16.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.16.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.16.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.16.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.16.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.16.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.16.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.17.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.17.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.17.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.17.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.17.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.17.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.17.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.17.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.18.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.18.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.18.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.18.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.18.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.18.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.18.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.18.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.19.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.19.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.19.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.19.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.19.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.19.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.19.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.19.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.2.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.2.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.2.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.2.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.2.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.2.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.2.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.2.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.20.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.20.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.20.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.20.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.20.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.20.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.20.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.20.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.21.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.21.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.21.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.21.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.21.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.21.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.21.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.21.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.22.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.22.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.22.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.22.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.22.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.22.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.22.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.22.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.23.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.23.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.23.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.23.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.23.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.23.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.23.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.23.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.24.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.24.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.24.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.24.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.24.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.24.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.24.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.24.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.25.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.25.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.25.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.25.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.25.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.25.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.25.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.25.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.26.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.26.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.26.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.26.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.26.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.26.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.26.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.26.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.27.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.27.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.27.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.27.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.27.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.27.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.27.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.27.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.3.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.3.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.3.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.3.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.3.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.3.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.3.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.3.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.4.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.4.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.4.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.4.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.4.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.4.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.4.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.4.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.5.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.5.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.5.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.5.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.5.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.5.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.5.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.5.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.6.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.6.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.6.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.6.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.6.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.6.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.6.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.6.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.7.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.7.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.7.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.7.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.7.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.7.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.7.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.7.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.8.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.8.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.8.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.8.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.8.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.8.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.8.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.8.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"blocks.9.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.9.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"blocks.9.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.9.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"blocks.9.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"blocks.9.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"blocks.9.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"blocks.9.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.0.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.layerwise_blocks.0.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.0.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.layerwise_blocks.0.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.0.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.0.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.layerwise_blocks.0.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.0.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.1.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.layerwise_blocks.1.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.1.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.layerwise_blocks.1.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.1.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.1.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.layerwise_blocks.1.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.layerwise_blocks.1.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.0.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.refiner_blocks.0.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.0.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.refiner_blocks.0.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.0.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.0.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.refiner_blocks.0.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.0.mlp.up\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.1.attn.gate\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.refiner_blocks.1.attn.wk\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.1.attn.wo\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.refiner_blocks.1.attn.wq\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.1.attn.wv\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.1.mlp.down\": {\"format\": \"float8_e4m3fn\", \"full_precision_matrix_mult\": true}, \"txtfusion.refiner_blocks.1.mlp.gate\": {\"format\": \"float8_e4m3fn\"}, \"txtfusion.refiner_blocks.1.mlp.up\": {\"format\": \"float8_e4m3fn\"}}}",
+      "format": "pt"
+    }
+  },
+  {
+    "role": "turbo",
+    "local_path": "/workspace/models/krea2/loras/krea2_turbo_lora_rank_64_bf16.safetensors",
+    "size_bytes": 469423778,
+    "sha256": "db8c5bae0a415d448da9d842111d6e51f7d32e47143a3118eb267e5c4773de87",
+    "metadata": null
+  },
+  {
+    "role": "text_encoder",
+    "local_path": "/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors",
+    "size_bytes": 8875719384,
+    "sha256": "36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34",
+    "metadata": null
+  },
+  {
+    "role": "vae",
+    "local_path": "/workspace/models/krea2/vae/qwen_image_vae.safetensors",
+    "size_bytes": 253806246,
+    "sha256": "a70580f0213e67967ee9c95f05bb400e8fb08307e017a924bf3441223e023d1f",
+    "metadata": null
+  },
+  {
+    "role": "mask_only_step10",
+    "local_path": "/workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/step10/adapter_model.safetensors",
+    "size_bytes": 457112640,
+    "sha256": "f0e7e3ccf40c2f5006e27ebce8a28e06315a87ae1dfe1c620229fbe46a0d975d",
+    "metadata": {
+      "lora_targets": "blocks+txtfusion",
+      "vl_grounding_jitter": "none",
+      "condition_token_stride": "1",
+      "vl_reference_in_uncond": "true",
+      "model_type": "krea2_native",
+      "caption_dropout": "0.0",
+      "frozen_base_adapters": "",
+      "comfy_workflow": "TextEncodeQwenImageEditPlus(vae,image1) + FluxKontextMultiReferenceLatentMethod(index_timestep_zero)",
+      "reference_contract": "krea2_clean_reference_v1",
+      "reference_position_scale": "1.0",
+      "condition_encode": "native",
+      "condition_dropout": "0.0",
+      "position_mode": "subject",
+      "text_fusion_padding": "masked_refiner_keys_v1",
+      "diffusion_pipe_commit": "cacc5f0-dirty",
+      "vl_longest_side": "0",
+      "control_family": "krea2_native_comfy",
+      "independent_condition": "false",
+      "reference_model_timestep": "0.0",
+      "vl_prompt_layout": "qwen_edit_plus_picture_n",
+      "format": "pt",
+      "vl_image_max_pixels": "147456",
+      "sequence_layout": "text,target,reference",
+      "base_model_file": "krea2_raw_fp8_scaled.safetensors",
+      "base_model_size": "13141730784",
+      "vl_conditioning": "qwen3vl_image_grounded",
+      "vl_image_label": "Picture",
+      "reference_pixels": "crop_fit_target_bucket",
+      "reference_position_offset": "1.0"
+    },
+    "public_url": "https://huggingface.co/AdwolfCzar/krea2-a-native-lr0001/resolve/main/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/step10/adapter_model.safetensors",
+    "public_backup_verified": true
+  },
+  {
+    "role": "mask_turbo_step10",
+    "local_path": "/workspace/k2ab/checkpoints/A_native_corrected_mask_turbo_probe/20261001_07-56-22/step10/adapter_model.safetensors",
+    "size_bytes": 457112680,
+    "sha256": "cba1347b0a412bffc2df8b66fd6f3ecd37fbc03b75d0671acbd1d6b42ec571e3",
+    "metadata": {
+      "condition_encode": "native",
+      "vl_reference_in_uncond": "true",
+      "reference_pixels": "crop_fit_target_bucket",
+      "vl_longest_side": "0",
+      "reference_contract": "krea2_clean_reference_v1",
+      "base_model_size": "13141730784",
+      "condition_token_stride": "1",
+      "position_mode": "subject",
+      "model_type": "krea2_native",
+      "comfy_workflow": "TextEncodeQwenImageEditPlus(vae,image1) + FluxKontextMultiReferenceLatentMethod(index_timestep_zero)",
+      "reference_position_scale": "1.0",
+      "diffusion_pipe_commit": "cacc5f0-dirty",
+      "vl_conditioning": "qwen3vl_image_grounded",
+      "vl_image_label": "Picture",
+      "reference_model_timestep": "0.0",
+      "independent_condition": "false",
+      "text_fusion_padding": "masked_refiner_keys_v1",
+      "sequence_layout": "text,target,reference",
+      "condition_dropout": "0.0",
+      "format": "pt",
+      "vl_grounding_jitter": "none",
+      "lora_targets": "blocks+txtfusion",
+      "frozen_base_adapters": "krea2_turbo_lora_rank_64_bf16.safetensors",
+      "control_family": "krea2_native_comfy",
+      "vl_prompt_layout": "qwen_edit_plus_picture_n",
+      "vl_image_max_pixels": "147456",
+      "base_model_file": "krea2_raw_fp8_scaled.safetensors",
+      "caption_dropout": "0.0",
+      "reference_position_offset": "1.0"
+    },
+    "public_url": "https://huggingface.co/AdwolfCzar/krea2-a-native-lr0001/resolve/main/checkpoints/A_native_corrected_mask_turbo_probe/20261001_07-56-22/step10/adapter_model.safetensors",
+    "public_backup_verified": true
+  },
+  {
+    "role": "diagnostic_zero",
+    "local_path": "/workspace/k2ab/artifacts/noise_audit_20261001/diagnostic_zero/step0/adapter_model.safetensors",
+    "size_bytes": 7202480,
+    "sha256": "438995e12de937571336fe64ebcd719e0a1a104f4afecbfa74236a3c4b78f1e4",
+    "metadata": {
+      "format": "pt",
+      "diagnostic_only": "zero_delta_all_targets_rank1"
+    }
+  }
+]

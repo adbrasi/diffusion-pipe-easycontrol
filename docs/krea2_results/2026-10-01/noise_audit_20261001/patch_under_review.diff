@@ -1,0 +1,168 @@
+diff --git a/models/base.py b/models/base.py
+index 0c66575..31565d6 100644
+--- a/models/base.py
++++ b/models/base.py
+@@ -5,6 +5,7 @@ import os
+ import sys
+ from collections import defaultdict
+ import types
++from dataclasses import replace
+ sys.path.insert(0, os.path.join(os.path.abspath(os.path.dirname(__file__)), '../submodules/ComfyUI'))
+ 
+ import peft
+@@ -295,8 +296,9 @@ class CommonPipeline:
+ class ScaledFP8Linear(nn.Linear):
+     """Frozen Linear holding a ComfyUI fp8_scaled weight exactly (qdata + scale).
+ 
+-    forward dequantizes with comfy_kitchen's own per-tensor kernel, so the base
+-    the adapter trains on is bit-identical to the one ComfyUI samples with.
++    ``matmul='comfy'`` also preserves the per-layer matmul policy: ComfyUI
++    quantizes activations for eligible FP8 layers and keeps other layers in
++    compute precision. ``bf16`` is the legacy weight-only training policy.
+     Subclasses nn.Linear so PEFT can wrap it; the weight never requires grad.
+     """
+ 
+@@ -308,7 +310,9 @@ class ScaledFP8Linear(nn.Linear):
+         return type(w._params).__qualname__.startswith('TensorCoreFP8Layout')
+ 
+     @classmethod
+-    def from_comfy(cls, module):
++    def from_comfy(cls, module, matmul='bf16'):
++        if matmul not in ('bf16', 'comfy'):
++            raise ValueError(f'Unknown scaled-FP8 matmul policy: {matmul}')
+         w = module.weight
+         bias = getattr(module, 'bias', None)
+         out_features, in_features = w.shape
+@@ -319,6 +323,12 @@ class ScaledFP8Linear(nn.Linear):
+         new.orig_dtype = w._params.orig_dtype
+         new.fp8_layout = w._layout_cls
+         new.fp8_requant_kwargs = w.layout_cls.requantize_kwargs(w)
++        new.fp8_params = w._params
++        new.fp8_matmul = matmul
++        new.fp8_full_precision_mm = bool(getattr(module, '_full_precision_mm', True))
++        for key in ('input_scale', 'pre_quant_scale'):
++            value = getattr(module, key, None)
++            new.register_buffer(key, None if value is None else value.detach().clone(), persistent=False)
+         if bias is not None:
+             b = bias.dequantize() if bias.__class__.__name__ == 'QuantizedTensor' else bias
+             new.bias = nn.Parameter(b.detach().clone(), requires_grad=False)
+@@ -333,7 +343,29 @@ class ScaledFP8Linear(nn.Linear):
+         return w.to(dtype)
+ 
+     def forward(self, x):
++        if self.pre_quant_scale is not None:
++            x = x * self.pre_quant_scale.to(device=x.device, dtype=x.dtype)
+         bias = None if self.bias is None else self.bias.to(x.dtype)
++        if self.fp8_matmul == 'comfy' and not self.fp8_full_precision_mm:
++            from comfy_kitchen.tensor.base import QuantizedTensor
++            # Rebuild the lightweight wrapper around the existing FP8 codes.
++            # Registered buffers follow .to(device); saved CPU params must not
++            # supply a stale scale or a different compute dtype.
++            params = replace(self.fp8_params, scale=self.weight_scale, orig_dtype=x.dtype)
++            weight = QuantizedTensor(self.weight, self.fp8_layout, params)
++            if x.requires_grad:
++                # Stock's quantized forward and compute-precision backward.
++                # Frozen base weights need no gradient; PEFT still adds its
++                # trainable low-rank branch outside this Linear.
++                return comfy.ops.QuantLinearFunc.apply(
++                    x, weight, bias, self.fp8_layout, self.input_scale, x.dtype
++                )
++            shape = x.shape
++            quantized_input = QuantizedTensor.from_float(
++                x.reshape(-1, shape[-1]), self.fp8_layout, scale=self.input_scale
++            )
++            output = F.linear(quantized_input, weight, bias)
++            return output.reshape(*shape[:-1], self.out_features)
+         return F.linear(x, self.dequantized_weight(x.dtype), bias)
+ 
+     def fuse_weight_delta(self, delta, seed):
+@@ -594,12 +626,13 @@ class ComfyPipeline(CommonPipeline):
+         for mod_name, module in model.named_children():
+             full_mod_name = f'{name_prefix}{mod_name}'
+             if keep_fp8_scale and ScaledFP8Linear.accepts(module):
+-                # fp8_scaled checkpoint kept EXACTLY as ComfyUI runs it: stored
+-                # fp8 qdata + per-tensor scale, dequantized per forward with the
+-                # same comfy_kitchen kernel. Never re-quantized (the old
++                # Keep FP8 codes/scales and optionally ComfyUI's per-layer
++                # activation-quantization/matmul policy. Never re-quantized (the old
+                 # diffusion_model_dtype='float8' path below dropped the scale and
+                 # zeroed up to ~27% of Krea 2 block weights).
+-                model._modules[mod_name] = ScaledFP8Linear.from_comfy(module)
++                model._modules[mod_name] = ScaledFP8Linear.from_comfy(
++                    module, matmul=self.model_config.get('fp8_scaled_matmul', 'bf16')
++                )
+                 continue
+             is_quantized = False
+             for p_name, p in module.named_parameters(recurse=False):
+@@ -663,8 +696,11 @@ class ComfyPipeline(CommonPipeline):
+             for module in quantized:
+                 if module.weight.dtype != torch.float8_e4m3fn:
+                     raise RuntimeError(f'Scaled FP8 weight lost its storage dtype: {module.weight.dtype}')
++            fp8_mm = sum(m.fp8_matmul == 'comfy' and not m.fp8_full_precision_mm for m in quantized)
+             print(f'base_quant=fp8_scaled: {len(quantized)} ScaledFP8Linear modules, '
+-                  'weights=float8_e4m3fn, per-tensor scales preserved, matmul=bf16')
++                  f'weights=float8_e4m3fn, per-tensor scales preserved, '
++                  f'matmul_policy={self.model_config.get("fp8_scaled_matmul", "bf16")}, '
++                  f'FP8 matmul={fp8_mm}, compute-precision matmul={len(quantized)-fp8_mm}')
+ 
+         self.diffusion_model.train()
+         for name, p in self.diffusion_model.named_parameters():
+diff --git a/models/krea2_native.py b/models/krea2_native.py
+index d10b3fa..a0cc348 100644
+--- a/models/krea2_native.py
++++ b/models/krea2_native.py
+@@ -27,9 +27,10 @@ Everything below mirrors that path; see docs/KREA2_ANALISE_METODO_2026-09.md.
+ Base numerics: NEVER train with diffusion_model_dtype='float8' through
+ models/base.py (it re-quantizes WITHOUT the fp8_scaled weight_scale and zeroes
+ up to ~27% of block weights). Use [model] base_quant = 'fp8_scaled' with the
+-*_fp8_scaled checkpoint: qdata + scale kept and dequantized per forward exactly
+-like ComfyUI (models/base.py::ScaledFP8Linear) — same speed/VRAM class as the
+-quanto fp8 used by ai-toolkit / krea2edit-trainer.
++*_fp8_scaled checkpoint: qdata + scale kept. ``fp8_scaled_matmul='comfy'`` also
++preserves ComfyUI's per-layer FP8-activation/compute-precision matmul policy.
++The legacy ``bf16`` policy dequantizes all weights before BF16 matmul and is
++not numerically equivalent to stock mixed-precision inference.
+ 
+ Text-encoder parity: the Qwen3-VL implementation must be the one of the ComfyUI
+ the user runs (DeepStack/MRoPE changed after 2026-06-23). Validate with
+@@ -132,6 +133,9 @@ class Krea2NativePipeline(Krea2EditPipeline):
+     adapter_allowed_key_substrings = ('.blocks.', '.txtfusion.')
+ 
+     def __init__(self, config):
++        # Keep existing campaigns reproducible. The stock-compatible policy is
++        # explicit until full-model training and sampling have been validated.
++        config['model'].setdefault('fp8_scaled_matmul', 'bf16')
+         section = config.setdefault(self.config_section, {})
+         # Geometry is the stock contract, not a knob.
+         for key, value in (('position_mode', 'subject'), ('reference_position_offset', 1.0),
+@@ -144,7 +148,7 @@ class Krea2NativePipeline(Krea2EditPipeline):
+             raise ValueError(
+                 "krea2_native: diffusion_model_dtype='float8' re-quantizes the fp8_scaled base without "
+                 "its weight_scale (see docs/KREA2_ANALISE_METODO_2026-09.md §1.1). Use base_quant = 'fp8_scaled' "
+-                "(exact ComfyUI numerics, fast) or 'bfloat16'."
++                "(preserves the FP8 scales) or 'bfloat16'."
+             )
+         super().__init__(config)
+         self.vl_grounding = bool(section.get('vl_grounding', True))
+@@ -214,6 +218,7 @@ class Krea2NativePipeline(Krea2EditPipeline):
+         meta = super().get_reference_metadata()
+         meta.update({
+             'text_fusion_padding': 'masked_refiner_keys_v1',
++            'fp8_scaled_matmul': self.model_config.get('fp8_scaled_matmul', 'bf16'),
+             'frozen_base_adapters': ';'.join(
+                 str(path).rsplit('/', 1)[-1] for path in self.model_config.get('merge_adapters', [])
+             ),
+diff --git a/tools/krea2_training_parity.py b/tools/krea2_training_parity.py
+index 08cbd1b..7b689d8 100644
+--- a/tools/krea2_training_parity.py
++++ b/tools/krea2_training_parity.py
+@@ -44,6 +44,9 @@ def main():
+     from torch.utils.checkpoint import checkpoint
+     torch.manual_seed(76)
+     config = toml.load(args.config)
++    if args.compute_fp32:
++        # Explicit weight-only FP32 arithmetic control; FP8 GEMM is not FP32.
++        config['model']['fp8_scaled_matmul'] = 'bf16'
+     config['model']['dtype'] = compute_dtype
+     adapter = dict(config['adapter'], alpha=config['adapter']['rank'], dropout=0., dtype=compute_dtype)
+     pipe = Krea2NativePipeline(config)

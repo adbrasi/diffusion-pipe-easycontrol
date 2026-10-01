@@ -1,0 +1,14 @@
+{
+  "case": "03_ds4_imagem000268",
+  "zero_vs_without_task_lora": {
+    "mae_255": 0.0,
+    "max_abs_255": 0.0,
+    "identical_pixels": true
+  },
+  "zero_control": {
+    "rank": 1,
+    "all_A_B_zero": true,
+    "patched_modules": 256
+  },
+  "limits": "One scene and seed. Pixel equality does not validate nonzero adapter merging or the whole model."
+}

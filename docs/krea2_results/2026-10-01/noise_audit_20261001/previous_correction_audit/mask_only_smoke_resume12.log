@@ -1,0 +1,560 @@
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+[2026-10-01 07:57:06,329] [WARNING] [runner.py:232:fetch_hostfile] Unable to find hostfile, will proceed with training with local resources only.
+[2026-10-01 07:57:06,329] [INFO] [runner.py:630:main] cmd = /venv/main/bin/python -u -m deepspeed.launcher.launch --world_info=eyJsb2NhbGhvc3QiOiBbMF19 --master_addr=127.0.0.1 --master_port=29601 --enable_each_rank_log=None --log_level=info train.py --deepspeed --config /workspace/k2ab/artifacts/corrected_native_20261001/configs/mask_only_smoke_resume12.toml --resume_from_checkpoint 20261001_07-53-40
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NV_LIBNCCL_DEV_PACKAGE=libnccl-dev=2.28.3-1+cuda13.0
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NV_LIBNCCL_DEV_PACKAGE_VERSION=2.28.3-1
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NCCL_VERSION=2.28.3-1
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NV_LIBNCCL_DEV_PACKAGE_NAME=libnccl-dev
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NV_LIBNCCL_PACKAGE=libnccl2=2.28.3-1+cuda13.0
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NV_LIBNCCL_PACKAGE_NAME=libnccl2
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NV_LIBNCCL_PACKAGE_VERSION=2.28.3-1
+[2026-10-01 07:57:09,406] [INFO] [launch.py:155:main] 0 NCCL_P2P_DISABLE=1
+[2026-10-01 07:57:09,406] [INFO] [launch.py:162:main] WORLD INFO DICT: {'localhost': [0]}
+[2026-10-01 07:57:09,406] [INFO] [launch.py:168:main] nnodes=1, num_local_procs=1, node_rank=0
+[2026-10-01 07:57:09,406] [INFO] [launch.py:179:main] global_rank_mapping=defaultdict(<class 'list'>, {'localhost': [0]})
+[2026-10-01 07:57:09,406] [INFO] [launch.py:180:main] dist_world_size=1
+[2026-10-01 07:57:09,406] [INFO] [launch.py:184:main] Setting CUDA_VISIBLE_DEVICES=0
+[2026-10-01 07:57:09,406] [INFO] [launch.py:272:main] process 622067 spawned with command: ['/venv/main/bin/python', '-u', 'train.py', '--local_rank=0', '--deepspeed', '--config', '/workspace/k2ab/artifacts/corrected_native_20261001/configs/mask_only_smoke_resume12.toml', '--resume_from_checkpoint', '20261001_07-53-40']
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+/venv/main/lib/python3.12/site-packages/torch/jit/_script.py:1491: FutureWarning: `torch.jit.script` is deprecated. Please switch to `torch.compile` or `torch.export`.
+  warnings.warn(
+[2026-10-01 07:57:13,370] [INFO] [comm.py:821:init_distributed] cdb=None
+[2026-10-01 07:57:13,370] [INFO] [comm.py:852:init_distributed] Initializing TorchBackend in DeepSpeed with backend nccl
+using video_clip_mode=single_beginning
+using framerate=16
+Grouped metadata is not cached. Computing ungrouped metadata and then grouping.
+Intermediate metadata is not cached. Enumerating all files.
+  0%|          | 0/6140 [00:00<?, ?it/s]100%|██████████| 6140/6140 [00:00<00:00, 167405.72it/s]
+Loading captions JSON
+Adding captions:   0%|          | 0/6138 [00:00<?, ? examples/s]Adding captions:  65%|██████▌   | 4000/6138 [00:00<00:00, 12448.40 examples/s]Adding captions: 100%|██████████| 6138/6138 [00:00<00:00, 17777.43 examples/s]
+Saving intermediate metadata dataset.
+Saving the dataset (0/1 shards):   0%|          | 0/6138 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 6138/6138 [00:00<00:00, 226183.32 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 6138/6138 [00:00<00:00, 224418.68 examples/s]
+Loading intermediate metadata dataset.
+Caching ungrouped metadata.
+Map (num_proc=8):   0%|          | 0/6138 [00:00<?, ? examples/s]Map (num_proc=8):   3%|▎         | 197/6138 [00:00<00:05, 1005.12 examples/s]Map (num_proc=8):  63%|██████▎   | 3881/6138 [00:00<00:00, 16050.25 examples/s]Map (num_proc=8): 100%|██████████| 6138/6138 [00:00<00:00, 12751.93 examples/s]
+Grouping examples:   0%|          | 0/6138 [00:00<?, ?it/s]Grouping examples: 100%|██████████| 6138/6138 [00:00<00:00, 79078.01it/s]
+Saving the dataset (0/1 shards):   0%|          | 0/4080 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 4080/4080 [00:00<00:00, 1455785.65 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 4080/4080 [00:00<00:00, 1409269.56 examples/s]
+Saving the dataset (0/1 shards):   0%|          | 0/850 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 850/850 [00:00<00:00, 556013.47 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 850/850 [00:00<00:00, 529977.46 examples/s]
+Saving the dataset (0/1 shards):   0%|          | 0/420 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 420/420 [00:00<00:00, 296068.52 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 420/420 [00:00<00:00, 281902.33 examples/s]
+Saving the dataset (0/1 shards):   0%|          | 0/251 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 251/251 [00:00<00:00, 175989.69 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 251/251 [00:00<00:00, 165373.91 examples/s]
+Saving the dataset (0/1 shards):   0%|          | 0/123 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 123/123 [00:00<00:00, 89815.35 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 123/123 [00:00<00:00, 84380.01 examples/s]
+Saving the dataset (0/1 shards):   0%|          | 0/382 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 382/382 [00:00<00:00, 264044.85 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 382/382 [00:00<00:00, 248831.20 examples/s]
+Saving the dataset (0/1 shards):   0%|          | 0/32 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 32/32 [00:00<00:00, 23831.27 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 32/32 [00:00<00:00, 22362.17 examples/s]
+Loading grouped metadata with grouping key (0.63, 1)
+Loading grouped metadata with grouping key (2.0, 1)
+Loading grouped metadata with grouping key (1.0, 1)
+Loading grouped metadata with grouping key (1.587, 1)
+Loading grouped metadata with grouping key (0.794, 1)
+Loading grouped metadata with grouping key (1.26, 1)
+Loading grouped metadata with grouping key (0.5, 1)
+caching latents: /workspace/k2ab/data_fullbudget_20261001_v2/target
+caching latents: (0.63, 1)
+Adding size bucket:   0%|          | 0/850 [00:00<?, ? examples/s]Adding size bucket: 100%|██████████| 850/850 [00:00<00:00, 62184.44 examples/s]
+caching latents: (0.63, 400, 640, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 93a7505182a59433
+[CACHE] Existing cache length: 850
+Building iteration order
+Saving the dataset (0/1 shards):   0%|          | 0/850 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 850/850 [00:00<00:00, 740120.07 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 850/850 [00:00<00:00, 696592.11 examples/s]
+caching latents: (2.0, 1)
+Adding size bucket:   0%|          | 0/420 [00:00<?, ? examples/s]Adding size bucket: 100%|██████████| 420/420 [00:00<00:00, 58649.88 examples/s]
+caching latents: (2.0, 720, 368, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint c86ef4a30b0ab7eb
+[CACHE] Existing cache length: 420
+Building iteration order
+Saving the dataset (0/1 shards):   0%|          | 0/420 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 420/420 [00:00<00:00, 414984.14 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 420/420 [00:00<00:00, 388532.79 examples/s]
+caching latents: (1.0, 1)
+Adding size bucket:   0%|          | 0/123 [00:00<?, ? examples/s]Adding size bucket: 100%|██████████| 123/123 [00:00<00:00, 37550.00 examples/s]
+caching latents: (1.0, 512, 512, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 0feda318fde97733
+[CACHE] Existing cache length: 123
+Building iteration order
+Saving the dataset (0/1 shards):   0%|          | 0/123 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 123/123 [00:00<00:00, 125431.41 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 123/123 [00:00<00:00, 117249.86 examples/s]
+caching latents: (1.587, 1)
+Adding size bucket:   0%|          | 0/4080 [00:00<?, ? examples/s]Adding size bucket: 100%|██████████| 4080/4080 [00:00<00:00, 72972.10 examples/s]
+caching latents: (1.587, 640, 400, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 640cb0bf53606500
+[CACHE] Existing cache length: 4080
+Building iteration order
+Saving the dataset (0/1 shards):   0%|          | 0/4080 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 4080/4080 [00:00<00:00, 2128452.78 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 4080/4080 [00:00<00:00, 2029501.94 examples/s]
+caching latents: (0.794, 1)
+Adding size bucket:   0%|          | 0/382 [00:00<?, ? examples/s]Adding size bucket: 100%|██████████| 382/382 [00:00<00:00, 56251.94 examples/s]
+caching latents: (0.794, 464, 576, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 68574ab4ea81ea50
+[CACHE] Existing cache length: 382
+Building iteration order
+Saving the dataset (0/1 shards):   0%|          | 0/382 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 382/382 [00:00<00:00, 363893.74 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 382/382 [00:00<00:00, 340753.75 examples/s]
+caching latents: (1.26, 1)
+Adding size bucket:   0%|          | 0/251 [00:00<?, ? examples/s]Adding size bucket: 100%|██████████| 251/251 [00:00<00:00, 50645.61 examples/s]
+caching latents: (1.26, 576, 464, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 944d9ac0131c1dbb
+[CACHE] Existing cache length: 251
+Building iteration order
+Saving the dataset (0/1 shards):   0%|          | 0/251 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 251/251 [00:00<00:00, 235413.75 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 251/251 [00:00<00:00, 219693.30 examples/s]
+caching latents: (0.5, 1)
+Adding size bucket:   0%|          | 0/32 [00:00<?, ? examples/s]Adding size bucket: 100%|██████████| 32/32 [00:00<00:00, 15775.47 examples/s]
+caching latents: (0.5, 368, 720, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 560fb070afd013ec
+[CACHE] Existing cache length: 32
+Building iteration order
+Saving the dataset (0/1 shards):   0%|          | 0/32 [00:00<?, ? examples/s]Saving the dataset (1/1 shards): 100%|██████████| 32/32 [00:00<00:00, 30741.58 examples/s]Saving the dataset (1/1 shards): 100%|██████████| 32/32 [00:00<00:00, 28256.36 examples/s]
+caching text embeddings: /workspace/k2ab/data_fullbudget_20261001_v2/target
+caching text embeddings: (0.63, 1)
+Map:   0%|          | 0/850 [00:00<?, ? examples/s]Map: 100%|██████████| 850/850 [00:00<00:00, 313448.07 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 7bbe839ca739f603
+[CACHE] Existing cache length: 850
+caching text embeddings: (2.0, 1)
+Map:   0%|          | 0/420 [00:00<?, ? examples/s]Map: 100%|██████████| 420/420 [00:00<00:00, 208400.29 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 15906ed3ab5bee6a
+[CACHE] Existing cache length: 420
+caching text embeddings: (1.0, 1)
+Map:   0%|          | 0/123 [00:00<?, ? examples/s]Map: 100%|██████████| 123/123 [00:00<00:00, 80760.71 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 050949a373bdd358
+[CACHE] Existing cache length: 123
+caching text embeddings: (1.587, 1)
+Map:   0%|          | 0/4080 [00:00<?, ? examples/s]Map: 100%|██████████| 4080/4080 [00:00<00:00, 495089.26 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint bd4660e075bf9262
+[CACHE] Existing cache length: 4080
+caching text embeddings: (0.794, 1)
+Map:   0%|          | 0/382 [00:00<?, ? examples/s]Map: 100%|██████████| 382/382 [00:00<00:00, 186761.18 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint fc2445353370c9c5
+[CACHE] Existing cache length: 382
+caching text embeddings: (1.26, 1)
+Map:   0%|          | 0/251 [00:00<?, ? examples/s]Map: 100%|██████████| 251/251 [00:00<00:00, 143821.08 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 49ebde57ad0b309b
+[CACHE] Existing cache length: 251
+caching text embeddings: (0.5, 1)
+Map:   0%|          | 0/32 [00:00<?, ? examples/s]Map: 100%|██████████| 32/32 [00:00<00:00, 23156.96 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 21eb493433fc7e42
+[CACHE] Existing cache length: 32
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint b072e77f045c8ad1
+[CACHE] Existing cache length: 1
+Found grouped metadata cache. Directly loading it.
+Loading grouped metadata with grouping key [0.63, 1]
+Loading grouped metadata with grouping key [2.0, 1]
+Loading grouped metadata with grouping key [1.0, 1]
+Loading grouped metadata with grouping key [1.587, 1]
+Loading grouped metadata with grouping key [0.794, 1]
+Loading grouped metadata with grouping key [1.26, 1]
+Loading grouped metadata with grouping key [0.5, 1]
+caching latents: /workspace/k2ab/data_fullbudget_20261001_v2/target
+caching latents: [0.63, 1]
+caching latents: (0.63, 400, 640, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 93a7505182a59433
+[CACHE] Existing cache length: 850
+caching latents: [2.0, 1]
+caching latents: (2.0, 720, 368, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint c86ef4a30b0ab7eb
+[CACHE] Existing cache length: 420
+caching latents: [1.0, 1]
+caching latents: (1.0, 512, 512, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 0feda318fde97733
+[CACHE] Existing cache length: 123
+caching latents: [1.587, 1]
+caching latents: (1.587, 640, 400, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 640cb0bf53606500
+[CACHE] Existing cache length: 4080
+caching latents: [0.794, 1]
+caching latents: (0.794, 464, 576, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 68574ab4ea81ea50
+[CACHE] Existing cache length: 382
+caching latents: [1.26, 1]
+caching latents: (1.26, 576, 464, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 944d9ac0131c1dbb
+[CACHE] Existing cache length: 251
+caching latents: [0.5, 1]
+caching latents: (0.5, 368, 720, 1)
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 560fb070afd013ec
+[CACHE] Existing cache length: 32
+caching text embeddings: /workspace/k2ab/data_fullbudget_20261001_v2/target
+caching text embeddings: [0.63, 1]
+Map:   0%|          | 0/850 [00:00<?, ? examples/s]Map: 100%|██████████| 850/850 [00:00<00:00, 206663.87 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 7bbe839ca739f603
+[CACHE] Existing cache length: 850
+caching text embeddings: [2.0, 1]
+Map:   0%|          | 0/420 [00:00<?, ? examples/s]Map: 100%|██████████| 420/420 [00:00<00:00, 204362.84 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 15906ed3ab5bee6a
+[CACHE] Existing cache length: 420
+caching text embeddings: [1.0, 1]
+Map:   0%|          | 0/123 [00:00<?, ? examples/s]Map: 100%|██████████| 123/123 [00:00<00:00, 79418.01 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 050949a373bdd358
+[CACHE] Existing cache length: 123
+caching text embeddings: [1.587, 1]
+Map:   0%|          | 0/4080 [00:00<?, ? examples/s]Map: 100%|██████████| 4080/4080 [00:00<00:00, 458750.24 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint bd4660e075bf9262
+[CACHE] Existing cache length: 4080
+caching text embeddings: [0.794, 1]
+Map:   0%|          | 0/382 [00:00<?, ? examples/s]Map: 100%|██████████| 382/382 [00:00<00:00, 183278.90 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint fc2445353370c9c5
+[CACHE] Existing cache length: 382
+caching text embeddings: [1.26, 1]
+Map:   0%|          | 0/251 [00:00<?, ? examples/s]Map: 100%|██████████| 251/251 [00:00<00:00, 126246.59 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 49ebde57ad0b309b
+[CACHE] Existing cache length: 251
+caching text embeddings: [0.5, 1]
+Map:   0%|          | 0/32 [00:00<?, ? examples/s]Map: 100%|██████████| 32/32 [00:00<00:00, 22904.05 examples/s]
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint 21eb493433fc7e42
+[CACHE] Existing cache length: 32
+[CACHE] Initializing
+[CACHE] Existing cache has fingerprint b072e77f045c8ad1
+[CACHE] Existing cache length: 1
+base_quant=fp8_scaled: 256 ScaledFP8Linear modules, weights=float8_e4m3fn, per-tensor scales preserved, matmul=bf16
+[krea2_native] dual-conditioning LoRA targets: 256 linears (224 in DiT blocks, 32 in text fusion)
+trainable params: 228,524,032 || all params: 13,048,597,068 || trainable%: 1.7513
+SEED_LAYERS=False BASE_SEED=1234 SEED_FN=None
+Using topology: {ProcessCoord(pipe=0, data=0): 0}
+[2026-10-01 07:57:17,532] [INFO] [module.py:398:_partition_layers] Partitioning pipeline stages with method parameters
+stage=0 layers=30
+     0: Krea2ReferenceInitialLayer
+     1: TransformerLayer
+     2: TransformerLayer
+     3: TransformerLayer
+     4: TransformerLayer
+     5: TransformerLayer
+     6: TransformerLayer
+     7: TransformerLayer
+     8: TransformerLayer
+     9: TransformerLayer
+    10: TransformerLayer
+    11: TransformerLayer
+    12: TransformerLayer
+    13: TransformerLayer
+    14: TransformerLayer
+    15: TransformerLayer
+    16: TransformerLayer
+    17: TransformerLayer
+    18: TransformerLayer
+    19: TransformerLayer
+    20: TransformerLayer
+    21: TransformerLayer
+    22: TransformerLayer
+    23: TransformerLayer
+    24: TransformerLayer
+    25: TransformerLayer
+    26: TransformerLayer
+    27: TransformerLayer
+    28: TransformerLayer
+    29: Krea2ReferenceFinalLayer
+  loss: loss_fn
+[2026-10-01 07:57:18,695] [INFO] [logging.py:123:log_dist] [Rank 0] DeepSpeed info: version=0.18.4, git-hash=unknown, git-branch=unknown
+[2026-10-01 07:57:18,695] [INFO] [config.py:687:__init__] Config mesh_device None world_size = 1
+[2026-10-01 07:57:18,709] [INFO] [engine.py:1415:_configure_distributed_model] ********** distributed groups summary **********
+	 self.dp_world_size=1
+	 self.mp_world_size=1
+	 self.seq_dp_world_size=1
+	 self.sequence_parallel_size=1
+***********************************************
+[2026-10-01 07:57:18,716] [INFO] [logging.py:123:log_dist] [Rank 0] DeepSpeed Flops Profiler Enabled: False
+[2026-10-01 07:57:18,719] [INFO] [logging.py:123:log_dist] [Rank 0] [TorchCheckpointEngine] Initialized with serialization = True
+[2026-10-01 07:57:18,719] [INFO] [config.py:958:print] DeepSpeedEngine configuration:
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   activation_checkpointing_config  {
+    "partition_activations": false, 
+    "contiguous_memory_optimization": false, 
+    "cpu_checkpointing": false, 
+    "number_checkpoints": null, 
+    "synchronize_checkpoint_boundary": false, 
+    "profile": false
+}
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   aio_config ................... {'block_size': 1048576, 'queue_depth': 8, 'intra_op_parallelism': 1, 'single_submit': False, 'overlap_events': True, 'use_gds': False}
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   amp_enabled .................. False
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   amp_params ................... False
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   autotuning_config ............ {
+    "enabled": false, 
+    "start_step": null, 
+    "end_step": null, 
+    "metric_path": null, 
+    "arg_mappings": null, 
+    "metric": "throughput", 
+    "model_info": null, 
+    "results_dir": "autotuning_results", 
+    "exps_dir": "autotuning_exps", 
+    "overwrite": true, 
+    "fast": true, 
+    "start_profile_step": 3, 
+    "end_profile_step": 5, 
+    "tuner_type": "gridsearch", 
+    "tuner_early_stopping": 5, 
+    "tuner_num_trials": 50, 
+    "model_info_path": null, 
+    "mp_size": 1, 
+    "max_train_batch_size": null, 
+    "min_train_batch_size": 1, 
+    "max_train_micro_batch_size_per_gpu": 1.024000e+03, 
+    "min_train_micro_batch_size_per_gpu": 1, 
+    "num_tuning_micro_batch_sizes": 3
+}
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   bfloat16_config .............. enabled=False immediate_grad_update=False check_grad_overflow=False bf16_master_weights_and_grads=False bf16_optimizer_states=False
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   checkpoint_config ............ {'tag_validation': 'WARN', 'checkpoint_serialization': True, 'writer': None}
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   checkpoint_parallel_write_pipeline  False
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   checkpoint_tag_validation_enabled  True
+[2026-10-01 07:57:18,719] [INFO] [config.py:962:print]   checkpoint_tag_validation_fail  False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   comms_config ................. <deepspeed.comm.config.DeepSpeedCommsConfig object at 0x7248f877c800>
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   communication_data_type ...... None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   compile_config ............... deepcompile=False free_activation=False free_activation_threshold=10485760 offload_activation=False offload_opt_states=False double_buffer=True symmetric_memory=False debug_log=False offload_parameters=False sync_before_reduce=False sync_after_reduce=False sync_before_allgather=False sync_after_allgather=False keep_int_input_tensors=True keep_all_input_tensors=False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   compression_config ........... {'weight_quantization': {'shared_parameters': {'enabled': False, 'quantizer_kernel': False, 'schedule_offset': 0, 'quantize_groups': 1, 'quantize_verbose': False, 'quantization_type': 'symmetric', 'quantize_weight_in_forward': False, 'rounding': 'nearest', 'fp16_mixed_quantize': False, 'quantize_change_ratio': 0.001}, 'different_groups': {}}, 'activation_quantization': {'shared_parameters': {'enabled': False, 'quantization_type': 'symmetric', 'range_calibration': 'dynamic', 'schedule_offset': 1000}, 'different_groups': {}}, 'sparse_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'row_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'head_pruning': {'shared_parameters': {'enabled': False, 'method': 'topk', 'schedule_offset': 1000}, 'different_groups': {}}, 'channel_pruning': {'shared_parameters': {'enabled': False, 'method': 'l1', 'schedule_offset': 1000}, 'different_groups': {}}, 'layer_reduction': {'enabled': False}}
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   curriculum_enabled_legacy .... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   curriculum_params_legacy ..... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   data_efficiency_config ....... {'enabled': False, 'seed': 1234, 'data_sampling': {'enabled': False, 'num_epochs': 1000, 'num_workers': 0, 'pin_memory': False, 'curriculum_learning': {'enabled': False}, 'dynamic_batching': {'enabled': False, 'lr_scaling_method': 'linear', 'min_batch_size': 1, 'max_batch_size': None, 'sequence_picking_order': 'dataloader', 'verbose': False}}, 'data_routing': {'enabled': False, 'random_ltd': {'enabled': False, 'layer_token_lr_schedule': {'enabled': False}}}}
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   data_efficiency_enabled ...... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   dataloader_drop_last ......... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   datastates_config ............ {
+    "enabled": false, 
+    "config": null
+}
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   disable_allgather ............ False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   dump_state ................... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_enabled ........... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_gas_boundary_resolution  1
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_layer_name ........ bert.encoder.layer
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_layer_num ......... 0
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_max_iter .......... 100
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_stability ......... 1e-06
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_tol ............... 0.01
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   eigenvalue_verbose ........... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   elasticity_enabled ........... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   float16_config ............... enabled=False auto_cast=False loss_scale=0.0 initial_scale_power=16 loss_scale_window=1000 hysteresis=2 consecutive_hysteresis=False min_loss_scale=1 fp16_master_weights_and_grads=False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   flops_profiler_config ........ {
+    "enabled": false, 
+    "recompute_fwd_factor": 0.0, 
+    "profile_step": 1, 
+    "module_depth": -1, 
+    "top_modules": 1, 
+    "detailed": true, 
+    "output_file": null
+}
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   global_rank .................. 0
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   grad_accum_dtype ............. None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   gradient_accumulation_steps .. 1
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   gradient_clipping ............ 1.0
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   gradient_predivide_factor .... 1.0
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   graph_harvesting ............. False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   hybrid_engine ................ enabled=False max_out_tokens=512 inference_tp_size=1 release_inference_cache=False pin_parameters=True tp_gather_partition_size=8
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   load_universal_checkpoint .... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   memory_breakdown ............. False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   mics_hierarchial_params_gather  False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   mics_shard_size .............. -1
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   monitor_config ............... tensorboard=TensorBoardConfig(enabled=False, output_path='', job_name='DeepSpeedJobName') comet=CometConfig(enabled=False, samples_log_interval=100, project=None, workspace=None, api_key=None, experiment_name=None, experiment_key=None, online=None, mode=None) wandb=WandbConfig(enabled=False, group=None, team=None, project='deepspeed') csv_monitor=CSVConfig(enabled=False, output_path='', job_name='DeepSpeedJobName')
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   nebula_config ................ {
+    "enabled": false, 
+    "persistent_storage_path": null, 
+    "persistent_time_interval": 100, 
+    "num_of_version_in_retention": 2, 
+    "enable_nebula_load": true, 
+    "load_path": null
+}
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   optimizer_legacy_fusion ...... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   optimizer_name ............... None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   optimizer_params ............. None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   pipeline ..................... {'stages': 'auto', 'partition': 'best', 'seed_layers': False, 'activation_checkpoint_interval': 0, 'pipe_partitioned': True, 'grad_partitioned': True}
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   pld_enabled .................. False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   pld_params ................... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   prescale_gradients ........... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   scheduler_name ............... None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   scheduler_params ............. None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   seq_parallel_communication_data_type  torch.float32
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   sparse_attention ............. None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   sparse_gradients_enabled ..... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   steps_per_print .............. 1
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   tensor_parallel_config ....... dtype=torch.float16 autotp_size=0 tp_overlap_comm=False tensor_parallel=TPConfig(tp_size=1, tp_grain_size=1, mpu=None, tp_group=None) injection_policy_tuple=None keep_module_on_host=False replace_with_kernel_inject=False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   timers_config ................ enabled=True synchronized=True
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   torch_autocast_dtype ......... None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   torch_autocast_enabled ....... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   torch_autocast_lower_precision_safe_modules  None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   train_batch_size ............. 2
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   train_micro_batch_size_per_gpu  2
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   use_data_before_expert_parallel_  False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   use_node_local_storage ....... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   wall_clock_breakdown ......... False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   weight_quantization_config ... None
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   world_size ................... 1
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   zero_allow_untested_optimizer  False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   zero_config .................. stage=0 contiguous_gradients=True reduce_scatter=True reduce_bucket_size=500000000 use_multi_rank_bucket_allreduce=True allgather_partitions=True allgather_bucket_size=500000000 overlap_comm=False load_from_fp32_weights=True elastic_checkpoint=False offload_param=None offload_optimizer=None zenflow=None sub_group_size=1000000000 cpu_offload_param=None cpu_offload_use_pin_memory=None cpu_offload=None prefetch_bucket_size=50000000 param_persistence_threshold=100000 model_persistence_threshold=9223372036854775807 max_live_parameters=1000000000 max_reuse_distance=1000000000 gather_16bit_weights_on_model_save=False module_granularity_threshold=0 use_all_reduce_for_fetch_params=False stage3_gather_fp16_weights_on_model_save=False ignore_unused_parameters=True legacy_stage1=False round_robin_gradients=False zero_hpz_partition_size=1 zero_quantized_weights=False zero_quantized_nontrainable_weights=False zero_quantized_gradients=False zeropp_loco_param=None mics_shard_size=-1 mics_hierarchical_params_gather=False memory_efficient_linear=True pipeline_loading_checkpoint=False override_module_apply=True log_trace_cache_warnings=False enable_sanity_checks=False leaf_module=DeepSpeedZeroLeafModuleConfig(classes=['transformers.models.mixtral.modeling_mixtral.MixtralSparseMoeBlock', 'transformers.models.qwen2_moe.modeling_qwen2_moe.Qwen2MoeSparseMoeBlock', 'transformers.models.qwen3_moe.modeling_qwen3_moe.Qwen3MoeSparseMoeBlock'], names=[], name_suffixes=[])
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   zero_enabled ................. False
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   zero_force_ds_cpu_optimizer .. True
+[2026-10-01 07:57:18,720] [INFO] [config.py:962:print]   zero_optimization_stage ...... 0
+[2026-10-01 07:57:18,720] [INFO] [config.py:948:print_user_config]   json = {
+    "train_micro_batch_size_per_gpu": 2, 
+    "gradient_accumulation_steps": 1, 
+    "gradient_clipping": 1.0, 
+    "steps_per_print": 1
+}
+[2026-10-01 07:57:18,720] [INFO] [engine.py:104:__init__] CONFIG: micro_batches=1 micro_batch_size=2
+[2026-10-01 07:57:18,720] [INFO] [engine.py:145:__init__] is_pipe_partitioned= False is_grad_partitioned= False
+[2026-10-01 07:57:18,722] [INFO] [engine.py:164:__init__] RANK=0 STAGE=0 LAYERS=30 [0, 30) STAGE_PARAMS=228524032 (228.524M) TOTAL_PARAMS=228524032 (228.524M) UNIQUE_PARAMS=228524032 (228.524M)
+Global batch size = 2
+[2026-10-01 07:57:18,723] [INFO] [logging.py:123:log_dist] [Rank 0] Using client callable to create basic optimizer
+[2026-10-01 07:57:18,723] [INFO] [logging.py:123:log_dist] [Rank 0] Removing param_group that has no 'params' in the basic Optimizer
+[2026-10-01 07:57:18,783] [INFO] [logging.py:123:log_dist] [Rank 0] DeepSpeed Basic Optimizer = AdamW8bitKahan
+[2026-10-01 07:57:18,783] [INFO] [logging.py:123:log_dist] [Rank 0] DeepSpeed Final Optimizer = AdamW8bitKahan
+Training schedule: 3068 steps/epoch, 2 samples/step, 1000 epoch(s)
+[2026-10-01 07:57:18,786] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/mp_rank_00_model_states.pt...
+[2026-10-01 07:57:18,896] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/mp_rank_00_model_states.pt...
+[2026-10-01 07:57:18,903] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/mp_rank_00_model_states.pt...
+[2026-10-01 07:57:19,013] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/mp_rank_00_model_states.pt...
+[2026-10-01 07:57:19,013] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_00-model_states.pt...
+[2026-10-01 07:57:19,017] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_00-model_states.pt...
+[2026-10-01 07:57:19,017] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_00-model_states.pt...
+[2026-10-01 07:57:19,020] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_00-model_states.pt...
+[2026-10-01 07:57:19,024] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_01-model_states.pt...
+[2026-10-01 07:57:19,027] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_01-model_states.pt...
+[2026-10-01 07:57:19,027] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_01-model_states.pt...
+[2026-10-01 07:57:19,028] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_01-model_states.pt...
+[2026-10-01 07:57:19,029] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_02-model_states.pt...
+[2026-10-01 07:57:19,031] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_02-model_states.pt...
+[2026-10-01 07:57:19,031] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_02-model_states.pt...
+[2026-10-01 07:57:19,032] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_02-model_states.pt...
+[2026-10-01 07:57:19,033] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_03-model_states.pt...
+[2026-10-01 07:57:19,035] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_03-model_states.pt...
+[2026-10-01 07:57:19,035] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_03-model_states.pt...
+[2026-10-01 07:57:19,035] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_03-model_states.pt...
+[2026-10-01 07:57:19,037] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_04-model_states.pt...
+[2026-10-01 07:57:19,038] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_04-model_states.pt...
+[2026-10-01 07:57:19,038] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_04-model_states.pt...
+[2026-10-01 07:57:19,039] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_04-model_states.pt...
+[2026-10-01 07:57:19,040] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_05-model_states.pt...
+[2026-10-01 07:57:19,041] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_05-model_states.pt...
+[2026-10-01 07:57:19,041] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_05-model_states.pt...
+[2026-10-01 07:57:19,042] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_05-model_states.pt...
+[2026-10-01 07:57:19,044] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_06-model_states.pt...
+[2026-10-01 07:57:19,045] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_06-model_states.pt...
+[2026-10-01 07:57:19,045] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_06-model_states.pt...
+[2026-10-01 07:57:19,046] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_06-model_states.pt...
+[2026-10-01 07:57:19,047] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_07-model_states.pt...
+[2026-10-01 07:57:19,048] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_07-model_states.pt...
+[2026-10-01 07:57:19,049] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_07-model_states.pt...
+[2026-10-01 07:57:19,049] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_07-model_states.pt...
+[2026-10-01 07:57:19,051] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_08-model_states.pt...
+[2026-10-01 07:57:19,052] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_08-model_states.pt...
+[2026-10-01 07:57:19,052] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_08-model_states.pt...
+[2026-10-01 07:57:19,053] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_08-model_states.pt...
+[2026-10-01 07:57:19,054] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_09-model_states.pt...
+[2026-10-01 07:57:19,055] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_09-model_states.pt...
+[2026-10-01 07:57:19,055] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_09-model_states.pt...
+[2026-10-01 07:57:19,056] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_09-model_states.pt...
+[2026-10-01 07:57:19,058] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_10-model_states.pt...
+[2026-10-01 07:57:19,059] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_10-model_states.pt...
+[2026-10-01 07:57:19,059] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_10-model_states.pt...
+[2026-10-01 07:57:19,060] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_10-model_states.pt...
+[2026-10-01 07:57:19,061] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_11-model_states.pt...
+[2026-10-01 07:57:19,062] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_11-model_states.pt...
+[2026-10-01 07:57:19,062] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_11-model_states.pt...
+[2026-10-01 07:57:19,063] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_11-model_states.pt...
+[2026-10-01 07:57:19,065] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_12-model_states.pt...
+[2026-10-01 07:57:19,066] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_12-model_states.pt...
+[2026-10-01 07:57:19,066] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_12-model_states.pt...
+[2026-10-01 07:57:19,066] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_12-model_states.pt...
+[2026-10-01 07:57:19,068] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_13-model_states.pt...
+[2026-10-01 07:57:19,069] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_13-model_states.pt...
+[2026-10-01 07:57:19,069] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_13-model_states.pt...
+[2026-10-01 07:57:19,070] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_13-model_states.pt...
+[2026-10-01 07:57:19,071] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_14-model_states.pt...
+[2026-10-01 07:57:19,072] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_14-model_states.pt...
+[2026-10-01 07:57:19,072] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_14-model_states.pt...
+[2026-10-01 07:57:19,073] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_14-model_states.pt...
+[2026-10-01 07:57:19,075] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_15-model_states.pt...
+[2026-10-01 07:57:19,076] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_15-model_states.pt...
+[2026-10-01 07:57:19,076] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_15-model_states.pt...
+[2026-10-01 07:57:19,077] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_15-model_states.pt...
+[2026-10-01 07:57:19,078] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_16-model_states.pt...
+[2026-10-01 07:57:19,079] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_16-model_states.pt...
+[2026-10-01 07:57:19,079] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_16-model_states.pt...
+[2026-10-01 07:57:19,080] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_16-model_states.pt...
+[2026-10-01 07:57:19,082] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_17-model_states.pt...
+[2026-10-01 07:57:19,083] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_17-model_states.pt...
+[2026-10-01 07:57:19,083] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_17-model_states.pt...
+[2026-10-01 07:57:19,084] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_17-model_states.pt...
+[2026-10-01 07:57:19,085] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_18-model_states.pt...
+[2026-10-01 07:57:19,086] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_18-model_states.pt...
+[2026-10-01 07:57:19,086] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_18-model_states.pt...
+[2026-10-01 07:57:19,087] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_18-model_states.pt...
+[2026-10-01 07:57:19,089] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_19-model_states.pt...
+[2026-10-01 07:57:19,089] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_19-model_states.pt...
+[2026-10-01 07:57:19,090] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_19-model_states.pt...
+[2026-10-01 07:57:19,090] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_19-model_states.pt...
+[2026-10-01 07:57:19,092] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_20-model_states.pt...
+[2026-10-01 07:57:19,093] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_20-model_states.pt...
+[2026-10-01 07:57:19,093] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_20-model_states.pt...
+[2026-10-01 07:57:19,094] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_20-model_states.pt...
+[2026-10-01 07:57:19,095] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_21-model_states.pt...
+[2026-10-01 07:57:19,096] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_21-model_states.pt...
+[2026-10-01 07:57:19,096] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_21-model_states.pt...
+[2026-10-01 07:57:19,097] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_21-model_states.pt...
+[2026-10-01 07:57:19,099] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_22-model_states.pt...
+[2026-10-01 07:57:19,100] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_22-model_states.pt...
+[2026-10-01 07:57:19,100] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_22-model_states.pt...
+[2026-10-01 07:57:19,100] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_22-model_states.pt...
+[2026-10-01 07:57:19,102] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_23-model_states.pt...
+[2026-10-01 07:57:19,103] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_23-model_states.pt...
+[2026-10-01 07:57:19,103] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_23-model_states.pt...
+[2026-10-01 07:57:19,104] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_23-model_states.pt...
+[2026-10-01 07:57:19,105] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_24-model_states.pt...
+[2026-10-01 07:57:19,106] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_24-model_states.pt...
+[2026-10-01 07:57:19,106] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_24-model_states.pt...
+[2026-10-01 07:57:19,107] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_24-model_states.pt...
+[2026-10-01 07:57:19,109] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_25-model_states.pt...
+[2026-10-01 07:57:19,110] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_25-model_states.pt...
+[2026-10-01 07:57:19,110] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_25-model_states.pt...
+[2026-10-01 07:57:19,111] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_25-model_states.pt...
+[2026-10-01 07:57:19,112] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_26-model_states.pt...
+[2026-10-01 07:57:19,113] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_26-model_states.pt...
+[2026-10-01 07:57:19,113] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_26-model_states.pt...
+[2026-10-01 07:57:19,114] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_26-model_states.pt...
+[2026-10-01 07:57:19,116] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_27-model_states.pt...
+[2026-10-01 07:57:19,117] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_27-model_states.pt...
+[2026-10-01 07:57:19,117] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_27-model_states.pt...
+[2026-10-01 07:57:19,118] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_27-model_states.pt...
+[2026-10-01 07:57:19,119] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_28-model_states.pt...
+[2026-10-01 07:57:19,120] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_28-model_states.pt...
+[2026-10-01 07:57:19,120] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_28-model_states.pt...
+[2026-10-01 07:57:19,121] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_28-model_states.pt...
+[2026-10-01 07:57:19,123] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_29-model_states.pt...
+[2026-10-01 07:57:19,123] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_29-model_states.pt...
+[2026-10-01 07:57:19,123] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Begin Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_29-model_states.pt...
+[2026-10-01 07:57:19,123] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] End Load checkpoint from /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step10/layer_29-model_states.pt...
+Resuming training from checkpoint. Resuming at epoch: 1, step: 11
+[2026-10-01 07:57:23,186] [INFO] [logging.py:123:log_dist] [Rank 0] step=11, skipped=0, lr=[0.0001], mom=[[0.9, 0.99]]
+steps: 11 loss: 0.0718 iter time (s): 3.354 samples/sec: 0.596
+[2026-10-01 07:57:25,968] [INFO] [logging.py:123:log_dist] [Rank 0] step=12, skipped=0, lr=[0.0001], mom=[[0.9, 0.99]]
+steps: 12 loss: 0.1235 iter time (s): 2.765 samples/sec: 0.723
+[2026-10-01 07:57:25,969] [INFO] [logging.py:123:log_dist] [Rank 0] [Torch] Checkpoint global_step12 is about to be saved!
+[2026-10-01 07:57:26,124] [INFO] [logging.py:123:log_dist] [Rank 0] Saving model checkpoint: /workspace/k2ab/checkpoints/A_native_corrected_mask_only_probe/20261001_07-53-40/global_step12/mp_rank_00_model_states.pt
+Saving model to directory step12
+[krea2_native] adapter audit OK: 512 keys
+TRAINING COMPLETE!
+[2026-10-01 07:57:29,408] [INFO] [launch.py:367:main] Process 622067 exits successfully.

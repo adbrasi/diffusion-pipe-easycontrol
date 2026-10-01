@@ -1,0 +1,10 @@
+{
+  "verified": true,
+  "step": 12,
+  "repo_id": "AdwolfCzar/krea2-a-native-lr0001",
+  "private": false,
+  "destinations": [
+    "checkpoints/A_native_corrected_mask_turbo_probe/20261001_07-56-22/step12",
+    "checkpoints/A_native_corrected_mask_turbo_probe/20261001_07-56-22/global_step12"
+  ]
+}

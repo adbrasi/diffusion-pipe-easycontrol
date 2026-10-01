@@ -1,0 +1,23 @@
+{
+  "argv": [
+    "/venv/main/bin/python",
+    "tools/k2ab_eval_stock.py",
+    "--adapter",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/diagnostic_zero/step0/adapter_model.safetensors",
+    "--out",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/zero_control",
+    "--manifest",
+    "/workspace/k2ab/artifacts/noise_audit_20261001/sampling_manifest.json",
+    "--base-model",
+    "krea2_raw_fp8_scaled.safetensors",
+    "--reference-pixels",
+    "target",
+    "--limit",
+    "1",
+    "--variant",
+    "Turbo",
+    "--compare-adapter"
+  ],
+  "cwd": "/workspace/diffusion-pipe-easycontrol",
+  "log": "/workspace/k2ab/artifacts/noise_audit_20261001/zero_control.log"
+}

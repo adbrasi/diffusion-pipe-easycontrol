@@ -1,0 +1,39 @@
+{
+  "checkpoint": "/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors",
+  "results": [
+    {
+      "module": "blocks.0.attn.wq",
+      "config": {
+        "format": "float8_e4m3fn"
+      },
+      "stock_full_precision_mm": false,
+      "storage": "torch.float8_e4m3fn",
+      "stock_train_vs_infer_relative_l2": 0.0,
+      "native_vs_stock_output_relative_l2": 0.027354512363672256,
+      "native_vs_stock_input_gradient_relative_l2": 0.027702264487743378
+    },
+    {
+      "module": "blocks.0.attn.gate",
+      "config": {
+        "format": "float8_e4m3fn",
+        "full_precision_matrix_mult": true
+      },
+      "stock_full_precision_mm": true,
+      "storage": "torch.float8_e4m3fn",
+      "stock_train_vs_infer_relative_l2": 0.0,
+      "native_vs_stock_output_relative_l2": 0.0,
+      "native_vs_stock_input_gradient_relative_l2": 0.0
+    },
+    {
+      "module": "txtfusion.refiner_blocks.0.attn.wq",
+      "config": {
+        "format": "float8_e4m3fn"
+      },
+      "stock_full_precision_mm": false,
+      "storage": "torch.float8_e4m3fn",
+      "stock_train_vs_infer_relative_l2": 0.0,
+      "native_vs_stock_output_relative_l2": 0.026651719585061073,
+      "native_vs_stock_input_gradient_relative_l2": 0.026624508202075958
+    }
+  ]
+}
