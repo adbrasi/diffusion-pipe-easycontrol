@@ -1,0 +1,7 @@
+{
+  "native_training_commit": "c17d4a9307d0802efce0aef590f150a5c1a1bcf3",
+  "native_comfy_commit": "fb2315f11db0ebfaafa9099a5df5227dc6bb42bc",
+  "controller_service": "krea2_fullbudget",
+  "current_phase": "caching",
+  "cache_guard_min_free_bytes": 8589934592
+}
