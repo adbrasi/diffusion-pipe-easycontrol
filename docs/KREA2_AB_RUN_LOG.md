@@ -469,3 +469,6 @@ Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 1500amos
 ## 2026-10-01T04:44:32.338264+00:00 — reinício solicitado com LR 0,0001
 
 O usuário interrompeu a campanha LR 0,0004. Encerramento seguro via save_quit no passo 843; checkpoint final completo verificado no HF privado. Nova execução do zero, LR 0,0001 (valor original), mesmo cache de 6.138 pares, output/fila separados e smoke novo antes de 5.000 passos. Os primeiros 250 passos da campanha anterior terminaram corretamente; o controlador tinha parado ao interpretar `loss: loss_fn` do dump do modelo, corrigido para ler somente as linhas de métricas `steps:`. A geração e os backups de 250, 500 e 750 foram concluídos depois da correção.
+
+
+Smoke LR 0,0001 aprovado: 10 passos + retomada até 12, 512 chaves exportadas e uma imagem stock gerada sem chave LoRA rejeitada. Mediana 0,724 amostras/s, 2,7615 s/passo; pico amostrado 24,80 GiB. Backups privados de step10 e step12 verificados antes da limpeza dos checkpoints temporários. Produção LR 0,0001 começou no passo 1, com LoRA e otimizador novos, sem argumento de resume; warmup de 50 passos. Novo serviço supervisionado `krea2_lr1e4`, execução antiga parada.

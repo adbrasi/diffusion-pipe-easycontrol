@@ -1,0 +1,11 @@
+{
+  "utc": "2026-10-01T04:49:21.346112+00:00",
+  "removed": "/workspace/k2ab/checkpoints/A_native_lr1e4_smoke",
+  "reason": "smoke completed; step10 and step12 adapter and optimizer states verified in private HF",
+  "kept": [
+    "full cache: 6138 pairs",
+    "previous stopped global_step843 and adapter step750",
+    "original A1000 baseline",
+    "smoke configs, reports and inference image"
+  ]
+}

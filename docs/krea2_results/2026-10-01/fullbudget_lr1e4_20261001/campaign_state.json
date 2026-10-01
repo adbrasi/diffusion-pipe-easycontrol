@@ -1,0 +1,23 @@
+{
+  "milestones": [],
+  "status": "training",
+  "target_steps": 5000,
+  "lr": 0.0001,
+  "initialized_from": "random LoRA",
+  "current_job": "fullbudget_lr1e4_train000250",
+  "job_status": {
+    "status": "running",
+    "start": 1790830080.623149,
+    "argv": [
+      "/venv/main/bin/deepspeed",
+      "--num_gpus=1",
+      "--master_port=29601",
+      "train.py",
+      "--deepspeed",
+      "--config",
+      "/workspace/k2ab/artifacts/fullbudget_lr1e4_20261001/configs/A_native_through250.toml"
+    ],
+    "pid": 560226
+  },
+  "cache_pairs": 6138
+}
