@@ -1,0 +1,17 @@
+{
+  "status": "draft_not_queued",
+  "cwd": "/workspace/k2ab/native_worktree",
+  "argv": [
+    "/venv/main/bin/deepspeed",
+    "--num_gpus=1",
+    "--master_port=29601",
+    "train.py",
+    "--deepspeed",
+    "--config",
+    "/workspace/k2ab/artifacts/fullbudget_20261001/configs/A_native_through250.toml"
+  ],
+  "log": "/workspace/k2ab/artifacts/fullbudget_20261001/train.log",
+  "train_output": "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000",
+  "resume": false,
+  "phase": "first segment starts from scratch; later segments resume this new run only"
+}

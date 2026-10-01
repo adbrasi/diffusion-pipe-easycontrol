@@ -1,0 +1,127 @@
+{
+  "status": "completed",
+  "preserve_run": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00",
+  "protected_caption_and_adapter_hashes": {
+    "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step1000/adapter_model.safetensors": "8db5282abb0c1c0f4c52a3bc04382cba12d48f5c5992e55b52b7bfe5c5cbf4ba",
+    "/workspace/ds/ds1_recortados/captions.jsonl": "d6727c5dd5e0e646537ef0272391ac2b80538fba41034c8a968dc208941cdc39",
+    "/workspace/ds/ds2_poxima_v2/captions.jsonl": "33591c0691801e1d62ad604135b78730f9d867251e0591e1aa4dd5f8ac4dc442",
+    "/workspace/ds/ds3_comikontext/captions.jsonl": "2e75c89739d3de6a61724984efd550b23bdb767b79588384cf9b4f993bcf541b",
+    "/workspace/ds/ds4_contexto_curado/captions.jsonl": "ab64c6ef457b28b7702701a71725b693cd8e9a58704a06101703c499c0b9d8ba"
+  },
+  "delete": [
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_smoke",
+      "allocated_bytes": 2752098304,
+      "GiB": 2.563
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/B_beta1_fixed_smoke",
+      "allocated_bytes": 2918453248,
+      "GiB": 2.718
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_probe",
+      "allocated_bytes": 1836486656,
+      "GiB": 1.71
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_smoke",
+      "allocated_bytes": 2752073728,
+      "GiB": 2.563
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_smoke",
+      "allocated_bytes": 2918453248,
+      "GiB": 2.718
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_probe",
+      "allocated_bytes": 1836486656,
+      "GiB": 1.71
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_smoke",
+      "allocated_bytes": 5510754304,
+      "GiB": 5.132
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_smoke",
+      "allocated_bytes": 5843931136,
+      "GiB": 5.443
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/B_beta1_fixed_fp8_512_micro2_probe",
+      "allocated_bytes": 6806503424,
+      "GiB": 6.339
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step125",
+      "allocated_bytes": 457121792,
+      "GiB": 0.426
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step250",
+      "allocated_bytes": 457121792,
+      "GiB": 0.426
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step375",
+      "allocated_bytes": 457121792,
+      "GiB": 0.426
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step500",
+      "allocated_bytes": 457121792,
+      "GiB": 0.426
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step625",
+      "allocated_bytes": 457121792,
+      "GiB": 0.426
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step750",
+      "allocated_bytes": 457121792,
+      "GiB": 0.426
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/global_step750",
+      "allocated_bytes": 1380687872,
+      "GiB": 1.286
+    },
+    {
+      "path": "/workspace/k2ab/checkpoints/A_native_fp8_512_micro2_probe/20260930_20-41-00/step875",
+      "allocated_bytes": 457121792,
+      "GiB": 0.426
+    },
+    {
+      "path": "/workspace/k2ab/data/target/cache",
+      "allocated_bytes": 47698436096,
+      "GiB": 44.423
+    },
+    {
+      "path": "/workspace/k2ab/smoke/target/cache",
+      "allocated_bytes": 791076864,
+      "GiB": 0.737
+    },
+    {
+      "path": "/workspace/k2ab/smoke_micro2_stress/target/cache",
+      "allocated_bytes": 407109632,
+      "GiB": 0.379
+    },
+    {
+      "path": "/workspace/models/krea2/diffusion_models/krea2_raw_bf16.safetensors",
+      "allocated_bytes": 26283335680,
+      "GiB": 24.478
+    }
+  ],
+  "free_before": 10249158656,
+  "finished_utc": "2026-10-01T03:03:06.150085+00:00",
+  "removed_broken_symlinks": [
+    "/workspace/comfy/ComfyUI/models/loras/A_native_fp8_512_micro2_probe_step250.safetensors",
+    "/workspace/comfy/ComfyUI/models/loras/A_native_fp8_512_micro2_probe_step500.safetensors",
+    "/workspace/comfy/ComfyUI/models/loras/A_native_fp8_512_micro2_probe_step750.safetensors"
+  ],
+  "free_after": 123208572928,
+  "freed_GiB": 105.202
+}

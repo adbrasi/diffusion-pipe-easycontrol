@@ -1,4 +1,8 @@
-"""Build the identical, seeded SFW pair subset for the two GPU probes."""
+"""Legacy A/B probe only: seeded SFW 1500-pair subset.
+
+The current A-native full-disk campaign uses krea2_prepare_budget_data.py instead.
+This historical tool remains for reproducing the original probes.
+"""
 import collections
 import functools
 import json

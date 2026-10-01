@@ -423,3 +423,22 @@ Confirmado no tools/k2ab_prepare_data.py: seleção anterior usou /workspace/ns_
 Usuário autorizou apagar cache antigo e checkpoints, mantendo apenas último A native. Preservar step1000, global_step1000, latest e metadados do run micro2 20260930_20-41-00; evidências, imagens de avaliação, dados originais e modelos necessários permanecem. Adapter A1000/B1000 e grid10 verificados existentes no HF privado AdwolfCzar/krea2-ab-runs. Estado global de retomada permanece local e será protegido. Novo treino de 5000 passos requer apresentação da configuração ao usuário antes de execução; não iniciado.
 
 Achados anteriores preservados: A1000 ainda copia 3/10 em Turbo e Raw pode mudar identidade/estilo; aumento de passos por si só não demonstra correção dessas falhas. Novo smoke10 com audit/resume e amostras/s exigido antes do treino maior. Micro4 anterior falhou por memória; baseline medido micro2, accumulation1, FP8scaled com BF16, swap0, LR1e-4, rank64,512 com7buckets.
+
+
+## 2026-10-01 — Limpeza concluída; A native novo, não continuação
+
+Usuário corrigiu explicitamente: treino DO ZERO. Preservado A1000 anterior como baseline, não como inicialização. Foram removidos 105,202GiB (manifest versionado), ficando114,747GiB livres imediatamente após limpeza. Hash do adapterA1000 e captions originais JSONL verificados intactos. Último estado globalA1000+latest enviado e confirmado no HF privado. Links250/500/750 removidos do Comfy usuário;1000 permanece válido.
+
+Planejador novo tools/krea2_prepare_budget_data.py usa os4datasets originais e captions.txt publicados (fallback JSONL), sem filtro semântico/SFW/classificador, sem cotas porsubset e sem corte1500. Seleção provisória4201de11526pares completos pelo disco;24heldout preservados,51sem referência. Hardlinks/captionsmaterializados,64pares de smoke preparados, configsnovo5000/smoke10/resume12/segmentos250 produzidas fora da fila. Todos4201captions/hardlinks checados contraorigem. Dois testesCPU do planejador passaram, incluindo regressão>1500, determinismo, colisões, heldout, captionspublicados e recusa de reutilizar árvore. Loaderatual arredonda3tails de buckets:4198pares/época efetiva,documentado. SmokeGPU/paridade do novo cache ainda pendentes de conferência do usuário; nenhuma geração/treino novo iniciado.
+
+Plano/configs em docs/krea2_results/2026-10-01/PLANO_A_NATIVE_5000.md. Cacheestimado97GiB,overhead10%,reserva8GiB; número deve ser recalculado pelo cache real do smoke,não por redução de texto/tokens. Novo LoRA aleatório,baseFP8scaledcongelada,rank64,512/7buckets,micro2×accum1,LR1e-4,warmup50,swap0,activationcheckpointing. Retomar no futuro só segmentos do runnovo,sampling4Turbo512a cada250. Tempo puro~3h52 extrapolado do runantigo,não medido neste dataset.
+
+
+## 2026-10-01 — LR solicitado0,0005
+
+Pedido explícito: aumentar LR para0,0005. Conferência: A1000/receitaoriginal usou0,0001, não0,0004. Todas configs novas de treino5000, segmentos e smoke/resume do própriosmoke agora têm optimizer.lr=0,0005; nenhumpeso/estado do A1000 será carregado no início. LR5×receita anterior será validado no smoke antes do runmaior. Nenhuma execução iniciada.
+
+
+## 2026-10-01 — Correção final LR0,0004
+
+Usuário confirmou que, sendo o LR anterior0,0001, deseja0,0004. Isso substitui o pedido imediatamente anterior de0,0005. Todas configs novas e smoke agora em0,0004(4×o LR do A1000), com warmup50 no treino principal. Nada executado naGPU; aguarda conferência do plano.
