@@ -1,0 +1,12 @@
+{
+  "max_steps": 33000,
+  "epochs": 5,
+  "steps_per_epoch": 6636,
+  "micro_batch": 4,
+  "precision": "BF16",
+  "lr": 0.0001,
+  "sample_interval": 500,
+  "checkpoint_intervals": 66,
+  "reload": "cache continues; save and resume fresh main adapter under new controller",
+  "initialization": "fresh Anima Base v1.0, never E2 adapter"
+}

@@ -762,3 +762,21 @@ Operação isolada supervisor anima1024_worker; status e logs em
 /workspace/nextscene_artifacts/anima1024_20261001/.
 
 09:23:46 UTC — Campanha principal lançada por anima1024_worker, commit fonte cfb0792. Primeiro estágio sem resume, cache 1024 novo ativo na GPU (~6,4pares/s na primeira família de bucket). Configuração prevê 6.636passos para a época completa, com retomadas/avaliações a cada500; Krea permanece parado.
+
+
+## 2026-10-01 09:34 UTC — Usuário ampliou Anima para 33.000 passos
+
+Limite da primeira época substituído explicitamente por33.000steps (~4,97épocas),
+config epochs=5/max_steps=33000. Método/BF16/LR1e-4/batch4/dataset completo
+mantidos. Previsão do smoke50,61h de cálculo +cache/avaliações/uploads.
+Controller agora termina pelo contador global e não pelo exportepoch1 existente;
+regressão testada para epoch1/6636 → estágio7000.
+
+Cache principal ainda ativo. Troca do processo controlador agendada sem descartar
+cache nem novo adapter: stop_campaign de handover faz save_quit após primeiro
+próximo passo; worker005recarrega o controlador e retoma seu próprio estado.
+Guard contra parada posterior impede que o reload desfaça uma nova ordem do usuário.
+Sinais de save_quit remanescentes do handover são removidos antes da retomada.
+43testes cobrem contrato, buckets, backups, passagem da época e precedência de stop.
+Metadata real do loader confirmou11.526pares nos sete buckets.
+Config/report/modelcard públicos atualizados para33.000steps.

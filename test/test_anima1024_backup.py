@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from tools.anima1024_campaign import file_hash, verified_upload
+from tools.anima1024_campaign import file_hash, stage_is_saved, verified_upload
 
 
 class FakeHub:
@@ -37,3 +37,14 @@ def test_corrupt_remote_state_rejects_backup(tmp_path):
     with pytest.raises(RuntimeError, match='checksum mismatch'):
         verified_upload(FakeHub(tmp_path, corrupt=True), 'public/repo', tmp_path, 'states/step10')
     assert (tmp_path / 'state.pt').exists()
+
+
+def test_old_epoch_does_not_finish_later_stage(tmp_path):
+    (tmp_path / 'latest').write_text('global_step6636')
+    (tmp_path / 'epoch1').mkdir()
+    (tmp_path / 'epoch1/adapter_model.safetensors').write_bytes(b'epoch one')
+    assert not stage_is_saved(tmp_path, 7000)
+    (tmp_path / 'latest').write_text('global_step7000')
+    (tmp_path / 'step7000').mkdir()
+    (tmp_path / 'step7000/adapter_model.safetensors').write_bytes(b'next stage')
+    assert stage_is_saved(tmp_path, 7000)

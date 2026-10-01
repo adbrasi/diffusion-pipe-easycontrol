@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""One complete fresh Anima epoch, with serial sampling and verified backups.
+"""Fresh Anima training to a step limit, with serial sampling and verified backups.
 
 Every 500 steps the trainer finishes a stage with its full optimizer/dataloader
 state, sampling runs on the freed GPU, then training resumes from that state.
@@ -34,6 +34,16 @@ def file_hash(path, algorithm='sha256'):
         for block in iter(lambda: f.read(8 * 1024 * 1024), b''):
             h.update(block)
     return h.hexdigest()
+
+
+def stage_is_saved(run_dir, target):
+    """An older epoch export cannot complete a later training stage."""
+    latest = run_dir / 'latest'
+    if not latest.exists():
+        return False
+    step = int(latest.read_text().strip().removeprefix('global_step'))
+    return (step >= target and
+            (run_dir / f'step{target}/adapter_model.safetensors').exists())
 
 
 def verified_upload(api, repo, folder, prefix):
@@ -98,8 +108,9 @@ def main():
         raise RuntimeError('First stage must start from a fresh LoRA')
     if cfg['nextscene']['rope_layout'] != 'aligned' or cfg['gradient_accumulation_steps'] != 1:
         raise RuntimeError('Expected aligned geometry and real batch without accumulation')
-    if cfg['epochs'] != 1 or args.interval < 1:
-        raise RuntimeError('Expected one complete initial epoch and a positive sample interval')
+    total_steps = cfg.get('max_steps')
+    if not isinstance(total_steps, int) or total_steps < 1 or cfg['epochs'] < 1 or args.interval < 1:
+        raise RuntimeError('Expected a positive training step limit, epochs and sample interval')
     art = args.artifacts
     art.mkdir(parents=True, exist_ok=True)
     stop_file = art / 'stop_campaign'
@@ -111,7 +122,8 @@ def main():
     api = HfApi()
     if api.repo_info(args.repo).private:
         raise RuntimeError('Public backups were requested; supplied repository is private')
-    state = json.loads(status_path.read_text()) if status_path.exists() else dict(status='new', target_step=args.interval, verified_states=[])
+    state = json.loads(status_path.read_text()) if status_path.exists() else dict(status='new', target_step=min(args.interval, total_steps), verified_states=[])
+    state['total_steps'] = total_steps
     if state['status'] in ('complete', 'stopped') or stop_file.exists():
         return
     if state['status'] == 'new' and output.exists() and any(output.iterdir()):
@@ -122,7 +134,7 @@ def main():
     while True:
         if shutil.disk_usage(art).free < 6 * 1024**3:
             raise RuntimeError('Less than 6 GiB free; no dataset truncation or unverified deletion is allowed')
-        target = state['target_step']
+        target = min(state['target_step'], total_steps)
         stage = dict(cfg, max_steps=target)
         config = configs / f'until_{target:06}.toml'
         config.write_text(toml.dumps(stage))
@@ -134,20 +146,17 @@ def main():
                 'train.py', '--deepspeed', '--config', str(config)]
         if resume:
             argv.extend(['--resume_from_checkpoint', resume, '--trust_cache'])
-        stage_saved = False
-        if checkpoints:
-            existing_run = checkpoints[-1].parent
-            existing_tag = (existing_run / 'latest').read_text().strip()
-            stage_saved = ((existing_run / 'epoch1/adapter_model.safetensors').exists()
-                           or (int(existing_tag.removeprefix('global_step')) >= target
-                               and (existing_run / f'step{target}/adapter_model.safetensors').exists()))
+        stage_saved = bool(checkpoints and stage_is_saved(checkpoints[-1].parent, target))
         print(f'Train through step {target}, resume={resume}, stage_saved={stage_saved}', flush=True)
         continuing = (not stop_file.exists() if stage_saved else
                       run(argv, art / f'train_until_{target:06}.log', env, stop_file, output))
         run_dir = sorted(output.glob('*/latest'))[-1].parent
         latest = (run_dir / 'latest').read_text().strip()
-        completed_epoch = (run_dir / 'epoch1/adapter_model.safetensors').exists()
-        adapter_dir = run_dir / ('epoch1' if completed_epoch else f'step{target}')
+        actual_step = int(latest.removeprefix('global_step'))
+        reached_limit = actual_step >= total_steps
+        adapter_dir = run_dir / f'step{target}'
+        if continuing and actual_step < target:
+            raise RuntimeError(f'Trainer ended at {actual_step}, before requested stage {target}; refusing to report completion')
         state.update(status='backup', run_dir=str(run_dir), latest=latest)
         atomic_json(status_path, state)
         # Never upload or remove a still-changing trainer state.
@@ -155,8 +164,7 @@ def main():
         verified.mkdir(exist_ok=True)
         to_backup = [p for p in sorted(run_dir.glob('global_step*')) if p.is_dir()]
         to_backup += [p for p in sorted(run_dir.glob('step*')) if p.is_dir()]
-        if completed_epoch:
-            to_backup.append(run_dir / 'epoch1')
+        to_backup += [p for p in sorted(run_dir.glob('epoch*')) if p.is_dir()]
         for folder in to_backup:
             receipt = verified / f'{folder.name}.json'
             if receipt.exists():
@@ -190,7 +198,7 @@ def main():
             shutil.copytree(art / 'eval', evidence / 'eval', dirs_exist_ok=True)
         api.upload_folder(repo_id=args.repo, folder_path=str(evidence), path_in_repo='evidence')
         api.upload_folder(repo_id=args.repo, folder_path=str(verified), path_in_repo='verification')
-        if completed_epoch or not continuing:
+        if reached_limit or not continuing:
             state['status'] = 'complete' if continuing else 'stopped'
             atomic_json(status_path, state)
             api.upload_file(repo_id=args.repo, path_or_fileobj=str(status_path), path_in_repo='campaign_state.json')

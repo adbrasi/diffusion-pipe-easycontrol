@@ -27,7 +27,10 @@ ação textual extraível, acrescentam-se duas apresentações da legenda curta.
 São 26.532 apresentações, com num_repeats=1 para todas as fontes; o peso
 extra 2x do ds4 no E2 anterior foi removido. A opção `pad_last_batch=true`
 evita descartar as caudas dos buckets: 12 apresentações repetidas completam
-os últimos batches. Previsão: **6.636 passos para uma época completa**.
+os últimos batches. Previsão: **6.636 passos por época**, com limite de
+**33.000 passos** solicitado posteriormente pelo usuário (aproximadamente 4,97 épocas).
+O próprio loader confirmou os 11.526 pares no metadata; ver
+[metadata_coverage_report.json](metadata_coverage_report.json).
 
 ## Receita preparada
 
@@ -41,7 +44,7 @@ os últimos batches. Previsão: **6.636 passos para uma época completa**.
 - Ref dropout 0,1; high_noise_prob 0,2; diff_weight=false, sem flip/ruído extra na referência.
 - Área aproximada de 1024², sete buckets AR 0,5–2,0, batch real 4,
   accumulation=1, activation checkpointing ligado, sem block swap.
-- Uma época inicial completa; adapter a cada 500 passos, estados de retomada
+- Até 33.000 passos, epochs=5; adapter a cada 500 passos, estados de retomada
   a cada dez minutos e no término de cada estágio.
 
 Configuração principal:
@@ -51,8 +54,11 @@ Dataset:
 
 **Campanha iniciada em 2026-10-01 09:23:46 UTC**, sem resume na primeira
 etapa. O cache novo de todos os pares está sendo construído; ainda não há
-passos do run principal neste registro. O serviço continuará automaticamente
-do cache ao treino e à avaliação do passo 500. Krea continua parado.
+passos do run principal neste registro. Após a solicitação de 33.000 passos,
+foi programada uma troca do controlador com salvamento e retomada do próprio
+adapter novo: o cache continua, o processo antigo salva o primeiro próximo
+passo e a fila isolada retoma sob o limite novo. O helper não descarta uma
+solicitação de parada posterior. Krea continua parado.
 
 ## Resultado do smoke
 
@@ -72,18 +78,22 @@ referência correta coincidiram **pixel por pixel** com os arquivos do E2 de ont
 Isso verifica recuperação dos pesos e caminho de avaliação nesses dois casos;
 não demonstra a qualidade do novo treino em 1024.
 
-Uma época de 6.636 passos é estimada em **10,18 horas de cálculo** nesse smoke,
+33.000 passos são estimados em **50,61 horas de cálculo** nesse smoke,
 mais cache, sampling e uploads. A estimativa será atualizada com o run real.
 
 ## Operação e preservação
 
-O controlador `tools/anima1024_campaign.py` faz estágios de 500 passos com
+O controlador `tools/anima1024_campaign.py` faz estágios de 500 passos até 33.000 com
 resume do optimizer/dataloader. Libera a GPU para avaliação de oito pares
 held-out (duas referências por fonte; correta/trocada/nula, seed 76, 30 passos,
 CFG 4, shift 3, ref_cfg 1, buckets em 1024). Depois continua automaticamente.
 Estados antigos deste novo run só são podados após upload e checksums remotos
 verificados; todos os adapters e o estado mais recente permanecem locais.
 Se upload ou geração falhar, a campanha não pula a falha silenciosamente.
+O término depende do contador global de passos, não da existência de um
+export `epoch1`, para continuar automaticamente por várias épocas.
+Os testes adicionais cobrem essa condição e a precedência de uma parada
+posterior sobre a troca autorizada do controlador.
 
 Backup **público**, conforme autorização explícita do usuário:
 https://huggingface.co/AdwolfCzar/anima-nextscene-a-aligned-1024

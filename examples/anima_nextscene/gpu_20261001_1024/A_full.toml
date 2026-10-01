@@ -1,6 +1,7 @@
 output_dir = "/workspace/checkpoints/anima_nextscene/A_aligned_1024_scratch_20261001"
 dataset = "/workspace/diffusion-pipe-easycontrol/examples/anima_nextscene/gpu_20261001_1024/dataset_full.toml"
-epochs = 1
+epochs = 5
+max_steps = 33000
 micro_batch_size_per_gpu = 4
 gradient_accumulation_steps = 1
 pipeline_stages = 1

@@ -1,0 +1,13 @@
+{
+  "loaded_pairs": 11526,
+  "expected_pairs": 11526,
+  "buckets": {
+    "grouped_metadata_1.260_1": 474,
+    "grouped_metadata_2.000_1": 822,
+    "grouped_metadata_1.587_1": 7642,
+    "grouped_metadata_0.630_1": 1584,
+    "grouped_metadata_0.794_1": 715,
+    "grouped_metadata_1.000_1": 219,
+    "grouped_metadata_0.500_1": 70
+  }
+}
