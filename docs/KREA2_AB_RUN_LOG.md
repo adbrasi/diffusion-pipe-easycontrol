@@ -449,3 +449,8 @@ Usuário confirmou que, sendo o LR anterior0,0001, deseja0,0004. Isso substitui 
 Novo smoke10do zero:0,722amostra/s,2,7705s/step,VRAM24322MiB,lossfinita0,0665–0,1857;LR0,0004 apóswarmup. Resume11/12passou,LRinalterado. 512chavesauditadas,stockComfy1imagem688×384Turbo8CFG1semchavenãocarregada/semcorrupção; ainda copia referência,não alegar aprendizado em10steps. Cache64medido16,893MB/par,12camadasBF16 intactas,legendasverificadasoriginais.
 
 Seleção recalibrada6138pares (ds1:1523,ds2:2444,ds3:1517,ds4:654),seed42global,semcotas/filtros. Reserva8GiB+10%margem;Cache.add agora tem guard opt-in viaKREA2_CACHE_MIN_FREE_BYTES,sem mudar tensores. Teste confirma parada por disco preserva shard/linhascommitadas. Smokeexports/evidências confirmados noHFprivado antes de removerstates/cachetemporários. ControllerA-only novo fará cachecompleto,countaudit,5000passos novos,4Turbo512por250,HFadapters+estadosverificados,retenção2estadosnovos,pushmilestones. Nunca carrega A1000/smoke no treino principal.
+
+
+## 2026-10-01T04:09:41.644470+00:00 — A native novo step250
+
+Do zero, dataset completo por orçamento de disco, LR0,0004 confirmado; 500amostras vistas, lossfinal0.1612. 4Turbo512+grid/métricas e adapter/estado completos enviados ao HF privado; backup verificado antes da poda. Não é retomada do A1000 antigo.

@@ -1,0 +1,41 @@
+{
+  "milestones": [
+    {
+      "step": 250,
+      "samples_seen": 500,
+      "adapter": "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51/step250/adapter_model.safetensors",
+      "utc": "2026-10-01T04:09:41.644470+00:00",
+      "last_loss": 0.1612
+    }
+  ],
+  "status": "training",
+  "target_steps": 5000,
+  "lr": 0.0004,
+  "initialized_from": "random LoRA",
+  "current_job": "fullbudget_backup000250",
+  "job_status": {
+    "status": "done",
+    "start": 1790827758.255472,
+    "end": 1790827778.4879096,
+    "seconds": 20.232438564300537,
+    "returncode": 0,
+    "argv": [
+      "/venv/main/bin/python",
+      "tools/krea2_upload_stage.py",
+      "--artifacts",
+      "/workspace/k2ab/artifacts/fullbudget_20261001",
+      "--run",
+      "/workspace/k2ab/checkpoints/A_native_fullbudget_fromscratch_5000/20261001_03-50-51",
+      "--step",
+      "250"
+    ]
+  },
+  "cache_pairs": 6138,
+  "recovery": {
+    "utc": "2026-10-01T04:08:32.582383+00:00",
+    "reason": "could not convert string to float: 'loss_fn'",
+    "fix": "parse anchored step metrics; reuse completed step250 job and checkpoint"
+  },
+  "step": 250,
+  "samples_seen": 500
+}
