@@ -121,7 +121,8 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
         reference_tokens = torch.cat(ref_token_list, dim=1)
         reference_pos = torch.cat(ref_pos_list, dim=1)
 
-        context = self.txtfusion(context, mask=None)
+        fusion_mask = text_attention_mask.to(device=context.device, dtype=torch.bool)[:, None, None, :]
+        context = self.txtfusion(context, mask=fusion_mask)
         context = self.txtmlp(context)
         text_length = context.shape[1]
         target_length = target_tokens.shape[1]
@@ -131,16 +132,18 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
         target_timestep_features = self.tmlp(
             timestep_embedding(timesteps, self.tdim).unsqueeze(1).to(combined.dtype)
         )
-        target_t = timesteps[:, None].expand(batch, text_length + target_length)
+        target_tvec = self.tproj(target_timestep_features)
         if self.reference_timestep_mode == 'target':
-            reference_t = timesteps[:, None].expand(batch, reference_length)
+            reference_tvec = target_tvec
         else:
-            reference_t = timesteps.new_zeros(batch, reference_length)
-        per_token_timestep = torch.cat([target_t, reference_t], dim=1)
-        embedded_timesteps = timestep_embedding(
-            per_token_timestep.reshape(-1), self.tdim
-        ).reshape(batch, combined.shape[1], self.tdim)
-        tvec = self.tproj(self.tmlp(embedded_timesteps.to(combined.dtype)))
+            reference_features = self.tmlp(
+                timestep_embedding(torch.zeros_like(timesteps), self.tdim).unsqueeze(1).to(combined.dtype)
+            )
+            reference_tvec = self.tproj(reference_features)
+        tvec = torch.cat([
+            target_tvec.expand(batch, text_length + target_length, -1),
+            reference_tvec.expand(batch, reference_length, -1),
+        ], dim=1)
 
         target_pos = self._grid_positions(batch, target_grid_h, target_grid_w, combined.device)
         text_pos = combined.new_zeros(batch, text_length, 3)

@@ -213,6 +213,10 @@ class Krea2NativePipeline(Krea2EditPipeline):
     def get_reference_metadata(self):
         meta = super().get_reference_metadata()
         meta.update({
+            'text_fusion_padding': 'masked_refiner_keys_v1',
+            'frozen_base_adapters': ';'.join(
+                str(path).rsplit('/', 1)[-1] for path in self.model_config.get('merge_adapters', [])
+            ),
             'control_family': 'krea2_native_comfy',
             'comfy_workflow': (
                 'TextEncodeQwenImageEditPlus(vae,image1) + FluxKontextMultiReferenceLatentMethod('
