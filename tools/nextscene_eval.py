@@ -163,12 +163,12 @@ class Runner:
         return Image.fromarray(x)
 
 
-def grid(rows, cell=256):
+def grid(rows, cell=256, titles=('A / reference', 'B / ground truth', 'correct reference', 'shuffled reference', 'null reference')):
     cols = max(len(r) for r in rows)
     header = 28
     g = Image.new('RGB', (cols * cell, len(rows) * cell + header), 'white')
     draw = ImageDraw.Draw(g)
-    for j, title in enumerate(['A / reference', 'B / ground truth', 'correct reference', 'shuffled reference', 'null reference']):
+    for j, title in enumerate(titles):
         draw.text((j * cell + 8, 8), title, fill='black')
     for i, r in enumerate(rows):
         for j, im in enumerate(r):
@@ -201,6 +201,10 @@ def main():
     ap.add_argument('--negative_prompt', default='worst quality, low quality, blurry, jpeg artifacts')
     ap.add_argument('--seed', type=int, default=76)
     ap.add_argument('--copy_dhash', type=int, default=6, help='out vs ref Hamming <= this = copy')
+    ap.add_argument('--alt-prompts', default=None,
+                    help='dir with <stem>.txt alternative prompts: adds a correct-reference column with that prompt')
+    ap.add_argument('--alt-name', default='alt prompt')
+    ap.add_argument('--no-null', action='store_true', help='skip the null-reference generation')
     args = ap.parse_args()
 
     device, dtype = torch.device('cuda'), torch.bfloat16
@@ -209,6 +213,9 @@ def main():
     run = Runner(args, device, dtype)
     feats = Feats(device)
     ctxs = [run.encode(cap) for _, _, _, cap in pairs]
+    alt_caps = ([(Path(args.alt_prompts) / f'{stem}.txt').read_text().strip() for stem, _, _, _ in pairs]
+                if args.alt_prompts else None)
+    alt_ctxs = [run.encode(cap) for cap in alt_caps] if alt_caps else None
     run.te.to('cpu')
     torch.cuda.empty_cache()
     dimensions = []
@@ -235,27 +242,35 @@ def main():
             j = (i + 1) % len(pairs)
             w, h = dimensions[i]
             shuffled_ref = refs[j] if dimensions[i] == dimensions[j] else run.ref_latent(pairs[j][1], w, h)
+            o_alt = run.generate(alt_ctxs[i], refs[i], args.seed, w, h) if alt_ctxs else None
             o_true = run.generate(ctxs[i], refs[i], args.seed, w, h)
             o_shuf = run.generate(ctxs[i], shuffled_ref, args.seed, w, h)
-            o_null = run.generate(ctxs[i], torch.zeros_like(refs[i]), args.seed, w, h)
-            for tag, im in [('true', o_true), ('shuffled', o_shuf), ('null', o_null)]:
-                im.save(d / f'{stem}_{tag}.png')
-            f = feats.dino([o_true, o_shuf, o_null])
+            o_null = None if args.no_null else run.generate(ctxs[i], torch.zeros_like(refs[i]), args.seed, w, h)
+            outs = [('alt', o_alt), ('true', o_true), ('shuffled', o_shuf), ('null', o_null)]
+            for tag, im in outs:
+                if im is not None:
+                    im.save(d / f'{stem}_{tag}.png')
+            f = feats.dino([o_true, o_shuf, o_null if o_null is not None else o_true])
             m = {
                 'stem': stem,
                 'width': w, 'height': h,
                 'gt_true': float(f[0] @ fB[i]),
                 'ref_gain': float(f[0] @ fB[i] - f[1] @ fB[i]),
-                'null_gain': float(f[0] @ fB[i] - f[2] @ fB[i]),
+                'null_gain': None if o_null is None else float(f[0] @ fB[i] - f[2] @ fB[i]),
                 'copy_gap': float(f[0] @ fA[i] - fB[i] @ fA[i]),
                 'copy': int(dhash_ham(o_true, A[i]) <= args.copy_dhash),
                 'ccip_true': feats.ccip_same(o_true, B[i]),
             }
             per.append(m)
-            rows.append([A[i], B[i], o_true, o_shuf, o_null])
-        grid(rows).save(d / 'grid.png')
+            rows.append([A[i], B[i]] + [im for _, im in outs if im is not None])
+        titles = ['A / reference', 'B / ground truth'] + ([f'correct ref + {args.alt_name}'] if alt_ctxs else []) + \
+            ['correct reference', 'shuffled reference'] + ([] if args.no_null else ['null reference'])
+        grid(rows, titles=titles).save(d / 'grid.png')
         (d / 'eval_config.json').write_text(json.dumps(vars(args), indent=2))
-        (d / 'prompts.json').write_text(json.dumps({stem: cap for stem, _, _, cap in pairs}, indent=2))
+        prompts = {stem: cap for stem, _, _, cap in pairs}
+        if alt_caps:
+            prompts = {stem: {'prompt': cap, args.alt_name: alt} for (stem, cap), alt in zip(prompts.items(), alt_caps)}
+        (d / 'prompts.json').write_text(json.dumps(prompts, indent=2, ensure_ascii=False))
 
         def mean(k):
             v = [p[k] for p in per if p[k] is not None]

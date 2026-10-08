@@ -26,8 +26,13 @@ from nextscene_captions import action_caption
 
 
 def group_key(row):
+    # Same pair under several caption subsets shares one key, so held-out is leak-free across them.
     stem = Path(row['filename']).stem
-    return row['subset'], stem.split('_image_')[0] if '_image_' in stem else stem
+    return stem.split('_image_')[0] if '_image_' in stem else stem
+
+
+def stratum(row, by_prefix):
+    return row['filename'].split('_')[0] if by_prefix else row['subset']
 
 
 def link(src, dst):
@@ -47,6 +52,10 @@ def main():
     parser.add_argument('--seed', type=int, default=76)
     parser.add_argument('--batch', type=int, default=4)
     parser.add_argument('--epochs', type=float, default=5)
+    parser.add_argument('--no-short', action='store_true', help='Use each caption verbatim (no extracted short tiers)')
+    parser.add_argument('--stratify-prefix', action='store_true',
+                        help='Balance held-out by filename source prefix (ds1_, ds2_, ...) instead of subset folder')
+    parser.add_argument('--eval-subset', default=None, help='Subset whose caption becomes the held-out eval prompt')
     args = parser.parse_args()
     for path in (args.destination, args.heldout):
         if path.exists():
@@ -62,11 +71,12 @@ def main():
     rng = random.Random(args.seed)
     heldout_by_subset = defaultdict(list)
     heldout_groups = set()
-    for subset in sorted({r['subset'] for r in pairs}):
-        keys = sorted(k for k in groups if k[0] == subset)
+    eval_rows = [r for r in pairs if args.eval_subset in (None, r['subset'])]
+    for name in sorted({stratum(r, args.stratify_prefix) for r in eval_rows}):
+        keys = sorted({group_key(r) for r in eval_rows if stratum(r, args.stratify_prefix) == name})
         for key in rng.sample(keys, min(args.per_subset, len(keys))):
             heldout_groups.add(key)
-            heldout_by_subset[subset].append(rng.choice(groups[key]))
+            heldout_by_subset[name].append(rng.choice([r for r in groups[key] if r in eval_rows]))
     train = [r for r in pairs if group_key(r) not in heldout_groups]
     leak_excluded = len(pairs) - len(train) - sum(map(len, heldout_by_subset.values()))
 
@@ -80,12 +90,12 @@ def main():
             if not queue:
                 continue
             row = queue.pop(0)
-            stem = f'{index:02d}_{row["subset"].split("_")[0]}_{Path(row["filename"]).stem}'
+            stem = f'{index:02d}_{Path(row["filename"]).stem}'
             target = args.heldout / 'target' / (stem + Path(row['target']).suffix.lower())
             control = args.heldout / 'control' / (stem + Path(row['control']).suffix.lower())
             link(row['target'], target)
             link(row['control'], control)
-            prompt = action_caption(row['caption'], same_subject=True) or row['caption']
+            prompt = row['caption'] if args.no_short else (action_caption(row['caption'], same_subject=True) or row['caption'])
             target.with_suffix('.txt').write_text(prompt)
             heldout_rows.append(dict(row, eval_name=stem, eval_prompt=prompt))
             index += 1
@@ -98,7 +108,7 @@ def main():
         name = row['output_filename']
         for field in ('target', 'control'):
             link(row[field], args.destination / field / name)
-        short = action_caption(row['caption'], same_subject=True)
+        short = None if args.no_short else action_caption(row['caption'], same_subject=True)
         captions[name] = [row['caption']] + ([short, short] if short else [])
         short_counts[row['subset']] += bool(short)
         with Image.open(row['target']) as im:

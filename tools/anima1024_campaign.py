@@ -10,6 +10,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import time
@@ -101,6 +102,8 @@ def main():
     parser.add_argument('--repo', required=True)
     parser.add_argument('--interval', type=int, default=500)
     parser.add_argument('--heldout', default='/workspace/heldout_short')
+    parser.add_argument('--eval-limit', type=int, default=8)
+    parser.add_argument('--eval-extra', default='', help='extra nextscene_eval.py arguments (shell-quoted)')
     args = parser.parse_args()
     cfg = toml.load(args.config)
     if cfg['model']['dtype'] != 'bfloat16' or cfg['adapter']['dtype'] != 'bfloat16':
@@ -180,12 +183,13 @@ def main():
         if continuing:
             state['status'] = 'sampling'
             atomic_json(status_path, state)
-            print(f'Sample {adapter_dir.name}: 8 held-out pairs, true/shuffled/null at 1024', flush=True)
+            print(f'Sample {adapter_dir.name}: {args.eval_limit} held-out pairs at 1024', flush=True)
             evaluation = ['/venv/main/bin/python', 'tools/nextscene_eval.py',
                           '--dit', model['transformer_path'], '--vae', model['vae_path'], '--llm', model['llm_path'],
                           '--pairs', args.heldout, '--ckpt', str(adapter_dir),
-                          '--out', str(art / 'eval'), '--limit', '8', '--width', '1024', '--height', '1024',
+                          '--out', str(art / 'eval'), '--limit', str(args.eval_limit), '--width', '1024', '--height', '1024',
                           '--match-target-ar', '--steps', '30', '--cfg', '4', '--flow_shift', '3', '--ref_cfg', '1', '--seed', '76']
+            evaluation += shlex.split(args.eval_extra)
             if not run(evaluation, art / f'eval_{adapter_dir.name}.log', env, stop_file):
                 continuing = False
         # Evidence upload excludes the source captions and private chat transcript.

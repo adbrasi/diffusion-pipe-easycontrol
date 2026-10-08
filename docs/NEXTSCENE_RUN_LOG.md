@@ -871,3 +871,17 @@ error vs FP32 ≤ eager on output and LoRA gradients. New `tools/anima_v2_prepar
 video group, full+short+short captions, 5-epoch step estimate) and `tools/anima_v2_launch.sh`
 (one command: download, prepare, set max_steps, create public repo, start supervisor `anima_v2`).
 Details: docs/nextscene_results/2026-10-08/anima_v2_speed/README.md. Waiting for the dataset.
+
+## 2026-10-08 — Anima v2 1024 run complete (4325 steps); ComfyUI node parity verified
+
+- **Data:** the new dataset v11 is two caption sets over the same 1,736 pairs, trained jointly with equal weight: 3,452 samples per epoch, 865 steps per epoch, 5 epochs.
+- **Speed:** 3.63 s/step with the experimental compile path; the run completed without numerical issues.
+- **Evaluation:** every 500 steps, 3 held-out pairs × (anima prompt, natural prompt, shuffled reference).
+- **Backups:** all adapters were verified on the public repo `AdwolfCzar/anima-nextscene-a-aligned-1024-v2`.
+- **ComfyUI node parity (ComfyUI 0.39):**
+  - reference latent difference: 0.42%;
+  - step-0 difference: 3.2%;
+  - final images: same composition (PSNR 20.7 dB).
+  - The node is faithful. The user's poor results are attributed to prompt and checkpoint choices, not to the node.
+  - The prompt contained artist, quality and score tags that never appear in training captions.
+- Details: `docs/nextscene_results/2026-10-08/anima_v2_run/README.md`.
