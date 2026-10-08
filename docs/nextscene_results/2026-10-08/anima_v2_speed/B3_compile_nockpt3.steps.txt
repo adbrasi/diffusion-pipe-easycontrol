@@ -1,0 +1,14 @@
+steps: 1 loss: 0.2485 iter time (s): 5.780 samples/sec: 0.692
+steps: 2 loss: 0.3978 iter time (s): 3.547 samples/sec: 1.128
+steps: 3 loss: 0.1533 iter time (s): 3.550 samples/sec: 1.127
+steps: 4 loss: 0.1209 iter time (s): 3.552 samples/sec: 1.126
+steps: 5 loss: 0.1165 iter time (s): 3.553 samples/sec: 1.126
+steps: 6 loss: 0.1173 iter time (s): 3.560 samples/sec: 1.124
+steps: 7 loss: 0.1424 iter time (s): 3.560 samples/sec: 1.123
+steps: 8 loss: 0.2029 iter time (s): 4.713 samples/sec: 0.849
+steps: 9 loss: 0.1271 iter time (s): 3.572 samples/sec: 1.120
+steps: 10 loss: 0.0570 iter time (s): 3.566 samples/sec: 1.122
+steps: 11 loss: 0.0808 iter time (s): 3.530 samples/sec: 1.133
+steps: 12 loss: 0.0883 iter time (s): 3.570 samples/sec: 1.120
+steps: 13 loss: 0.0983 iter time (s): 3.573 samples/sec: 1.119
+steps: 14 loss: 0.1521 iter time (s): 3.534 samples/sec: 1.132

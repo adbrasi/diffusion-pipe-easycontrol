@@ -1,0 +1,2 @@
+steps: 11 loss: 0.1032 iter time (s): 5.812 samples/sec: 0.688
+steps: 12 loss: 0.0599 iter time (s): 4.420 samples/sec: 0.905

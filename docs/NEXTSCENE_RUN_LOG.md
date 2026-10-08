@@ -857,3 +857,15 @@ cancelled. No BF16 replacement training was started. All custom training, cache,
 sampling and sync services have autostart/autorestart disabled. The entire local
 workspace, including datasets, models, repositories, caches and samples, is being
 deleted at the user's explicit request. Public GitHub/Hugging Face backups remain.
+
+## 2026-10-08 — Anima v2 1024 prepared; speed audit
+
+User asked for a serious 1024 A/aligned run on a new dataset (same HF layout), ~5 epochs, eval every
+500 steps, new public backup repo, and for speed to be investigated without touching quality. Fresh
+instance: torch 2.11+cu128, deepspeed 0.18.4, Anima base hashes equal to base_provenance.json.
+New `compile_blocks` (per-block torch.compile) and `uncheckpointed_blocks` options in
+cosmos_predict2 to_layers; defaults off. Baseline 5.22 → 3.58 s/step (−31%), with compiled block
+error vs FP32 ≤ eager on output and LoRA gradients. New `tools/anima_v2_prepare.py` (held-out by
+video group, full+short+short captions, 5-epoch step estimate) and `tools/anima_v2_launch.sh`
+(one command: download, prepare, set max_steps, create public repo, start supervisor `anima_v2`).
+Details: docs/nextscene_results/2026-10-08/anima_v2_speed/README.md. Waiting for the dataset.

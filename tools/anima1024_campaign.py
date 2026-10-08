@@ -100,6 +100,7 @@ def main():
     parser.add_argument('--artifacts', type=Path, required=True)
     parser.add_argument('--repo', required=True)
     parser.add_argument('--interval', type=int, default=500)
+    parser.add_argument('--heldout', default='/workspace/heldout_short')
     args = parser.parse_args()
     cfg = toml.load(args.config)
     if cfg['model']['dtype'] != 'bfloat16' or cfg['adapter']['dtype'] != 'bfloat16':
@@ -182,7 +183,7 @@ def main():
             print(f'Sample {adapter_dir.name}: 8 held-out pairs, true/shuffled/null at 1024', flush=True)
             evaluation = ['/venv/main/bin/python', 'tools/nextscene_eval.py',
                           '--dit', model['transformer_path'], '--vae', model['vae_path'], '--llm', model['llm_path'],
-                          '--pairs', '/workspace/heldout_short', '--ckpt', str(adapter_dir),
+                          '--pairs', args.heldout, '--ckpt', str(adapter_dir),
                           '--out', str(art / 'eval'), '--limit', '8', '--width', '1024', '--height', '1024',
                           '--match-target-ar', '--steps', '30', '--cfg', '4', '--flow_shift', '3', '--ref_cfg', '1', '--seed', '76']
             if not run(evaluation, art / f'eval_{adapter_dir.name}.log', env, stop_file):

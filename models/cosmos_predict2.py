@@ -529,8 +529,17 @@ class CosmosPredict2Pipeline(BasePipeline):
             InitialLayer(transformer, text_encoder, self.is_generic_llm),
             LLMAdapterLayer(transformer.llm_adapter if self.use_llm_adapter else None),
         ]
+        # Speed options (math unchanged): per-block torch.compile, and leaving the last N
+        # blocks out of activation checkpointing to spend spare VRAM instead of recompute.
+        num_blocks = len(transformer.blocks)
+        uncheckpointed = int(self.config.get('uncheckpointed_blocks', 0))
+        if self.config.get('compile_blocks', False):
+            torch._dynamo.config.cache_size_limit = max(torch._dynamo.config.cache_size_limit, 64)
         for i, block in enumerate(transformer.blocks):
-            layers.append(TransformerLayer(block, i, self.offloader))
+            if self.config.get('compile_blocks', False):
+                block.compile(dynamic=False)
+            layer_cls = TransformerLayerNoCheckpoint if i >= num_blocks - uncheckpointed else TransformerLayer
+            layers.append(layer_cls(block, i, self.offloader))
         layers.append(FinalLayer(transformer))
         return layers
 
@@ -732,6 +741,11 @@ class TransformerLayer(nn.Module):
         self.offloader.submit_move_blocks_forward(self.block_idx)
 
         return make_contiguous(x_B_T_H_W_D, t_embedding_B_T_D, crossattn_emb, rope_emb_L_1_1_D, adaln_lora_B_T_3D, timesteps_B_T)
+
+
+class TransformerLayerNoCheckpoint(TransformerLayer):
+    # Not listed in checkpointable_layers, so its activations stay resident.
+    pass
 
 
 class FinalLayer(nn.Module):
