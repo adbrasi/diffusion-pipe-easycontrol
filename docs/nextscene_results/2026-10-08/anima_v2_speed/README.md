@@ -1,5 +1,11 @@
 # Anima A/aligned 1024 v2 — speed audit (2026-10-08)
 
+> ⚠️ **EXPERIMENTAL.** `compile_blocks` and `uncheckpointed_blocks` were validated only on a short
+> bench: 14 steps, one subset, 2 AR buckets, a 12-step smoke, and a single-block accuracy test.
+> They have not run a full campaign yet. Recompiles for new bucket shapes, VRAM headroom on all 7
+> buckets, and long-run stability are still unconfirmed. Both default to off. To fall back, remove
+> the two lines from `A_full.toml`; the math stays the same.
+
 Goal: faster 1024 training **without changing training quality**. Recipe (LR, rank 64, batch 4,
 BF16, buckets, A/aligned contract) is identical to the 2026-10-01 campaign. Only options that keep
 the math were tried; FP8/W8A8, smaller reference and fused QKV (changes LoRA keys) were excluded.

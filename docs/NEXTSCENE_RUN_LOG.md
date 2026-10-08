@@ -858,7 +858,9 @@ sampling and sync services have autostart/autorestart disabled. The entire local
 workspace, including datasets, models, repositories, caches and samples, is being
 deleted at the user's explicit request. Public GitHub/Hugging Face backups remain.
 
-## 2026-10-08 — Anima v2 1024 prepared; speed audit
+## 2026-10-08 — Anima v2 1024 prepared; speed audit (EXPERIMENTAL)
+
+**Experimental:** the speed options have been validated only by bench/smoke so far, not by a full run.
 
 User asked for a serious 1024 A/aligned run on a new dataset (same HF layout), ~5 epochs, eval every
 500 steps, new public backup repo, and for speed to be investigated without touching quality. Fresh

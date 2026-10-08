@@ -529,7 +529,7 @@ class CosmosPredict2Pipeline(BasePipeline):
             InitialLayer(transformer, text_encoder, self.is_generic_llm),
             LLMAdapterLayer(transformer.llm_adapter if self.use_llm_adapter else None),
         ]
-        # Speed options (math unchanged): per-block torch.compile, and leaving the last N
+        # EXPERIMENTAL speed options (math unchanged; validated only by bench/smoke so far): per-block torch.compile, and leaving the last N
         # blocks out of activation checkpointing to spend spare VRAM instead of recompute.
         num_blocks = len(transformer.blocks)
         uncheckpointed = int(self.config.get('uncheckpointed_blocks', 0))

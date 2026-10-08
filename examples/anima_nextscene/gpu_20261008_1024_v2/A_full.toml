@@ -10,7 +10,7 @@ warmup_steps = 100
 save_every_n_steps = 500
 checkpoint_every_n_minutes = 10
 activation_checkpointing = true
-# Speed only, math unchanged (verified vs FP32 in docs): per-block compile, 2 last blocks resident.
+# EXPERIMENTAL speed options, math unchanged (verified vs FP32 in docs; no full run yet). Remove both to fall back: per-block compile, 2 last blocks resident.
 compile_blocks = true
 uncheckpointed_blocks = 2
 save_dtype = "bfloat16"
