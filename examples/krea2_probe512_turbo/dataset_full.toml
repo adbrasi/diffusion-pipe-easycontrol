@@ -1,0 +1,9 @@
+resolutions = [ 512,]
+enable_ar_bucket = true
+# Real aspect ratios of the data: 16:9 is 71% of frames (old geomspace buckets center-cropped 96% by ~10%).
+ar_buckets = [[1, 2], [9, 16], [2, 3], [3, 4], [1, 1], [4, 3], [3, 2], [16, 9], [2, 1], [7, 3]]
+frame_buckets = [ 1,]
+[[directory]]
+path = "/workspace/krea2_v2_data/target"
+control_path = "/workspace/krea2_v2_data/control"
+num_repeats = 1

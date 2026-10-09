@@ -166,6 +166,15 @@ class Krea2Pipeline(ComfyPipeline):
             mu = get_lin_function(x1=256, y1=0.5, x2=6400, y2=1.15)((h // 2) * (w // 2))
             t = time_shift(mu, 1.0, t)
 
+        # Extra mass in the composition band (same knob as anima_nextscene): at high
+        # sigma little of the target survives, so pose/layout must come from ref + text.
+        high_noise_prob = float(self.model_config.get('high_noise_prob', 0.0))
+        if timestep_quantile is None and high_noise_prob > 0:
+            use_high = torch.rand(bs, device=t.device) < high_noise_prob
+            high = torch.empty(bs, device=t.device).uniform_(
+                float(self.model_config.get('high_noise_min', 0.8)), float(self.model_config.get('high_noise_max', 1.0)))
+            t = torch.where(use_high, high, t)
+
         noise = torch.randn_like(latents)
         t_expanded = t.view(-1, 1, 1, 1, 1)
         noisy_latents = (1 - t_expanded) * latents + t_expanded * noise
