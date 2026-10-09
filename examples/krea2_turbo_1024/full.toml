@@ -1,0 +1,54 @@
+output_dir = "/workspace/checkpoints/krea2_turbo_1024/r32"
+dataset = "/workspace/k2probe/examples/krea2_turbo_1024/dataset_full.toml"
+epochs = 3
+max_steps = 5178
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 1
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+lr_scheduler = "cosine"
+save_every_n_steps = 500
+checkpoint_every_n_minutes = 10
+activation_checkpointing = true
+save_dtype = "bfloat16"
+caching_batch_size = 1
+seed = 42
+
+[model]
+type = "krea2_native"
+diffusion_model = "/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors"
+vae = "/workspace/models/krea2/vae/qwen_image_vae.safetensors"
+dtype = "bfloat16"
+base_quant = "fp8_scaled"
+# Train on Turbo like ai-toolkit's krea2 edit trainer: Turbo LoRA + ostris de-distill training
+# adapter merged (frozen) into the base; neither is saved in our LoRA. Inference: our LoRA on Turbo.
+merge_adapters = [
+    "/workspace/models/krea2/loras/krea2_turbo_lora_rank_64_bf16.safetensors",
+    "/workspace/models/krea2/loras/krea2_turbo_training_adapter_v1.safetensors",
+]
+timestep_sample_method = "logit_normal"
+shift = 3.1582   # = exp(1.15): stock ComfyUI / Turbo mu 1.15 (replaces dynamic flux_shift)
+high_noise_prob = 0.15
+blocks_to_swap = 0
+[[model.text_encoders]]
+path = "/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors"
+type = "krea2"
+
+[krea2_native]
+reference_timestep = "zero"
+vl_grounding = true
+caption_dropout = 0.0
+reference_pixels = "target"
+
+[adapter]
+type = "lora"
+rank = 32
+dtype = "bfloat16"
+
+[optimizer]
+type = "AdamW8bitKahan"
+lr = 0.0001
+betas = [ 0.9, 0.99,]
+weight_decay = 0.01
+stabilize = false
