@@ -130,3 +130,43 @@ The train logs on HF contain no `lora key not loaded` / `NOT LOADED` lines. They
 ### Full run `raw512_r32` launched 2026-10-11 ~14:50 UTC
 - Config `examples/krea2_raw_v3/raw512.toml`, branch `krea2-raw-v3`. 1,220 steps ≈ 1.5 epochs, ETA ~2h10m.
 - Each checkpoint is auto-uploaded and verified to HF `AdwolfCzar/krea2-nextscene-raw-v3/checkpoints/raw512_r32/stepN`.
+
+### raw512_r32 finished (1,220 steps, ~2h10m, 5.9 s/step)
+Held-out val loss, avg over 9 quantiles:
+
+| step | 0 | 125 | 250 | 375 | 500 | 625 | 750 | 875 | 1000 | 1125 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| avg | 0.2043 | 0.1162 | 0.1147 | 0.1143 | 0.1139 | 0.1134 | 0.1134 | 0.1133 | 0.1133 | 0.1132 |
+
+- **Monotonic, no held-out overfit within 1.5 epochs.**
+- The step0 → 125 drop is mostly in low-noise quantiles (q0.1 0.405 → 0.200). That is the base learning t=0 reference tokens: the speckle fix.
+- After step 250 the gains are tiny and spread over all t.
+- Val loss cannot see "copies A / ignores prompt" (it is measured with the true B caption), so the choice is made on the grids.
+- Delta audit, b0 `mlp.down`: s125 0.095, s250 0.138. A1000@1000 was 0.349.
+
+### raw512_r32 visual eval
+Grids: HF `evidence/raw512_eval/`. Turbo 8 steps, seed 76. Columns: native(index_timestep_zero) | A1000 | s250 | s500 | s750 | s1000 | s1220.
+- The user saw `/workspace/k2eval/raw512_eval` and called it "muito interessantes".
+- **Quality: solved.** Every checkpoint is crisp and saturated on Turbo, with no haze (contrast with t1024 / probe).
+- **Reference consistency: strong, and better than A1000.**
+  - Kept: character design, outfit details (fire-force boy's neck scar, glasses, robot design), drawing style, **watermarks** (@SUOIRESNU, DERPIXON, PATREON), the robot companion.
+  - The user's tip, adopted: watermark fidelity is an effort-to-be-consistent signal. It is kept at all steps.
+- **Prompt following:**
+  - Good for action, pose and camera: the archer aims at the viewer; the man turns his back.
+  - The manga boy points and shouts "ENOUGH!", clearly better at s750+.
+  - **Weak for big location changes:** "kids on a park bench at sunset" stays in A's corridor; the squirrel stays in the hollow; A's HUD overlay is carried over.
+- **Cause, found in the data:** 1,440 of 1,629 training captions (88%) say "The same background/place/room…", and none describe a new place. The pairs are consecutive frames, so the LoRA learned that the next scene happens in the same place.
+  - A1000 (older data) changes scenes more but loses style and watermarks.
+  - **To get location changes, the dataset needs pairs with a real location change.** Training alone cannot invent them.
+- s1000 ≈ s1220. Picked s1220 (end of cosine) as the init for the 1024 finish.
+- **Duplication quirk:** "the same girl runs…" (tr0alt) gives two girls in *all* columns including native. It is a base/prompt quirk, not the LoRA.
+
+### User feedback 2026-10-11 (evening) and answers
+1. **"native has noise and weird stuff, but in ComfyUI plain TextEncodeQwenImageEditPlus works with good quality, only imprecise."**
+   - Explained by code: Krea2 in stock ComfyUI has `default_ref_method=None` (`comfy/ldm/krea2/model.py:312`).
+   - **Without `FluxKontextMultiReferenceLatentMethod`, the reference latent is silently ignored.** The model sees the image only through the Qwen3-VL tokens of the prompt. That gives exactly "a blonde girl, not Barbie" and no speckles.
+   - My `native` column used `index_timestep_zero` (our LoRA's contract), which the base never learned, hence the speckles.
+   - The eval tool now also has **`native_vl`**: no method node, which is the user's plain graph. It is used in all later grids.
+   - Our LoRA must keep using `index_timestep_zero`.
+2. "t3000_s06 has incredible results on grid_train_caption". Those rows are training images with their own captions, i.e. memorised. On held-out and short prompts the t-series is hazy on Turbo (Phase 1). So the long Raw run (below) tests "more training" on the right base.
+3. The user is sleeping; keep the GPU busy. Plan: 1024 finish → full eval (with native_vl, strength 0.7, shuffled, internet images) → 3-epoch Raw run → eval.
