@@ -246,3 +246,11 @@ Columns: Turbo native_vl | Turbo r512 s1220 | **Raw** native_vl | **Raw** r512 (
 - ~8.5 s/step, so 3,000 steps take ~7 h.
 - Delta audit at s500 ≈ t1024 s500: b0 `wq` 0.070 vs 0.066, b0 `mlp.down` 0.172 vs 0.142. It is on the same learning trajectory as the user's favourite run, now on the clean Raw base.
 - `queue3.sh` runs `cases_small` (40 images: native_vl | t3000@0.6 | L1000 | L2000 | L3000) when training ends, then `raw512_shorttier`.
+
+### raw1024_long: test at the user's request (stopped at step 1,348, 2026-10-12)
+Evidence: `evidence/raw1024_long_eval_s1250/` (`L_web.jpg`, `L_dom.jpg`). `cases_small`, 40 images. Columns: native_vl | t3000@0.6 | L500 | L1000 | L1250.
+- Val loss (1024): 0.1602 → 0.0812 (s250) → 0.0802 (s500) → 0.0798 (s750) → 0.0797 (s1000) → 0.0796 (s1250).
+- Speed was ~12 s/step including evals, slower than the 6 s of finish1024. Cause not found yet; the evals plus the ckpt uploaders may contend.
+- **In-domain (anime frames): L1000 and L1250 are crisp and very faithful.** They keep the fire-force boy's scar and jacket, the Oshi-no-Ko boy, the squirrel scene with A's HUD, and the "5" cinema corridor. Sharper than t3000@0.6, which is hazy.
+- **Web illustrations: L500–L1250 still render in Krea's house style**, close to native_vl. t3000@0.6 is closer to the soft painterly look of the refs, partly perhaps because its haze resembles soft colouring, but its faces and pose are also more faithful.
+- **Decision:** resume to 3,000 (`--resume_from_checkpoint`, deepspeed state global_step1348) to finish the H-undertrained test. Then the same compact test at s2000 and s3000.
