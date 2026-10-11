@@ -116,3 +116,17 @@ The train logs on HF contain no `lora key not loaded` / `NOT LOADED` lines. They
 - Raw duplication quirk again: A1000 on Raw drew the archer prompt as a two-figure "character sheet" (sh0).
 
 **Phase 1 decision:** go to Phase 2 (native on Raw, diagnosis §7.1) as planned. The A1000 look on Turbo is the quality bar to beat, together with better prompt-following and fewer duplications.
+
+## Phase 2: native on Raw, 512 (2026-10-11)
+
+### Smoke run (10 steps, `examples/krea2_raw_v3/smoke.toml`)
+- Needed `git submodule update --init --recursive` (HunyuanVideo import in `utils/patches.py`).
+- Cache: buckets correct (7:3 → 784×336, etc.). 814 steps/epoch (micro 1 × accum 2).
+- `Cosine LR: T_max=…` prints. **Fixed a trainer bug:** cosine `T_max` was `epochs × steps_per_epoch` and ignored `max_steps`. The previous runs' LR would not have reached ~0 at `max_steps`. It now decays over `min(epochs·spe, max_steps) − warmup`.
+- 5.9 s/step at 512 (2 forwards per step), 20.4 GB peak. No NaN.
+- **Val loss (12 held-out, 9 fixed quantiles, seeded):** base 0.2043, step10 0.2008. Base per quantile: q0.1 0.405 … q0.5 0.160 … q0.9 0.157.
+- Stock ComfyUI `f856877e` loads the step10 adapter with **0 `lora key not loaded`**.
+
+### Full run `raw512_r32` launched 2026-10-11 ~14:50 UTC
+- Config `examples/krea2_raw_v3/raw512.toml`, branch `krea2-raw-v3`. 1,220 steps ≈ 1.5 epochs, ETA ~2h10m.
+- Each checkpoint is auto-uploaded and verified to HF `AdwolfCzar/krea2-nextscene-raw-v3/checkpoints/raw512_r32/stepN`.
