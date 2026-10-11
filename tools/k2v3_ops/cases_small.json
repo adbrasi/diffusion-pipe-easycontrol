@@ -1,0 +1,58 @@
+[
+ {
+  "id": "tr2alt",
+  "kind": "train_altered",
+  "ref": "/workspace/k2data/train/control/ds4_imagem000086.jpg",
+  "target": null,
+  "prompt": "A close-up from the front. The same small grey squirrel-like animal sits on a branch in the center, holding an acorn in both paws and looking at the viewer. The same blurred green forest background."
+ },
+ {
+  "id": "ho04",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/04_ds4_imagem000233.jpg",
+  "target": "/workspace/k2data/heldout/target/04_ds4_imagem000233.jpg",
+  "prompt": "A close-up from the front side. The same boy fills the right side of the frame, turning toward the viewer with a wide toothy grin and narrowed red eyes, a stitched scar visible on the left side of his neck. The same background. White credit text at the bottom center reads \"\u76e3\u7763 \u5357\u5ddd\u9054\u99ac\"."
+ },
+ {
+  "id": "ho06",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/06_ds4_imagem000324.jpg",
+  "target": "/workspace/k2data/heldout/target/06_ds4_imagem000324.jpg",
+  "prompt": "A close-up from the front. The same boy fills the right side of the frame from the chest up, looking toward the left with wide blue eyes and his mouth slightly open in a serious expression, a small sweat drop on his cheek. The same place, with illuminated black poster displays framed with green lights behind him. The visible text on the displays reads \"NOW S\" and \"NOW SH\"."
+ },
+ {
+  "id": "sh2",
+  "kind": "short",
+  "ref": "/workspace/k2data/heldout/control/06_ds4_imagem000324.jpg",
+  "target": null,
+  "prompt": "Wide shot: the same three kids sit together on a park bench at sunset."
+ },
+ {
+  "id": "web_gura",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/gura.png",
+  "target": null,
+  "prompt": "The same shark girl swims underwater surrounded by colorful fish, full body, smiling."
+ },
+ {
+  "id": "web_aya",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/aya.png",
+  "target": null,
+  "prompt": "The same girl with black wings flies over a city at sunset holding a camera, wide shot."
+ },
+ {
+  "id": "web_hood",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/hood.png",
+  "target": null,
+  "prompt": "The same girl in the penguin hoodie plays video games on a couch, seen from the side."
+ },
+ {
+  "id": "web_cirno2",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/cirno.png",
+  "target": null,
+  "prompt": "A full-body shot from the front. The same girl jumps in the air with both arms raised, laughing, in a sunny field of flowers."
+ }
+]

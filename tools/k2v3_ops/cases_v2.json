@@ -1,0 +1,205 @@
+[
+ {
+  "id": "tr0",
+  "kind": "train_caption",
+  "ref": "/workspace/k2data/train/control/ds1_l32c5vkcfr_image_0002.jpg",
+  "target": "/workspace/k2data/train/target/ds1_l32c5vkcfr_image_0002.jpg",
+  "prompt": "A close-up from the front. The same girl is centered in the frame, facing the viewer with wide eyes and an open smiling mouth, both fists raised up near her chest in excitement. The same background. A watermark at the bottom left reads \"@SUOIRESNU\" and a watermark at the bottom right reads \"PATREON EXCLUSIVE PATREON.COM/SUOIRESNU\"."
+ },
+ {
+  "id": "tr0alt",
+  "kind": "train_altered",
+  "ref": "/workspace/k2data/train/control/ds1_l32c5vkcfr_image_0002.jpg",
+  "target": null,
+  "prompt": "A full-body wide shot from the side. The same girl runs to the left with her arms swinging, her mouth open in a shout. The same background."
+ },
+ {
+  "id": "tr1",
+  "kind": "train_caption",
+  "ref": "/workspace/k2data/train/control/ds4_imagem000542.jpg",
+  "target": "/workspace/k2data/train/target/ds4_imagem000542.jpg",
+  "prompt": "A medium close-up from the front. A new man stands on the right side of the frame, facing forward with his gaze directed slightly to his right, his eyes half-narrowed and his mouth closed in a neutral expression. He has straight chin-length blond hair parted in the middle, light skin, and a small earring in his left ear, wearing a gray ribbed turtleneck under a yellow jacket with white sleeves, white shoulder stripes, and black ornamental emblems on the chest. The same background."
+ },
+ {
+  "id": "tr1alt",
+  "kind": "train_altered",
+  "ref": "/workspace/k2data/train/control/ds4_imagem000542.jpg",
+  "target": null,
+  "prompt": "A medium shot from behind. The same man with short spiky light hair walks away toward the red curtain, looking back over his shoulder with a grin. The same background."
+ },
+ {
+  "id": "tr2",
+  "kind": "train_caption",
+  "ref": "/workspace/k2data/train/control/ds4_imagem000086.jpg",
+  "target": "/workspace/k2data/train/target/ds4_imagem000086.jpg",
+  "prompt": "A medium shot from behind a robot's shoulder. A new white rounded robot occupies the left foreground, seen from behind with only its head and upper torso visible, its head turned to the right looking toward the tree. The same small grey squirrel-like animal peeks out from the dark hollow in the tree trunk on the right, looking toward the robot. The same background of the tree trunk and blurred green forest, seen clearly without any holographic overlay graphics."
+ },
+ {
+  "id": "tr2alt",
+  "kind": "train_altered",
+  "ref": "/workspace/k2data/train/control/ds4_imagem000086.jpg",
+  "target": null,
+  "prompt": "A close-up from the front. The same small grey squirrel-like animal sits on a branch in the center, holding an acorn in both paws and looking at the viewer. The same blurred green forest background."
+ },
+ {
+  "id": "tr3",
+  "kind": "train_caption",
+  "ref": "/workspace/k2data/train/control/ds3_002406.jpg",
+  "target": "/workspace/k2data/train/target/ds3_002406.jpg",
+  "prompt": "A manga page with two panels, an upper medium shot from behind and a lower extreme close-up from the front. The same boy with short dark hair kneels in the lower center with his back to the viewer, facing a new crowd of tall faceless white figures in light clothes standing in a semicircle around him. In the lower panel the same boy fills the frame in close-up, staring up with wide eyes, an open mouth and sweat drops on his face against a black background. The upper background is dark with vertical streaks above the crowd. Speech bubbles read \"BEING HEROES MEANS WE'LL GET TO LIVE NEAT LIVES, RIGHT?\", \"I'M NOT \"E\"-RANK ANYWAY.\", \"WELL, AS LONG AS WE'LL BE ABLE TO GO BACK HOME.\", \"I ALSO JUST ABOUT MADE \"D\"-RANK\", \"WAIT WAIT WAIT\" and \"HEY HEY HEY HEY\"."
+ },
+ {
+  "id": "tr3alt",
+  "kind": "train_altered",
+  "ref": "/workspace/k2data/train/control/ds3_002406.jpg",
+  "target": null,
+  "prompt": "A manga page with a single large panel. The same boy with short dark hair stands up and points at the viewer, shouting angrily with clenched teeth. A speech bubble reads \"ENOUGH!\""
+ },
+ {
+  "id": "ho00",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/00_ds4_imagem000530.jpg",
+  "target": "/workspace/k2data/heldout/target/00_ds4_imagem000530.jpg",
+  "prompt": "A wide shot from eye level. The same man stands cropped at the right edge in profile facing left, his left arm at his side, his chin cropped out of the frame. A new boy with short split black-and-white hair stands in the center wearing a black uniform jacket over a white shirt, leaning forward with clenched fists and his mouth open as he looks toward the right. Behind him to the right, two new seated boys and a new standing boy in yellow and white jackets watch from red seats, with two more cropped boys in black uniform at the far right edge. The same background, with brown graffiti-covered walls, dark pillars, and rows of red seats visible behind the figures. The light is dim and brownish across the room."
+ },
+ {
+  "id": "ho01",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/01_ds1_p0em3wn0zg_image_0001.jpg",
+  "target": "/workspace/k2data/heldout/target/01_ds1_p0em3wn0zg_image_0001.jpg",
+  "prompt": "A medium shot from a low angle in front of the same robot. The same robot stands in the center facing slightly to the right, its left arm extended out to the side with an open palm and its right hand gripping a sword hilt at its hip, its head turned slightly to the side. It is outdoors in front of a building with light gray walls and a brown sloped roof, with green foliage and pale blue sky with white smoke in the background. The scene is lit by bright daylight. A watermark at the bottom left reads \"@SUOIRESNU\"."
+ },
+ {
+  "id": "ho03",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/03_ds3_002615.jpg",
+  "target": "/workspace/k2data/heldout/target/03_ds3_002615.jpg",
+  "prompt": "A three-panel black-and-white manga page viewed straight on. In the top panel the same man on the left with hair over his eyes clasps his hands near his chin and looks down with sweat on his face, while the same woman in uniform and cap on the right looks forward in profile and speaks. The middle panel shows a new tall girl with a long braid standing in profile beside a small children train driven by a monkey-like figure, with two new girls behind her, and the bottom panel shows three new light-haired girls seated inside a train. The top panel shows the same background inside the car, while the lower panels show an old-fashioned amusement park at night under bright lights and the interior of a train moving through a dim tunnel. The text reads \"OR THAT IS HOW THEY ARE DESCRIBED\", \"A MONKEY DREAM IS A ...\", \"DREAM YOU'RE HAPPY TO AWAKE FROM AND REALISE IT'S NOT REAL\", \"THERE WERE PALE PEOPLE SEATED IN THE TRAIN \\\"AH, SO THIS IS A DREAM\\\" SHE THOUGHT\", \"A CERTAIN GIRL SAW IT ONCE\", \"IT WAS AN OLD FASHI- ONED AMUSEMENT PARK WITH A CHILDREN TRAIN WITH MONKEYS\", \"THE TRAIN WAS MOVING THROUGH THE DIM TUNNEL\" and \"AND BECAUSE IT WAS A DREAM, SHE DECIDED TO RIDE THE TRAIN BEFORE SHE WAKES UP\"."
+ },
+ {
+  "id": "ho04",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/04_ds4_imagem000233.jpg",
+  "target": "/workspace/k2data/heldout/target/04_ds4_imagem000233.jpg",
+  "prompt": "A close-up from the front side. The same boy fills the right side of the frame, turning toward the viewer with a wide toothy grin and narrowed red eyes, a stitched scar visible on the left side of his neck. The same background. White credit text at the bottom center reads \"\u76e3\u7763 \u5357\u5ddd\u9054\u99ac\"."
+ },
+ {
+  "id": "ho05",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/05_ds1_xlrvesh2p2_image_0006.jpg",
+  "target": "/workspace/k2data/heldout/target/05_ds1_xlrvesh2p2_image_0006.jpg",
+  "prompt": "A medium shot from the front. The same girl with long blonde pigtails tied with a large green bow stands in the center, wearing a green leaf-like top and skirt with dark teal gloves, holding a long brown bow horizontally across her body with her right hand while her left hand grips arrows at her shoulder. She looks off to the right with a determined expression and her mouth slightly open, her pigtails flowing outward. The same background. The word \"DERPIXON\" appears in the bottom right corner."
+ },
+ {
+  "id": "ho06",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/06_ds4_imagem000324.jpg",
+  "target": "/workspace/k2data/heldout/target/06_ds4_imagem000324.jpg",
+  "prompt": "A close-up from the front. The same boy fills the right side of the frame from the chest up, looking toward the left with wide blue eyes and his mouth slightly open in a serious expression, a small sweat drop on his cheek. The same place, with illuminated black poster displays framed with green lights behind him. The visible text on the displays reads \"NOW S\" and \"NOW SH\"."
+ },
+ {
+  "id": "ho09",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/09_ds2_002625.jpg",
+  "target": "/workspace/k2data/heldout/target/09_ds2_002625.jpg",
+  "prompt": "A close-up from the front. A new boy with short spiky dark blue-black hair and light blue eyes stands on the right, looking to the left with a stern frown and pressed lips. He wears a white uniform jacket with blue and yellow trim over a dark striped collar and a red tie. The same background, with a doorway topped by a glowing pink panel behind him to the left."
+ },
+ {
+  "id": "ho11",
+  "kind": "heldout",
+  "ref": "/workspace/k2data/heldout/control/11_ds4_imagem001063.jpg",
+  "target": "/workspace/k2data/heldout/target/11_ds4_imagem001063.jpg",
+  "prompt": "A wide shot at eye level. The same gray rabbit wearing purple sunglasses, a pink top and purple pants stands on the right side on top of small stacked crates beside an open container door, looking toward the falling boxes. The same place, with the blue shipping container door open and a large pile of green boxes tumbling out onto the ground in a cloud of dust, surrounded by stacked pink, blue, green and yellow shipping containers and a chain-link fence. A sign on the fence on the far right reads \"WARNING SAFETY VEST REQUIRED BEYOND THIS POINT\"."
+ },
+ {
+  "id": "sh0",
+  "kind": "short",
+  "ref": "/workspace/k2data/heldout/control/05_ds1_xlrvesh2p2_image_0006.jpg",
+  "target": null,
+  "prompt": "The same girl draws her bow and aims an arrow straight at the viewer, full body shot."
+ },
+ {
+  "id": "sh1",
+  "kind": "short",
+  "ref": "/workspace/k2data/heldout/control/04_ds4_imagem000233.jpg",
+  "target": null,
+  "prompt": "The same man in the black uniform turns around and faces the camera, close-up of his face."
+ },
+ {
+  "id": "sh2",
+  "kind": "short",
+  "ref": "/workspace/k2data/heldout/control/06_ds4_imagem000324.jpg",
+  "target": null,
+  "prompt": "Wide shot: the same three kids sit together on a park bench at sunset."
+ },
+ {
+  "id": "sh3",
+  "kind": "short",
+  "ref": "/workspace/k2data/heldout/control/01_ds1_p0em3wn0zg_image_0001.jpg",
+  "target": null,
+  "prompt": "The same cat-eared girl runs down a busy city street at night, full body."
+ },
+ {
+  "id": "sh4",
+  "kind": "short",
+  "ref": "/workspace/k2data/train/control/ds1_l32c5vkcfr_image_0002.jpg",
+  "target": null,
+  "prompt": "the same girl eating ramen in a restaurant, medium shot"
+ },
+ {
+  "id": "web_gura",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/gura.png",
+  "target": null,
+  "prompt": "The same shark girl swims underwater surrounded by colorful fish, full body, smiling."
+ },
+ {
+  "id": "web_aya",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/aya.png",
+  "target": null,
+  "prompt": "The same girl with black wings flies over a city at sunset holding a camera, wide shot."
+ },
+ {
+  "id": "web_cirno",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/cirno.png",
+  "target": null,
+  "prompt": "The same ice fairy sits on a snowy rooftop eating a popsicle, medium shot from the side."
+ },
+ {
+  "id": "web_koishi",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/koishi.png",
+  "target": null,
+  "prompt": "Close-up: the same girl with green hair and the black hat looks back over her shoulder in a dark forest at night."
+ },
+ {
+  "id": "web_hood",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/hood.png",
+  "target": null,
+  "prompt": "The same girl in the penguin hoodie plays video games on a couch, seen from the side."
+ },
+ {
+  "id": "web_winter",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/winter.png",
+  "target": null,
+  "prompt": "The same girl walks into a warm cafe and takes off her scarf, medium shot."
+ },
+ {
+  "id": "web_aya2",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/aya.png",
+  "target": null,
+  "prompt": "A wide shot from behind at a low angle. The same girl with black wings stands on a wooden bridge over a river, looking back at the viewer with a grin. The same outfit."
+ },
+ {
+  "id": "web_cirno2",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/cirno.png",
+  "target": null,
+  "prompt": "A full-body shot from the front. The same girl jumps in the air with both arms raised, laughing, in a sunny field of flowers."
+ }
+]

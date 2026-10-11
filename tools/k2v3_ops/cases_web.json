@@ -1,0 +1,58 @@
+[
+ {
+  "id": "web_gura",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/gura.png",
+  "target": null,
+  "prompt": "The same shark girl swims underwater surrounded by colorful fish, full body, smiling."
+ },
+ {
+  "id": "web_aya",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/aya.png",
+  "target": null,
+  "prompt": "The same girl with black wings flies over a city at sunset holding a camera, wide shot."
+ },
+ {
+  "id": "web_cirno",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/cirno.png",
+  "target": null,
+  "prompt": "The same ice fairy sits on a snowy rooftop eating a popsicle, medium shot from the side."
+ },
+ {
+  "id": "web_koishi",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/koishi.png",
+  "target": null,
+  "prompt": "Close-up: the same girl with green hair and the black hat looks back over her shoulder in a dark forest at night."
+ },
+ {
+  "id": "web_hood",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/hood.png",
+  "target": null,
+  "prompt": "The same girl in the penguin hoodie plays video games on a couch, seen from the side."
+ },
+ {
+  "id": "web_winter",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/winter.png",
+  "target": null,
+  "prompt": "The same girl walks into a warm cafe and takes off her scarf, medium shot."
+ },
+ {
+  "id": "web_aya2",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/aya.png",
+  "target": null,
+  "prompt": "A wide shot from behind at a low angle. The same girl with black wings stands on a wooden bridge over a river, looking back at the viewer with a grin. The same outfit."
+ },
+ {
+  "id": "web_cirno2",
+  "kind": "web",
+  "ref": "/workspace/k2eval/web/cirno.png",
+  "target": null,
+  "prompt": "A full-body shot from the front. The same girl jumps in the air with both arms raised, laughing, in a sunny field of flowers."
+ }
+]
