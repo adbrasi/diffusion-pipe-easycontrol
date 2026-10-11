@@ -237,6 +237,24 @@ def main():
     t0 = time.time()
     try:
         wait_ready(url)
+        # Generate column-major: each LoRA/strength is patched once, not once per image.
+        n_total, n_done = len(cols) * len(seeds) * len(cases), 0
+        for k, col in enumerate(cols):
+            for seed in seeds:
+                for i, c in enumerate(cases):
+                    n_done += 1
+                    dest = args.out / f"{c['id']}_s{seed}_{col['label']}.png"
+                    if dest.exists():
+                        continue
+                    w, h = bucket_dims(c.get('target') or c['ref'])
+                    ref = c['ref_name']
+                    if col['shuffle']:  # next case with a DIFFERENT reference image
+                        ref = next(cases[(i + d) % len(cases)]['ref_name'] for d in range(1, len(cases) + 1)
+                                   if cases[(i + d) % len(cases)]['ref'] != c['ref'])
+                    g = graph(c['prompt'], w, h, seed, ref, col['variant'], col['lora_name'], col['strength'],
+                              f'k2v3_{k}', models, args.raw_steps, args.raw_cfg)
+                    execute(g, dest, url, work / 'output')
+                    print(f"[{time.time() - t0:6.0f}s] {n_done}/{n_total} {col['label']} {c['id']} s{seed}", flush=True)
         for seed in seeds:
             for i, c in enumerate(cases):
                 size_src = c.get('target') or c['ref']
@@ -245,15 +263,7 @@ def main():
                 gb = gray64(c['target'], (w, h)) if c.get('target') else None
                 cells = [Image.open(c['ref']), Image.open(c['target']) if c.get('target') else None]
                 for k, col in enumerate(cols):
-                    ref = c['ref_name']
-                    if col['shuffle']:  # next case with a DIFFERENT reference image
-                        ref = next(cases[(i + d) % len(cases)]['ref_name'] for d in range(1, len(cases) + 1)
-                                   if cases[(i + d) % len(cases)]['ref'] != c['ref'])
                     dest = args.out / f"{c['id']}_s{seed}_{col['label']}.png"
-                    if not dest.exists():
-                        g = graph(c['prompt'], w, h, seed, ref, col['variant'], col['lora_name'], col['strength'],
-                                  f'k2v3_{k}', models, args.raw_steps, args.raw_cfg)
-                        execute(g, dest, url, work / 'output')
                     gen = Image.open(dest)
                     gg = gray64(gen, (w, h))
                     r = dict(case=c['id'], kind=c['kind'], seed=seed, col=col['label'], variant=col['variant'],
@@ -262,7 +272,7 @@ def main():
                              file=dest.name)
                     results.append(r)
                     cells.append(gen)
-                    print(f"[{time.time() - t0:6.0f}s] {c['id']} s{seed} {col['label']}: corrA={r['corr_A']:.3f}"
+                    print(f"{c['id']} s{seed} {col['label']}: corrA={r['corr_A']:.3f}"
                           + (f" corrB={r['corr_B']:.3f}" if r['corr_B'] is not None else ''), flush=True)
                 label = f"[{c['kind']}] {c['id']} seed {seed} {w}x{h}\n{c['prompt']}"
                 grid_rows.append((label, cells))

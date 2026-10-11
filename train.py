@@ -958,7 +958,14 @@ if __name__ == '__main__':
     elif scheduler_type == 'linear':
         lr_scheduler = torch.optim.lr_scheduler.LinearLR(optimizer, start_factor=1.0, end_factor=0.0, total_iters=config['epochs'] * steps_per_epoch)
     elif scheduler_type == 'cosine':
-        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=config['epochs'] * steps_per_epoch, eta_min=1e-6)
+        # Decay over the steps that will actually run (max_steps caps epochs), after warmup.
+        total = config['epochs'] * steps_per_epoch
+        if 'max_steps' in config:
+            total = min(total, config['max_steps'])
+        t_max = max(1, total - config.get('warmup_steps', 0))
+        if is_main_process():
+            print(f'Cosine LR: T_max={t_max} (total {total} steps, warmup {config.get("warmup_steps", 0)})', flush=True)
+        lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max, eta_min=1e-6)
     else:
         raise NotImplementedError(f'Unknown lr_scheduler: {scheduler_type}')
     if config['warmup_steps'] > 0:
