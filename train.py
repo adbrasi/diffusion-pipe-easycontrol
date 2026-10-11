@@ -215,6 +215,8 @@ def _evaluate(model_engine, eval_dataloaders, tb_writer, step, eval_gradient_acc
                     wandb.log({f'{name}/loss_quantile_{quantile:.2f}': loss, 'step': step})
         avg_loss = sum(losses) / len(losses)
         if is_main_process():
+            print(f'EVAL step {step} {name} avg {avg_loss:.5f} | ' + ' '.join(
+                f'q{q:.1f}={l:.5f}' for q, l in zip(TIMESTEP_QUANTILES_FOR_EVAL, losses)), flush=True)
             tb_writer.add_scalar(f'{name}/loss', avg_loss, step)
             if wandb_enable:
                 wandb.log({f'{name}/loss': avg_loss, 'step': step})
