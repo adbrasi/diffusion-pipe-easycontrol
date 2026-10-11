@@ -240,3 +240,9 @@ Columns: Turbo native_vl | Turbo r512 s1220 | **Raw** native_vl | **Raw** r512 (
 - **Next:** `raw1024_long` (t1024 budget, Raw base) relaunched right after this test (2026-10-11 ~22:05 UTC). ETA ~5.5 h (6 s/step + val every 250).
   - Expectation: t3000-like fidelity without the haze.
   - Then `raw512_shorttier`.
+
+### raw1024_long progress
+- Val loss at 1024: 0.1602 (base) → 0.0812 (s250) → 0.0802 (s500).
+- ~8.5 s/step, so 3,000 steps take ~7 h.
+- Delta audit at s500 ≈ t1024 s500: b0 `wq` 0.070 vs 0.066, b0 `mlp.down` 0.172 vs 0.142. It is on the same learning trajectory as the user's favourite run, now on the clean Raw base.
+- `queue3.sh` runs `cases_small` (40 images: native_vl | t3000@0.6 | L1000 | L2000 | L3000) when training ends, then `raw512_shorttier`.
