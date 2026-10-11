@@ -231,3 +231,12 @@ Grids: HF `evidence/raw512_eval/`. Turbo 8 steps, seed 76. Columns: native(index
   - Test: r512 s1220 and native_vl on Raw 28 steps vs Turbo, on 2 web refs.
   - If Raw keeps A's style clearly better, consider training against Turbo in a way that does not break the distillation (e.g. the real `krea2_turbo` checkpoint, short), or ask whether the user accepts Raw/hybrid sampling.
 - **H-undertrained** is being tested now by `raw1024_long` (t1024 budget on Raw).
+
+### Style test (`evidence/styletest.jpg`, 2 web refs, seed 76)
+Columns: Turbo native_vl | Turbo r512 s1220 | **Raw** native_vl | **Raw** r512 (28 steps, CFG 4) | Turbo **t3000@0.6** (the user's favourite).
+- **t3000@0.6 is by far the closest to the reference's real art style:** Aya's soft painterly rendering, face shape and expression; Gura's rendering and pose. It has a mild haze but **high fidelity**.
+- r512 does not get there on Turbo **or on Raw**. On Raw both native and r512 drift further away (Aya even comes out letterboxed). **H-turbo-style is not supported.** Raw sampling is not the cure.
+- **H-undertrained is supported:** the 1024 × ~3,000-update LoRA learned real style/identity transfer that the 1.5-epoch 512 LoRA did not. The fidelity comes from **training budget and resolution**. The haze comes from the Turbo+adapter base.
+- **Next:** `raw1024_long` (t1024 budget, Raw base) relaunched right after this test (2026-10-11 ~22:05 UTC). ETA ~5.5 h (6 s/step + val every 250).
+  - Expectation: t3000-like fidelity without the haze.
+  - Then `raw512_shorttier`.
