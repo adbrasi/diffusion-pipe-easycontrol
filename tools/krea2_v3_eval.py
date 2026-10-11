@@ -53,7 +53,7 @@ def parse_col(spec, default_variant):
     col.setdefault('method', 'index_timestep_zero')  # 'none' = no FluxKontextMultiReferenceLatentMethod node
     if col.get('label') in ('native', 'native_vl'):
         col['adapter'] = None
-    if col.get('label') == 'native_vl':
+    if col.get('label') in ('native_vl', 'raw_native_vl'):
         col['method'] = 'none'
     return col
 
