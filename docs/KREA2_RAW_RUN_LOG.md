@@ -170,3 +170,26 @@ Grids: HF `evidence/raw512_eval/`. Turbo 8 steps, seed 76. Columns: native(index
    - Our LoRA must keep using `index_timestep_zero`.
 2. "t3000_s06 has incredible results on grid_train_caption". Those rows are training images with their own captions, i.e. memorised. On held-out and short prompts the t-series is hazy on Turbo (Phase 1). So the long Raw run (below) tests "more training" on the right base.
 3. The user is sleeping; keep the GPU busy. Plan: 1024 finish → full eval (with native_vl, strength 0.7, shuffled, internet images) → 3-epoch Raw run → eval.
+
+### finish1024 (240 steps, 1024, batch 1, LR 5e-5 cosine, init raw512 s1220)
+- 1024 val loss is flat: 0.07995 (step 0, i.e. the 512 adapter) → 0.07977 (step 240). The 512 adapter already transfers to 1024.
+- ~6 s/step, 28.2 GB.
+- Eval `evidence/finish1024_eval/`: 29 rows including 8 **internet images** (safebooru SFW: Gura, Aya, Cirno, Koishi, a penguin-hood girl, a winter girl). Columns: native_vl | A1000 | r512 s1220 | f120 | f240 | strength 0.7 | shuffled.
+
+**User verdict (2026-10-11 night): "these latest tests don't hold the reference strongly, they don't do the same style correctly."** Confirmed on the web rows:
+- Every column, including `native_vl` (no reference latent at all), redraws the character in **Krea's own polished anime house style**.
+- Our LoRA keeps identity, outfit and even A's pose (the penguin hood). It does **not** keep A's rendering style (linework, colouring, shading).
+- r512 vs f240 is almost the same. f240 is not a clear win.
+- So the reference signal in our LoRA is too weak for **style**. In-domain (anime frames) it looked fine because Krea's default anime look is close to those frames.
+
+**Hypothesis** ("two poles", `AUDITORIA_2026-08-06.md`): the v11 captions are long and describe B fully (pose, clothes, hair, background, text). The text path alone can satisfy the loss, so the LoRA never needs to read *style* from A.
+
+**Tests queued overnight**, one variable each against raw512_r32:
+1. **Strength 1.4 / 1.8 + shuffled ref** on 4 web rows. If more LoRA gives more of A's style, the signal exists but is weak.
+2. **raw512_long3ep**: same recipe, 3 epochs (length only; checkpoints every 250).
+3. **raw512_shorttier**: `captions.json` with [full, short] per pair. Same 1,220 updates, i.e. the same image views.
+   - Short = framing sentence + the action sentence with appearance clauses removed + "The same background.". Appearance, clothing, text and watermark sentences are dropped, so they must come from A.
+   - Pairs that introduce a new character keep the full caption: 1,231/1,629 get a short one.
+   - Tool: `tools/krea2_v3_short_captions.py`.
+
+**User request:** generate far fewer eval images. Every later eval uses `cases_small.json`: 8 rows (4 web, 2 held-out, 1 altered train caption, 1 short), with only the columns needed for the question.
