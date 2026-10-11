@@ -193,3 +193,31 @@ Grids: HF `evidence/raw512_eval/`. Turbo 8 steps, seed 76. Columns: native(index
    - Tool: `tools/krea2_v3_short_captions.py`.
 
 **User request:** generate far fewer eval images. Every later eval uses `cases_small.json`: 8 rows (4 web, 2 held-out, 1 altered train caption, 1 short), with only the columns needed for the question.
+
+## Correction of the objective (user, 2026-10-11 night): READ THIS FIRST
+
+> "The purpose is to generate the next image from a previous reference **consistently**, so we can reuse the character, the environment, the colour palette and the theme. The dataset is entirely about that."
+
+- Do **not** score "moves to a completely new location" as a goal. A character on a white background should stay in that world.
+- Score **fidelity to A's specifics**, using the user's web_winter example:
+  - hair colour (slightly purple);
+  - glove colours (pink vs lilac);
+  - the *same* bag;
+  - outfit details, the letter, the dog;
+  - also palette and theme.
+- The user's verdict on raw512 / finish1024 on web images: "the same universe but not the same character". That is about what **native** plain TextEncodeQwenImageEditPlus already gives.
+- The user's favourite so far: **t1024 s3000 @0.6**. It looked like it was really learning the next scene, despite the Turbo haze.
+
+**Diagnosis of the gap:**
+- My Raw run fixed the base (no haze), but I also cut the **training budget**: 1.5 epochs at 512, LR mass ~1,000, LoRA b0 `mlp.down` 0.138.
+- The runs with strong reference fidelity were much bigger: t1024 s3000 had 3,000+ updates at 1024 (LR mass ~2,400, `mlp.down` 0.355), and A1000 had 0.349.
+- The val loss plateau did not show this: it measures B with its full caption.
+
+**Decision:**
+- Train the **t1024 budget on the correct base**: `examples/krea2_raw_v3/raw1024_long.toml`.
+  - Raw fp8_scaled, 1024, batch 1, LR 1e-4 cosine to 3,000 steps, apex law, r32.
+  - Save and val every 250. Checkpoints auto-uploaded to HF `checkpoints/raw1024_long/`.
+- The short-tier 512 run stays queued after it.
+- **Eval criterion from now on:** reference fidelity on `cases_small.json` (web refs plus in-domain held-out). Compare native_vl, our LoRA, and t3000@0.6 as the user's favourite bar, with few images.
+
+**Infra incident:** the queued script waited with `pgrep -f finish1024_eval`, which matched my own shell command, so the GPU sat idle for ~25 min. The queue is now a plain sequential script (`tools/k2v3_ops/queue2.sh`).
