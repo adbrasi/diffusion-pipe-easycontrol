@@ -60,3 +60,44 @@ Session: GPU box RTX 5090 32 GB (Vast), follows `docs/HANDOFF_GPU_2026-10-11.md`
   - `max_steps` 1,220 ≈ 1.5 epochs;
   - save and eval every 125 steps;
   - real AR buckets, `reference_pixels="target"`, vl_grounding, ref t=0, caption_dropout 0.
+
+## Phase 1: decisive tests on the existing adapters (2026-10-11)
+
+Grids: `/workspace/k2eval/phase1_turbo/grid_{train_caption,train_altered,heldout,short}.jpg` (uploaded to HF `evidence/phase1/`).
+- Seed 76, Turbo (Raw fp8 + Turbo LoRA), 8 steps, CFG 1, user ComfyUI `f856877e`, node_1mp reference, training AR bucket at ~1 MP.
+- Columns: native (no LoRA) | A1000@1 | probe p250@1 | p1000@1 | p1000@0.7 | t1024 s500@1 | s1500@1 | s1500@0.7 | s3000@1 | s3000@0.6 | p1000 with shuffled ref.
+
+### T1 (Turbo half), T3, T4: visual verdict (mine; the user's verdict is pending)
+
+- **A1000 (Raw-trained) is clearly the best on Turbo.** Crisp, saturated, clean lines. It follows the **short user-style prompts** and the **altered captions**:
+  - the cat-eared girl runs down a night city street;
+  - three kids on a park bench at sunset;
+  - the man in uniform turns to the camera;
+  - the girl eats ramen;
+  - the squirrel moves to a branch holding an acorn;
+  - the manga boy points and shouts "ENOUGH!".
+  - Identity and outfit are kept.
+- **Probe p1000 and t1024 s500 (Turbo+adapter-trained) are already grey/hazy.** The haze and loss of contrast grow monotonically to s1500 and s3000, together with anatomy deformation (short prompts: archer, cat girl). Their compositions stay closer to A:
+  - the squirrel stays in the tree hollow under the altered caption;
+  - "kids on a bench at sunset" stays in A's corridor.
+  - This is the "copies / re-imagines A, ignores prompt" failure.
+- **Strength 0.6–0.7 (T3)** reduces the haze of s1500/s3000 a little. It does not restore crispness, and it does not fix the composition copy. Magnitude is not the main lever.
+- **native (no LoRA)** shows the expected 16-px speckle grid everywhere. It roughly follows the prompt and sometimes duplicates the subject.
+- **One quirk:** A1000 and native both drew the running girl **twice** (side by side) on the altered tr0 caption. Watch for subject duplication.
+
+### LoRA size audit (`tools/lora_delta_audit.py`, spectral |ΔW|₂/|W|₂, base `krea2_raw_bf16`)
+
+| module | Turbo distill | **A1000 s1000 (Raw, r64)** | probe s250 | probe s1000 | t1024 s3000 (diag.) |
+|---|---|---|---|---|---|
+| b0 attn.wq | 0.019 | 0.100 | 0.044 | 0.071 | 0.107 |
+| b0 mlp.down | 0.059 | **0.349** | 0.092 | 0.177 | 0.355 |
+| b14 attn.wk | 0.014 | 0.156 | 0.038 | 0.074 | — |
+| b14 mlp.down | 0.071 | **0.282** | 0.057 | 0.126 | 0.202 |
+| b27 attn.wq | 0.245 | 0.111 | 0.044 | 0.092 | 0.157 |
+
+**Finding:** the crisp, Raw-trained A1000 moves the weights **as much as or more than** the "burnt" t1024 s3000. LoRA magnitude does **not** explain the haze. What differs is the base it was trained against.
+- This strongly supports diagnosis §2.3: train on plain Raw.
+- It drops "block-0 mlp.down ≤ 0.18" as a guardrail. I keep the audit only as a trend monitor within a run.
+
+### T6
+The train logs on HF contain no `lora key not loaded` / `NOT LOADED` lines. They also contain no merge logging at all, so the result is inconclusive. It is moot now, because v3 does not merge adapters.
