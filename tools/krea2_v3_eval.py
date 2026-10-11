@@ -9,7 +9,8 @@ Cases file (JSON list): {"id", "kind", "ref", "target"|null, "prompt"}; kind in
 train_caption | train_altered | heldout | short. Output size = training AR bucket of the target
 (or of the ref when there is no target) at ~1MP, sides /16.
 
-Columns (--col, repeatable): "label=native" | "label=<name>,adapter=<.../adapter_model.safetensors>,strength=0.7"
+Columns (--col, repeatable): "label=native" (index_timestep_zero, no LoRA) | "label=native_vl" (user's plain
+graph: no method node -> ref latent ignored, VL tokens only) | "label=<name>,adapter=<.../adapter_model.safetensors>,strength=0.7"
 optional keys: shuffle=1 (reference of the next case), variant=Turbo|Raw|TurboOfficial.
 Default variant from --variant. Seeds: --seeds 76 (several -> more rows).
 Writes grid.png (A | B | columns), images, results.json (+ copy metric: corr(gen, A) vs corr(gen, B) on 64px gray).
@@ -49,13 +50,16 @@ def parse_col(spec, default_variant):
     col.setdefault('variant', default_variant)
     col['strength'] = float(col.get('strength', 1.0))
     col['shuffle'] = col.get('shuffle', '0') in ('1', 'true', 'yes')
-    if col.get('label') == 'native':
+    col.setdefault('method', 'index_timestep_zero')  # 'none' = no FluxKontextMultiReferenceLatentMethod node
+    if col.get('label') in ('native', 'native_vl'):
         col['adapter'] = None
+    if col.get('label') == 'native_vl':
+        col['method'] = 'none'
     return col
 
 
 def graph(prompt, width, height, seed, reference, variant, lora_name, strength, prefix, models,
-          raw_steps=28, raw_cfg=4.0):
+          raw_steps=28, raw_cfg=4.0, method='index_timestep_zero'):
     turbo = variant in ('Turbo', 'TurboOfficial')
     steps = 8 if turbo else raw_steps
     cfg = 1.0 if turbo else raw_cfg
@@ -78,8 +82,11 @@ def graph(prompt, width, height, seed, reference, variant, lora_name, strength, 
         model = add('6', 'LoraLoaderModelOnly', model=model, lora_name=lora_name, strength_model=strength)
     pos = add('7', 'TextEncodeQwenImageEditPlus', clip=clip, prompt=prompt, vae=vae, image1=image)
     neg = add('8', 'TextEncodeQwenImageEditPlus', clip=clip, prompt='', vae=vae, image1=image)
-    pos = add('9', 'FluxKontextMultiReferenceLatentMethod', conditioning=pos, reference_latents_method='index_timestep_zero')
-    neg = add('10', 'FluxKontextMultiReferenceLatentMethod', conditioning=neg, reference_latents_method='index_timestep_zero')
+    if method != 'none':
+        # Without this node Krea2's default_ref_method is None: the reference LATENT is ignored and the
+        # model only sees the image through the Qwen3-VL tokens (the user's plain "traditional" graph).
+        pos = add('9', 'FluxKontextMultiReferenceLatentMethod', conditioning=pos, reference_latents_method=method)
+        neg = add('10', 'FluxKontextMultiReferenceLatentMethod', conditioning=neg, reference_latents_method=method)
     guider = add('11', 'CFGGuider', model=model, positive=pos, negative=neg, cfg=cfg)
     latent = add('12', 'EmptyLatentImage', width=width, height=height, batch_size=1)
     noise = add('13', 'RandomNoise', noise_seed=seed)
@@ -252,7 +259,7 @@ def main():
                         ref = next(cases[(i + d) % len(cases)]['ref_name'] for d in range(1, len(cases) + 1)
                                    if cases[(i + d) % len(cases)]['ref'] != c['ref'])
                     g = graph(c['prompt'], w, h, seed, ref, col['variant'], col['lora_name'], col['strength'],
-                              f'k2v3_{k}', models, args.raw_steps, args.raw_cfg)
+                              f'k2v3_{k}', models, args.raw_steps, args.raw_cfg, col['method'])
                     execute(g, dest, url, work / 'output')
                     print(f"[{time.time() - t0:6.0f}s] {n_done}/{n_total} {col['label']} {c['id']} s{seed}", flush=True)
         for seed in seeds:

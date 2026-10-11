@@ -1,0 +1,54 @@
+# Krea 2 next-scene v3: short 1024 finishing pass on Raw from the best 512 checkpoint (diagnosis §7.1 step 4).
+# Only resolution/batch/LR/steps change vs raw512.toml. INIT is set at launch (sed) to the chosen 512 step.
+output_dir = "/workspace/checkpoints/krea2_raw_v3/finish1024"
+dataset = "/workspace/dpk/examples/krea2_raw_v3/dataset_1024.toml"
+eval_datasets = [ {name = 'heldout', config = '/workspace/dpk/examples/krea2_raw_v3/val_1024.toml'} ]
+eval_every_n_steps = 40
+eval_before_first_step = true
+eval_micro_batch_size_per_gpu = 1
+eval_gradient_accumulation_steps = 1
+epochs = 1
+max_steps = 240
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 1
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 10
+lr_scheduler = "cosine"
+save_every_n_steps = 40
+checkpoint_every_n_minutes = 20
+activation_checkpointing = true
+save_dtype = "bfloat16"
+caching_batch_size = 1
+seed = 43
+
+[model]
+type = "krea2_native"
+diffusion_model = "/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors"
+vae = "/workspace/models/krea2/vae/qwen_image_vae.safetensors"
+dtype = "bfloat16"
+base_quant = "fp8_scaled"
+timestep_law = "krea2_apex"
+blocks_to_swap = 0
+[[model.text_encoders]]
+path = "/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors"
+type = "krea2"
+
+[krea2_native]
+reference_timestep = "zero"
+vl_grounding = true
+caption_dropout = 0.0
+reference_pixels = "target"
+
+[adapter]
+type = "lora"
+rank = 32
+dtype = "bfloat16"
+init_from_existing = "/workspace/checkpoints/krea2_raw_v3/raw512_r32/20261011_14-55-24/step1220"
+
+[optimizer]
+type = "AdamW8bitKahan"
+lr = 0.00005
+betas = [ 0.9, 0.99,]
+weight_decay = 0.01
+stabilize = false
