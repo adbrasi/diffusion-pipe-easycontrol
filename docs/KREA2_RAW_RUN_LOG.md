@@ -101,3 +101,18 @@ Grids: `/workspace/k2eval/phase1_turbo/grid_{train_caption,train_altered,heldout
 
 ### T6
 The train logs on HF contain no `lora key not loaded` / `NOT LOADED` lines. They also contain no merge logging at all, so the result is inconclusive. It is moot now, because v3 does not merge adapters.
+
+### T2: official Turbo vs Raw fp8 + Turbo LoRA r64
+`evidence/phase1/T2.jpg`: 8 cases, with and without p1000.
+- Same composition, colours and look. Only small detail differences.
+- The p1000 haze is identical on both.
+- **Conclusion:** evaluating (and using) "Raw fp8 + Turbo LoRA" is representative of Turbo.
+
+### T1: Raw 28 steps, CFG 4 vs Turbo, same seeds
+`evidence/phase1/T1_raw.jpg`: 5 cases, columns native, A1000, p1000, t500, t1500, t3000.
+- **On Raw, all Turbo+adapter-trained adapters (p1000, t500, t1500, t3000) are crisp and saturated, with no haze.** On Turbo the same adapters are grey and washed out.
+- **Confirmed:** the haze is the Turbo distillation breaking under a LoRA trained against the "Raw + Turbo LoRA + ostris adapter" base. The decision to **train on plain Raw** is closed.
+- Even on Raw, the Turbo-trained adapters keep A's composition more than A1000 does. Example: "kids on a park bench at sunset" stays in A's corridor, while A1000 goes to a park.
+- Raw duplication quirk again: A1000 on Raw drew the archer prompt as a two-figure "character sheet" (sh0).
+
+**Phase 1 decision:** go to Phase 2 (native on Raw, diagnosis §7.1) as planned. The A1000 look on Turbo is the quality bar to beat, together with better prompt-following and fewer duplications.
