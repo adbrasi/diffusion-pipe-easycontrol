@@ -1,0 +1,9 @@
+resolutions = [ 512,]
+enable_ar_bucket = true
+# Real aspect ratios of the data (16:9 = 78% of v11 train). Must match tools/krea2_v3_eval.py AR_BUCKETS.
+ar_buckets = [[1, 2], [9, 16], [2, 3], [3, 4], [1, 1], [4, 3], [3, 2], [16, 9], [2, 1], [7, 3]]
+frame_buckets = [ 1,]
+[[directory]]
+path = "/workspace/k2data/train_short/target"
+control_path = "/workspace/k2data/train_short/control"
+num_repeats = 1

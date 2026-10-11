@@ -1,0 +1,55 @@
+# Krea 2 next-scene v3: native stock contract trained on RAW (docs/DIAGNOSTICO_KREA2_2026-10-11.md §7.1).
+# vs Turbo 1024 run: no merge_adapters (plain Raw fp8_scaled), timestep_law krea2_apex (no shift / high band),
+# micro 1 x accum 2, cosine sized for ~1.5 epochs, checkpoints every 125, held-out val loss.
+output_dir = "/workspace/checkpoints/krea2_raw_v3/raw512_long3ep"
+dataset = "/workspace/dpk/examples/krea2_raw_v3/dataset_512.toml"
+eval_datasets = [ {name = 'heldout', config = '/workspace/dpk/examples/krea2_raw_v3/val_512.toml'} ]
+eval_every_n_steps = 250
+eval_before_first_step = true
+eval_micro_batch_size_per_gpu = 1
+eval_gradient_accumulation_steps = 1
+epochs = 3
+# 3 epochs x 814 updates; ONLY variable vs raw512.toml = length (cosine over 2442)
+max_steps = 2442
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 2
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+lr_scheduler = "cosine"
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 20
+activation_checkpointing = true
+save_dtype = "bfloat16"
+caching_batch_size = 1
+seed = 42
+
+[model]
+type = "krea2_native"
+diffusion_model = "/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors"
+vae = "/workspace/models/krea2/vae/qwen_image_vae.safetensors"
+dtype = "bfloat16"
+base_quant = "fp8_scaled"
+timestep_law = "krea2_apex"
+blocks_to_swap = 0
+[[model.text_encoders]]
+path = "/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors"
+type = "krea2"
+
+[krea2_native]
+reference_timestep = "zero"
+vl_grounding = true
+caption_dropout = 0.0
+reference_pixels = "target"
+
+[adapter]
+type = "lora"
+rank = 32
+dtype = "bfloat16"
+
+[optimizer]
+type = "AdamW8bitKahan"
+lr = 0.0001
+betas = [ 0.9, 0.99,]
+weight_decay = 0.01
+stabilize = false
