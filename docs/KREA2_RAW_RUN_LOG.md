@@ -221,3 +221,13 @@ Grids: HF `evidence/raw512_eval/`. Turbo 8 steps, seed 76. Columns: native(index
 - **Eval criterion from now on:** reference fidelity on `cases_small.json` (web refs plus in-domain held-out). Compare native_vl, our LoRA, and t3000@0.6 as the user's favourite bar, with few images.
 
 **Infra incident:** the queued script waited with `pgrep -f finish1024_eval`, which matched my own shell command, so the GPU sat idle for ~25 min. The queue is now a plain sequential script (`tools/k2v3_ops/queue2.sh`).
+
+### Strength test on web refs (`evidence/strength_web.jpg`; r512 s1220 at 1.0 / 1.4 / 1.8 + shuffled)
+- 1.4 and 1.8 barely change anything. The output stays in Krea's house style, with the same generic rendering. **Scaling the LoRA is not the lever.**
+- The shuffled ref swaps identity (Aya's hat and wings show up on the Gura prompt; Gura on the Cirno prompt). The **ref latent is read for identity**, but not for rendering style and fine details.
+- **Hypothesis H-turbo-style (to test at the next GPU break, ~4 images):**
+  - A Raw-trained LoRA applied on Turbo lets the **Turbo distillation's house aesthetic** override the reference style.
+  - t3000 (the user's favourite) was trained *against Turbo*, so it learned to counter it.
+  - Test: r512 s1220 and native_vl on Raw 28 steps vs Turbo, on 2 web refs.
+  - If Raw keeps A's style clearly better, consider training against Turbo in a way that does not break the distillation (e.g. the real `krea2_turbo` checkpoint, short), or ask whether the user accepts Raw/hybrid sampling.
+- **H-undertrained** is being tested now by `raw1024_long` (t1024 budget on Raw).
