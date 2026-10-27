@@ -1,0 +1,144 @@
+job: extension
+config:
+  name: moss_nextscene_v1
+  process:
+  - type: diffusion_trainer
+    training_folder: /workspace/output
+    device: cuda:0
+    network:
+      type: lora
+      linear: 32
+      linear_alpha: 32
+      network_kwargs:
+        ignore_if_contains:
+        - layers.22.
+    save:
+      dtype: bf16
+      save_every: 250
+      max_step_saves_to_keep: 10
+    datasets:
+    - folder_path: /workspace/data/ns_full/train/target
+      control_path:
+      - /workspace/data/ns_full/train/control
+      caption_ext: txt
+      caption_dropout_rate: 0.05
+      resolution:
+      - 768
+      cache_latents_to_disk: false
+    train:
+      batch_size: 1
+      steps: 1500
+      gradient_accumulation: 1
+      train_unet: true
+      train_text_encoder: false
+      gradient_checkpointing: true
+      noise_scheduler: flowmatch
+      timestep_type: shift
+      optimizer: adamw8bit
+      lr: 0.0001
+      dtype: bf16
+      unload_text_encoder: false
+    model:
+      name_or_path: OpenMOSS-Team/MOSS-Image-Base
+      arch: moss_image
+      quantize: true
+      qtype: convrot8
+      quantize_te: true
+      qtype_te: convrot8
+      low_vram: false
+      model_kwargs:
+        edit: true
+        kv_cache: true
+        match_target_res: true
+        uncond_skip_layers:
+        - 22
+    sample:
+      sampler: flowmatch
+      sample_every: 250
+      sample_start_step: 0
+      width: 1024
+      height: 576
+      neg: ''
+      seed: 42
+      walk_seed: false
+      guidance_scale: 3
+      sample_steps: 30
+      samples:
+      - prompt: Next scene of Picture 1. A medium shot from the front. The same woman
+          stands in the center facing the viewer, holding a wooden pointer stick down
+          in her right hand and extending her left hand outward with her palm up,
+          smiling gently with wide eyes. The same place, with a whiteboard behind
+          her and a colorful bulletin board to the right that reads "Let your IDEAS
+          BLOOM" with paper flowers, a blue "TURN-IN" tray below it, and an animal
+          poster above that reads "Our Neighbours".
+        ctrl_img_1: /workspace/data/ns_full/val/control/ds2_004705.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A medium shot from the side at eye level.
+          The same robot with a white spherical body, small round head with large
+          green eyes, and long jointed grey limbs balances on the edge of a mossy
+          grey rock on the right, its body tilted forward and its limbs spread wide
+          for balance as it looks down to the left. The same place, with moss-covered
+          boulders and a wall of white sea spray crashing behind. The light is brighter
+          and hazier from the spray.
+        ctrl_img_1: /workspace/data/ns_full/val/control/ds4_imagem000073.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. An over-the-shoulder medium close-up from
+          behind the same boy. The same boy is in the left foreground, out of focus,
+          seen only from the back of his spiky dark green hair and shoulders as he
+          faces right. A new reptilian man with green scaly skin, a long snout, a
+          narrow red eye and purple hair stands on the right, with thick white bandages
+          wrapped around his forehead and across his nose, wearing a light-colored
+          coat, staring at the same boy with a stern sideways gaze. The same background.
+        ctrl_img_1: /workspace/data/ns_full/val/control/ds4_imagem000305.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A low-angle medium shot from the front. A
+          new heavyset older man with gray hair, round glasses and a small mustache
+          dominates the center foreground in a black suit, white shirt and yellow
+          tie, his right arm raised with his hand behind his head, his mouth open
+          in a small o as he looks down. Behind him on the left stands the same suited
+          man who was on the left, looking forward with a surprised expression and
+          slightly open mouth, with a new brown-haired young man peeking from behind
+          him in the center and a new young man with short spiky brown hair in a white
+          shirt standing on the right, both staring forward with serious surprised
+          faces. The same place, with a pale yellow coffered ceiling visible behind
+          them. The light is bright and warm yellow.
+        ctrl_img_1: /workspace/data/ns_full/val/control/ds4_imagem000381.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A medium shot from the side at eye level.
+          A new tall boy stands on the left in profile, with short white hair, a dark
+          blue headscarf tied at the back, a white short-sleeved shirt and a dark
+          apron, looking down to the right with a slight smile. A new shorter boy
+          with short black hair and a light blue patterned headscarf tied at the back,
+          wearing a white collared shirt with a light floral apron, is seated or crouched
+          in the lower right, looking up at the tall boy with a neutral expression.
+          The same place, with glass-fronted shelves stacked with dishes along the
+          left wall and double doors with high bright windows at the back.
+        ctrl_img_1: /workspace/data/ns_full/val/control/ds4_imagem000511.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A wide shot from outside looking in through
+          the restaurant window from a slightly high angle. In the lower right foreground,
+          the same middle-aged man with gray hair and round glasses holds a phone
+          to his ear and looks to the side with a stern expression. Through the glass
+          in the center, the same short brown-haired girl sits in a red booth with
+          her mouth open looking toward the right, while the same long pink-haired
+          girl stands on the right with her back to the camera beside the table. The
+          same place, with the dark exterior wall and paved sidewalk in the foreground
+          and the restaurant interior visible through the window with checkered floors,
+          empty tables and chairs, brick walls, and a potted plant on the windowsill.
+        ctrl_img_1: /workspace/data/ns_full/val/control/ds4_imagem001191.jpg
+        width: 1024
+        height: 576
+        seed: 42
+meta:
+  name: '[name]'
+  version: '1.0'

@@ -1,0 +1,44 @@
+[
+ {
+  "id": "professora__parecido_delta",
+  "kind": "short",
+  "ref": "/workspace/data/ns_cap1000/val/control/ds2_004705.jpg",
+  "target": "/workspace/data/ns_cap1000/val/target/ds2_004705.jpg",
+  "prompt": "Next scene of Picture 1. A medium close-up from the side. The same woman writes on the whiteboard with a marker and looks back over her shoulder at the viewer with a warm smile. Same place."
+ },
+ {
+  "id": "deku__identico",
+  "kind": "heldout",
+  "ref": "/workspace/data/ns_cap1000/val/control/ds4_imagem000305.jpg",
+  "target": "/workspace/data/ns_cap1000/val/target/ds4_imagem000305.jpg",
+  "prompt": "Next scene of Picture 1. A close-up over-the-shoulder shot. The same young man is out of focus in the left foreground with his back to camera, facing a new green reptile-man with bandaged head and purple hair who stares back at him. Same place."
+ },
+ {
+  "id": "fumika_fora__parecido_delta",
+  "kind": "short",
+  "ref": "/workspace/test_refs/fumika_0.jpg",
+  "target": null,
+  "prompt": "Next scene of Picture 1. A medium shot from the front at eye level. The same girl stands between the bookshelves, holding a book against her chest and smiling softly at the viewer. Same place."
+ },
+ {
+  "id": "terra_fora__diferente",
+  "kind": "short",
+  "ref": "/workspace/test_refs/terra_0.jpg",
+  "target": null,
+  "prompt": "Next scene of Picture 1. The same girl plays video games on a couch in her bedroom at night."
+ },
+ {
+  "id": "foto_ruiva__diferente",
+  "kind": "short",
+  "ref": "/workspace/test_refs/gen/foto_ruiva.jpg",
+  "target": null,
+  "prompt": "Next scene of Picture 1. A wide shot. The same woman rides a bicycle along a seaside road on a cloudy day."
+ },
+ {
+  "id": "manga_garoto__diferente",
+  "kind": "short",
+  "ref": "/workspace/test_refs/gen/manga_garoto.jpg",
+  "target": null,
+  "prompt": "Next scene of Picture 1. The same boy sits in a crowded classroom, bored, with his chin on his hand."
+ }
+]

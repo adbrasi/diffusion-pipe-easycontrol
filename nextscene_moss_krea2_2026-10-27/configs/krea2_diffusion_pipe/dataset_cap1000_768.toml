@@ -1,0 +1,8 @@
+resolutions = [ 768,]
+enable_ar_bucket = true
+ar_buckets = [[1, 2], [9, 16], [2, 3], [3, 4], [1, 1], [4, 3], [3, 2], [16, 9], [2, 1], [7, 3]]
+frame_buckets = [ 1,]
+[[directory]]
+path = "/workspace/data/ns_cap1000/train/target"
+control_path = "/workspace/data/ns_cap1000/train/control"
+num_repeats = 1

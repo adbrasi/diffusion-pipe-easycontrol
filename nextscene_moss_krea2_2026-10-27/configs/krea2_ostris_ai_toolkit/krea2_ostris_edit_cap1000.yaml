@@ -1,0 +1,103 @@
+job: extension
+config:
+  name: krea2_ostris_edit_cap1000
+  process:
+  - type: diffusion_trainer
+    training_folder: /workspace/output
+    device: cuda:0
+    network:
+      type: lora
+      linear: 32
+      linear_alpha: 32
+    save:
+      dtype: bf16
+      save_every: 250
+      max_step_saves_to_keep: 10
+    datasets:
+    - folder_path: /workspace/data/ns_cap1000/train/target
+      control_path:
+      - /workspace/data/ns_cap1000/train/control
+      caption_ext: txt
+      caption_dropout_rate: 0.05
+      resolution:
+      - 768
+      cache_latents_to_disk: false
+      cache_text_embeddings: false
+    train:
+      batch_size: 1
+      steps: 1000
+      gradient_accumulation: 1
+      train_unet: true
+      train_text_encoder: false
+      gradient_checkpointing: true
+      noise_scheduler: flowmatch
+      timestep_type: linear
+      optimizer: adamw8bit
+      lr: 0.0001
+      dtype: bf16
+      unload_text_encoder: false
+    model:
+      name_or_path: krea/Krea-2-Raw
+      arch: krea2
+      quantize: true
+      quantize_te: true
+      low_vram: false
+      model_kwargs:
+        edit: true
+        match_target_res: true
+        kv_cache: true
+    sample:
+      sampler: flowmatch
+      sample_every: 250
+      sample_start_step: 0
+      width: 1024
+      height: 576
+      neg: ''
+      seed: 42
+      walk_seed: false
+      guidance_scale: 4
+      sample_steps: 25
+      samples:
+      - prompt: Next scene of Picture 1. A medium close-up from the side. The same
+          woman writes on the whiteboard with a marker and looks back over her shoulder
+          at the viewer with a warm smile. Same place.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds2_004705.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A close-up over-the-shoulder shot. The same
+          young man is out of focus in the left foreground with his back to camera,
+          facing a new green reptile-man with bandaged head and purple hair who stares
+          back at him. Same place.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds4_imagem000305.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A medium shot from the front at eye level.
+          The same girl stands between the bookshelves, holding a book against her
+          chest and smiling softly at the viewer. Same place.
+        ctrl_img_1: /workspace/test_refs/fumika_0.jpg
+        width: 624
+        height: 928
+        seed: 42
+      - prompt: Next scene of Picture 1. The same girl plays video games on a couch
+          in her bedroom at night.
+        ctrl_img_1: /workspace/test_refs/terra_0.jpg
+        width: 624
+        height: 928
+        seed: 42
+      - prompt: Next scene of Picture 1. A wide shot. The same woman rides a bicycle
+          along a seaside road on a cloudy day.
+        ctrl_img_1: /workspace/test_refs/gen/foto_ruiva.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. The same boy sits in a crowded classroom,
+          bored, with his chin on his hand.
+        ctrl_img_1: /workspace/test_refs/gen/manga_garoto.jpg
+        width: 1024
+        height: 576
+        seed: 42
+meta:
+  name: '[name]'
+  version: '1.0'

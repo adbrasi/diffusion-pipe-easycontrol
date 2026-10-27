@@ -1,0 +1,67 @@
+# Next-scene on the 1000 delta-caption pairs (prefix 'Next scene of image 1.'), 768px, user's B/beta1_fixed recipe.
+# Krea 2 A/B — BRAÇO B: a receita do k2-context-rush-ofc-beta1, CORRIGIDA.
+# Mantido do beta1: routing condition-only nos blocos + txtfusion global (rank 128),
+# width_shift, ref t=0, grounding Qwen3-VL 384² "image 1:", rank 64, AdamW8bitKahan.
+# Corrigido: base fp8_scaled COM escala (base_quant; não float8 sem escala), caption_dropout 0, dados sem
+# pico-banana/quase-duplicados, mesma resolução/steps/lr do braço A.
+# Inferência: runner (tools/infer_reference_adapter.py) ou node CtxRush v2 SEM o
+# "K2 Training Base" (a base agora é a normal).
+
+output_dir = '/workspace/checkpoints/krea2_B_beta1fixed_cap1000'
+dataset = '/workspace/dpk/configs/dataset_cap1000_768_B.toml'
+eval_datasets = [ {name = 'heldout', config = '/workspace/dpk/configs/val_cap1000_768_B.toml'} ]
+eval_every_n_steps = 250
+eval_before_first_step = true
+eval_micro_batch_size_per_gpu = 1
+eval_gradient_accumulation_steps = 1
+epochs = 1000
+max_steps = 1000
+micro_batch_size_per_gpu = 2      # batch REAL (4 at 512 in the A/B; 2 at 768 for 32 GB). Nunca gradient accumulation.
+gradient_accumulation_steps = 1
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+save_every_n_steps = 250
+checkpoint_every_n_minutes = 20
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1          # OBRIGATÓRIO com multi_ref
+seed = 42
+
+[model]
+type = 'krea2_multiref_grounded'
+diffusion_model = '/workspace/models/krea2/diffusion_models/krea2_raw_fp8_scaled.safetensors'
+vae = '/workspace/models/krea2/vae/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/workspace/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+base_quant = 'fp8_scaled'      # fp8 + escala EXATOS do ComfyUI (models/base.py::ScaledFP8Linear); nunca diffusion_model_dtype='float8'
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[krea2_multiref_grounded]
+max_refs = 1
+slot_axis = 'width'
+position_mode = 'width_shift'
+reference_position_offset = 1.0
+reference_timestep = 'zero'
+condition_dropout = 0.0
+condition_only_lora = true
+vl_prompt_style = 'picture_n'
+vl_image_label = 'image'
+vl_image_max_pixels = 147456   # 384²
+caption_dropout = 0.0          # beta1 usava 0.1 (aula de cópia)
+txtfusion_rank = 128
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

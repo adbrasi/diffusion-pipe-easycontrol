@@ -1,0 +1,131 @@
+job: extension
+config:
+  name: moss_nextscene_v3_cap1000
+  process:
+  - type: diffusion_trainer
+    training_folder: /workspace/output
+    device: cuda:0
+    network:
+      type: lora
+      linear: 32
+      linear_alpha: 32
+      network_kwargs:
+        ignore_if_contains:
+        - layers.22.
+    save:
+      dtype: bf16
+      save_every: 250
+      max_step_saves_to_keep: 10
+    datasets:
+    - folder_path: /workspace/data/ns_cap1000/train/target
+      control_path:
+      - /workspace/data/ns_cap1000/train/control
+      caption_ext: txt
+      caption_dropout_rate: 0.05
+      resolution:
+      - 768
+      cache_latents_to_disk: false
+    train:
+      batch_size: 1
+      steps: 1000
+      gradient_accumulation: 1
+      train_unet: true
+      train_text_encoder: false
+      gradient_checkpointing: true
+      noise_scheduler: flowmatch
+      timestep_type: shift
+      optimizer: adamw8bit
+      lr: 0.0001
+      dtype: bf16
+      unload_text_encoder: false
+    model:
+      name_or_path: OpenMOSS-Team/MOSS-Image-Base
+      arch: moss_image
+      quantize: true
+      qtype: convrot8
+      quantize_te: true
+      qtype_te: convrot8
+      low_vram: false
+      model_kwargs:
+        edit: true
+        kv_cache: true
+        match_target_res: true
+        uncond_skip_layers:
+        - 22
+    sample:
+      sampler: flowmatch
+      sample_every: 250
+      sample_start_step: 0
+      width: 1024
+      height: 576
+      neg: ''
+      seed: 42
+      walk_seed: false
+      guidance_scale: 3
+      sample_steps: 30
+      samples:
+      - prompt: Next scene of Picture 1. A medium shot from the front. The same woman
+          stands centered facing forward, holding a stick in her right hand with her
+          left hand extended open, smiling with wide eyes. Behind her a whiteboard
+          and a bulletin board reading "Let your IDEAS BLOOM" are visible. Same place.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds2_004705.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A medium-wide shot from a low side angle.
+          The same robot climbs across mossy boulders, its limbs stretched wide for
+          balance and its head tilted down looking toward the rocks, with misty water
+          spraying behind it. Same place, higher on the rocks near the water.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds4_imagem000073.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A close-up over-the-shoulder shot. The same
+          young man is out of focus in the left foreground with his back to camera,
+          facing a new green reptile-man with bandaged head and purple hair who stares
+          back at him. Same place.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds4_imagem000305.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A medium shot from a low angle. A new heavyset
+          older man with glasses and yellow tie stands center with arm behind head,
+          flanked by a new dark-haired suited man and two new young brown-haired men
+          watching. Ornate ceiling visible above. Same place.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds4_imagem000381.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A medium shot at eye level. A new tall man
+          with white hair and blue bandana stands on the left looking down with a
+          slight smile, while the same girl on the right looks up at him attentively,
+          wearing a different bandana. Same place.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds4_imagem000511.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A medium shot from outside at an oblique
+          high angle. The same man is in the foreground on the right holding a phone
+          to his ear and glancing sideways, while the same two girls are seen through
+          the window seated together at the table, one with her mouth open in surprise.
+          Same place, viewed from outside.
+        ctrl_img_1: /workspace/data/ns_cap1000/val/control/ds4_imagem001191.jpg
+        width: 1024
+        height: 576
+        seed: 42
+      - prompt: Next scene of Picture 1. A wide shot from the side. The same girl
+          walks out of the library onto a rainy city street at night, holding a closed
+          umbrella.
+        ctrl_img_1: /workspace/test_refs/fumika_0.jpg
+        width: 672
+        height: 960
+        seed: 42
+      - prompt: Next scene of Picture 1. A close-up from the front. The same girl
+          looks up from the book, surprised, with her mouth open. Same place.
+        ctrl_img_1: /workspace/test_refs/terra_0.jpg
+        width: 672
+        height: 960
+        seed: 42
+meta:
+  name: '[name]'
+  version: '1.0'

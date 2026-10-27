@@ -1,0 +1,148 @@
+{
+ "refs": [
+  {
+   "id": "professora",
+   "stem": "ds2_004705",
+   "split": "val",
+   "similar": "Next scene of Picture 1. A medium close-up from the side. The same woman stands by the whiteboard, writing on it with a marker and looking back over her shoulder at the viewer with a warm smile. The same classroom with colorful decorations.",
+   "different": "Next scene of Picture 1. The same woman sits alone at her desk after class, drinking a cup of coffee.",
+   "w": 1024,
+   "h": 576,
+   "delta": "Next scene of Picture 1. A medium close-up from the side. The same woman writes on the whiteboard with a marker and looks back over her shoulder at the viewer with a warm smile. Same place."
+  },
+  {
+   "id": "robo",
+   "stem": "ds4_imagem000073",
+   "split": "val",
+   "similar": "Next scene of Picture 1. A wide shot from the front. The same robot climbs up the mossy rock using its long jointed limbs, reaching for the top. The same place.",
+   "different": "Next scene of Picture 1. The same robot walks through a sunny flower field.",
+   "w": 1024,
+   "h": 576,
+   "delta": "Next scene of Picture 1. A wide shot from the front. The same robot climbs up the mossy rock using its long limbs, reaching for the top. Same place."
+  },
+  {
+   "id": "deku",
+   "stem": "ds4_imagem000305",
+   "split": "val",
+   "similar": "Next scene of Picture 1. A close-up from the front. The same boy with spiky dark green hair and a gray school uniform with a red tie looks straight at the viewer with a determined expression. The same background.",
+   "different": "Next scene of Picture 1. The same boy runs down a city street at sunset, smiling.",
+   "w": 1024,
+   "h": 576,
+   "delta": "Next scene of Picture 1. A close-up from the front. The same boy looks straight at the viewer with a determined expression. Same place."
+  },
+  {
+   "id": "garcom",
+   "stem": "ds4_imagem000381",
+   "split": "val",
+   "similar": "Next scene of Picture 1. A medium shot from the side. The same man in the vest and bow tie turns to the left with his eyes closed and a calm smile, polishing a glass. The same place.",
+   "different": "Next scene of Picture 1. The same man walks outside in the rain holding a black umbrella.",
+   "w": 1024,
+   "h": 576,
+   "delta": "Next scene of Picture 1. A medium shot from the side. The same man turns to the left with his eyes closed and a calm smile, polishing a glass. Same place."
+  },
+  {
+   "id": "cozinha",
+   "stem": "ds4_imagem000511",
+   "split": "val",
+   "similar": "Next scene of Picture 1. A close-up from the front. The same boy in the red cap and apron chews his food with a happy expression, holding chopsticks. The same place.",
+   "different": "Next scene of Picture 1. The same two people walk together along a beach at sunset.",
+   "w": 1024,
+   "h": 576,
+   "delta": "Next scene of Picture 1. A close-up from the front. The same boy in the red cap chews his food with a happy expression, holding chopsticks. Same place."
+  },
+  {
+   "id": "restaurante",
+   "stem": "ds4_imagem001191",
+   "split": "val",
+   "similar": "Next scene of Picture 1. A medium shot from the front. The same long pink-haired girl sits down in the red booth across from the short brown-haired girl, both smiling. The same place.",
+   "different": "Next scene of Picture 1. The same pink-haired girl stands on a train station platform at night.",
+   "w": 1024,
+   "h": 576,
+   "delta": "Next scene of Picture 1. A medium shot from the front. The same pink-haired girl sits down in the booth across from the same brown-haired girl, both smiling. Same place."
+  },
+  {
+   "id": "naovisto_tranca",
+   "similar": "Next scene of Picture 1. A medium shot from the front. The same girl with long dark brown hair in a side braid walks down the street next to the same red-haired boy, both laughing. The same place.",
+   "different": "Next scene of Picture 1. The same girl sits in a cozy cafe reading a book.",
+   "w": 1024,
+   "h": 576,
+   "ctrl": "/workspace/data/ns_full/train/control/ds4_imagem001502.jpg",
+   "delta": "Next scene of Picture 1. A medium shot from the front. The same girl walks down the street next to the same boy, both laughing. Same place."
+  },
+  {
+   "id": "treino_garota",
+   "stem": "ds4_imagem001169",
+   "split": "train",
+   "similar": "Next scene of Picture 1. A medium shot from the front. The same girl with short light brown hair stands in a classroom, waving at the viewer with a cheerful smile.",
+   "different": "Next scene of Picture 1. The same girl rides a bicycle down a country road.",
+   "w": 1024,
+   "h": 576,
+   "delta": "Next scene of Picture 1. A medium shot from the front. The same girl stands in a classroom, waving at the viewer with a cheerful smile."
+  },
+  {
+   "id": "fumika_fora",
+   "ctrl": "/workspace/test_refs/fumika_0.jpg",
+   "w": 672,
+   "h": 960,
+   "similar": "Next scene of Picture 1. A medium shot from the front at eye level. The same girl with long black hair with a blue streak, blue eyes, a white shirt and a black ribbon stands between the library shelves, holding a book against her chest and smiling softly at the viewer. The same place.",
+   "different": "Next scene of Picture 1. A wide shot from the side. The same girl walks out of the library onto a rainy city street at night, holding a closed umbrella.",
+   "delta": "Next scene of Picture 1. A medium shot from the front at eye level. The same girl stands between the bookshelves, holding a book against her chest and smiling softly at the viewer. Same place."
+  },
+  {
+   "id": "terra_fora",
+   "ctrl": "/workspace/test_refs/terra_0.jpg",
+   "w": 672,
+   "h": 960,
+   "similar": "Next scene of Picture 1. A close-up from the front. The same girl with cat ears and dark blue hair, wearing the black skull hoodie, looks up from the book, surprised, with her mouth open. The same place.",
+   "different": "Next scene of Picture 1. The same girl plays video games on a couch in her bedroom at night.",
+   "delta": "Next scene of Picture 1. A close-up from the front. The same girl looks up from the book, surprised, with her mouth open. Same place."
+  },
+  {
+   "id": "foto_ruiva",
+   "ctrl": "/workspace/test_refs/gen/foto_ruiva.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. A close-up from the front. The same woman takes a book off the shelf and smiles while reading the cover. Same place.",
+   "different": "Next scene of Picture 1. A wide shot. The same woman rides a bicycle along a seaside road on a cloudy day."
+  },
+  {
+   "id": "raposa_3d",
+   "ctrl": "/workspace/test_refs/gen/raposa_3d.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. A low-angle medium shot. The same fox jumps over a fallen log with its ears up, looking excited. Same place.",
+   "different": "Next scene of Picture 1. The same fox sits by a window in a cozy cabin at night, drinking hot cocoa."
+  },
+  {
+   "id": "cavaleiro_aquarela",
+   "ctrl": "/workspace/test_refs/gen/cavaleiro_aquarela.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. A medium close-up from the side. The same knight stands up and draws his sword, looking toward the dark woods. Same place.",
+   "different": "Next scene of Picture 1. A wide shot. The same knight rides a horse across a snowy mountain pass."
+  },
+  {
+   "id": "manga_garoto",
+   "ctrl": "/workspace/test_refs/gen/manga_garoto.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. A close-up from a low angle. The same boy turns toward the viewer with a smirk, the wind blowing his hair. Same place.",
+   "different": "Next scene of Picture 1. The same boy sits in a crowded classroom, bored, with his chin on his hand."
+  }
+ ],
+ "strengths": [
+  1.0
+ ],
+ "data_dir": "/workspace/data/ns_cap1000",
+ "model": {
+  "model_kwargs": {
+   "edit": true,
+   "kv_cache": true,
+   "match_target_res": true,
+   "uncond_skip_layers": [
+    22
+   ],
+   "vlm_max_pixels": 589824
+  }
+ }
+}

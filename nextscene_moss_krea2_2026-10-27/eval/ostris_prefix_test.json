@@ -1,0 +1,70 @@
+{
+ "refs": [
+  {
+   "id": "professora__parecido_delta",
+   "ctrl": "/workspace/data/ns_cap1000/val/control/ds2_004705.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. A medium close-up from the side. The same woman writes on the whiteboard with a marker and looks back over her shoulder at the viewer with a warm smile. Same place.",
+   "different": "A medium close-up from the side. The same woman writes on the whiteboard with a marker and looks back over her shoulder at the viewer with a warm smile. Same place."
+  },
+  {
+   "id": "deku__identico",
+   "ctrl": "/workspace/data/ns_cap1000/val/control/ds4_imagem000305.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. A close-up over-the-shoulder shot. The same young man is out of focus in the left foreground with his back to camera, facing a new green reptile-man with bandaged head and purple hair who stares back at him. Same place.",
+   "different": "A close-up over-the-shoulder shot. The same young man is out of focus in the left foreground with his back to camera, facing a new green reptile-man with bandaged head and purple hair who stares back at him. Same place."
+  },
+  {
+   "id": "fumika_fora__parecido_delta",
+   "ctrl": "/workspace/test_refs/fumika_0.jpg",
+   "w": 624,
+   "h": 928,
+   "similar": "Next scene of Picture 1. A medium shot from the front at eye level. The same girl stands between the bookshelves, holding a book against her chest and smiling softly at the viewer. Same place.",
+   "different": "A medium shot from the front at eye level. The same girl stands between the bookshelves, holding a book against her chest and smiling softly at the viewer. Same place."
+  },
+  {
+   "id": "terra_fora__diferente",
+   "ctrl": "/workspace/test_refs/terra_0.jpg",
+   "w": 624,
+   "h": 928,
+   "similar": "Next scene of Picture 1. The same girl plays video games on a couch in her bedroom at night.",
+   "different": "The same girl plays video games on a couch in her bedroom at night."
+  },
+  {
+   "id": "foto_ruiva__diferente",
+   "ctrl": "/workspace/test_refs/gen/foto_ruiva.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. A wide shot. The same woman rides a bicycle along a seaside road on a cloudy day.",
+   "different": "A wide shot. The same woman rides a bicycle along a seaside road on a cloudy day."
+  },
+  {
+   "id": "manga_garoto__diferente",
+   "ctrl": "/workspace/test_refs/gen/manga_garoto.jpg",
+   "w": 1024,
+   "h": 576,
+   "similar": "Next scene of Picture 1. The same boy sits in a crowded classroom, bored, with his chin on his hand.",
+   "different": "The same boy sits in a crowded classroom, bored, with his chin on his hand."
+  }
+ ],
+ "strengths": [
+  1.0
+ ],
+ "steps": 25,
+ "guidance": 4,
+ "model": {
+  "arch": "krea2",
+  "name_or_path": "krea/Krea-2-Raw",
+  "quantize": true,
+  "qtype": "qfloat8",
+  "quantize_te": true,
+  "qtype_te": "qfloat8",
+  "model_kwargs": {
+   "edit": true,
+   "match_target_res": true,
+   "kv_cache": true
+  }
+ }
+}

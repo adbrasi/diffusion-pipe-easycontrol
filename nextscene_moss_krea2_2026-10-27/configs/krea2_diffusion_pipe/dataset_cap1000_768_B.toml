@@ -1,0 +1,12 @@
+resolutions = [768]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+[[directory]]
+path = '/workspace/data/ns_cap1000_multiref/train/target'
+control_path = '/workspace/data/ns_cap1000_multiref/train/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1

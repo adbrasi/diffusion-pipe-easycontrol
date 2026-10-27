@@ -1,0 +1,9 @@
+job: extension
+config:
+  name: inference_engine
+  process:
+    - type: InferenceEngine
+      device: cuda
+      engine:
+        job_folder: /workspace/evals/engine
+        port: 8866
