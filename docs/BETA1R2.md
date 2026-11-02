@@ -47,3 +47,20 @@ HF público `AdwolfCzar/krea2-beta1r2` sem README. Retomar: mesmo comando com `-
 - Consistência (personagens, estilo, paleta) no nível do BETA1-R step 750 — avaliação visual do usuário.
 - Se ainda copiar em 1250: segunda rodada com estados de ruído alto montados a partir da referência ("ref-start", ver a
   proposta anti-cópia). Se a consistência cair: zoom máx. 1.15 ou p 0.3, mantendo os pesos.
+
+## Adendo: correções de mecanismo (pedido do usuário, 02/11/2026)
+
+Além de a–c, o R2 ataca o mecanismo da cópia, como na literatura:
+
+| | técnica | origem | config |
+|---|---|---|---|
+| d | referência com ruído: `ref = (1-t)·ref + t·ε`, e os tokens da referência recebem `t` no timestep embedding | Captain Cinema, Long Context Tuning (referência limpa "amplifica"; t 1–500/1000 mantém a identidade) | `ref_noise_prob = 0.3`, `t ~ U[0.05, 0.35]` |
+| e | descarte de tokens da referência (keys inválidas) | DreamO (descarta 95 % dos tokens no refino para parar a cópia) | `ref_token_drop_prob = 0.2`, mantém `U[5 %, 50 %]` |
+
+As duas técnicas valem só numa fração das amostras. Nas outras, a referência fica limpa (t=0) e inteira, que é
+exatamente o que o node do ComfyUI envia. A inferência não muda. Contrato testado em
+`test/test_beta1r2_mechanism.py`: com t=0 e todos os tokens, o resultado é bit-idêntico ao caminho de inferência; com
+todos os tokens descartados, é idêntico ao reference_dropout. O sorteio é feito em `prepare_inputs`, não na camada,
+porque o activation checkpointing recomputa a camada.
+
+Avaliação: 2 seeds extras nos steps 250 e 500, e 8 seeds (11 casos × 8) a partir do 750.

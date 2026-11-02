@@ -132,6 +132,45 @@ def zoom_crop_reference(reference, prob, max_zoom, rng=random):
     return reference if out is None else out
 
 
+def sample_reference_corruption(reference, patch, noise_prob, noise_min, noise_max,
+                                token_drop_prob, keep_min, keep_max):
+    """Anti-cópia no mecanismo (BETA1-R2), só em treino e só numa fração das amostras;
+    o resto fica com a referência limpa/inteira = exatamente o contrato de inferência.
+
+    - Referência com ruído (Captain Cinema / Long Context Tuning): com prob. noise_prob,
+      t_ref ~ U[noise_min, noise_max] e ref = (1-t)·ref + t·ε (mesma fórmula do flow);
+      os tokens da referência recebem t_ref no timestep embedding (não 0).
+    - Descarte de tokens (DreamO): com prob. token_drop_prob, mantém só uma fração
+      ~U[keep_min, keep_max] dos tokens da referência (os outros viram keys inválidas).
+
+    reference: (B, C, N, h, w). Devolve (reference, reference_t (B,), token_keep (B, L)).
+    Sorteado aqui (prepare_inputs) e não na camada: o activation checkpointing recomputa
+    a camada no backward e sortearia de novo.
+    """
+    B, C, N, h, w = reference.shape
+    device = reference.device
+    reference_t = torch.zeros(B, device=device, dtype=torch.float32)
+    if noise_prob > 0:
+        sel = torch.rand(B, device=device) < noise_prob
+        if bool(sel.any()):
+            t = torch.empty(B, device=device).uniform_(noise_min, noise_max)
+            reference_t = torch.where(sel, t, reference_t)
+            tt = reference_t.view(B, 1, 1, 1, 1).to(reference.dtype)
+            reference = (1 - tt) * reference + tt * torch.randn_like(reference)
+    grid = N * (-(-h // patch)) * (-(-w // patch))
+    token_keep = torch.ones(B, grid, device=device, dtype=torch.float32)
+    if token_drop_prob > 0:
+        for b in range(B):
+            if random.random() >= token_drop_prob:
+                continue
+            frac = random.uniform(keep_min, keep_max)
+            keep = torch.rand(grid, device=device) < frac
+            if not bool(keep.any()):
+                keep[torch.randint(grid, (1,), device=device)] = True
+            token_keep[b] = keep.float()
+    return reference, reference_t, token_keep
+
+
 class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
     """Igual ao pai, mas com N spans de referência e offset por slot."""
 
@@ -147,7 +186,12 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
     def forward(self, inputs):
         # 6th input (optional): reference_keep (B,) — 0 where reference_dropout
         # removed the reference from this sample (see encode_text_live).
-        if len(inputs) == 6:
+        # 7th input (optional): reference_t (B,) — timestep da referência com ruído
+        # (sample_reference_corruption); reference_keep pode então ser (B, L_ref) por token.
+        reference_t_in = None
+        if len(inputs) == 7:
+            target, timesteps, context, text_attention_mask, reference, reference_keep, reference_t_in = inputs
+        elif len(inputs) == 6:
             target, timesteps, context, text_attention_mask, reference, reference_keep = inputs
         else:
             target, timesteps, context, text_attention_mask, reference = inputs
@@ -220,6 +264,8 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
         target_t = timesteps[:, None].expand(batch, text_length + target_length)
         if self.reference_timestep_mode == 'target':
             reference_t = timesteps[:, None].expand(batch, reference_length)
+        elif reference_t_in is not None:
+            reference_t = reference_t_in.to(timesteps)[:, None].expand(batch, reference_length)
         else:
             reference_t = timesteps.new_zeros(batch, reference_length)
         per_token_timestep = torch.cat([target_t, reference_t], dim=1)
@@ -245,8 +291,8 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
             # que não alimentam nada e ficam fora da loss).
             if self.independent_condition:
                 raise NotImplementedError('reference_dropout com independent_condition não suportado')
-            image_mask[:, target_length:] = reference_keep.to(
-                device=image_mask.device).bool()[:, None]
+            keep_mask = reference_keep.to(device=image_mask.device).bool()
+            image_mask[:, target_length:] = keep_mask[:, None] if keep_mask.ndim == 1 else keep_mask
         valid_keys = torch.cat([text_attention_mask.bool(), image_mask], dim=1)
         if self.independent_condition:
             attention_mask = valid_keys[:, None, None, :].expand(
@@ -315,6 +361,23 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         self.ref_aug_max_zoom = float(section.get('ref_aug_max_zoom', 1.0))
         if not 0.0 <= self.ref_aug_prob <= 1.0 or not 1.0 <= self.ref_aug_max_zoom <= 2.0:
             raise ValueError('ref_aug_prob em [0, 1] e ref_aug_max_zoom em [1, 2]')
+        self.ref_noise_prob = float(section.get('ref_noise_prob', 0.0))
+        self.ref_noise_min = float(section.get('ref_noise_min', 0.05))
+        self.ref_noise_max = float(section.get('ref_noise_max', 0.35))
+        self.ref_token_drop_prob = float(section.get('ref_token_drop_prob', 0.0))
+        self.ref_token_keep_min = float(section.get('ref_token_keep_min', 0.05))
+        self.ref_token_keep_max = float(section.get('ref_token_keep_max', 0.5))
+        if not (0.0 <= self.ref_noise_prob <= 1.0 and 0.0 <= self.ref_noise_min <= self.ref_noise_max <= 1.0):
+            raise ValueError('ref_noise_prob em [0, 1] e 0 <= ref_noise_min <= ref_noise_max <= 1')
+        if not (0.0 <= self.ref_token_drop_prob <= 1.0 and 0.0 < self.ref_token_keep_min <= self.ref_token_keep_max <= 1.0):
+            raise ValueError('ref_token_drop_prob em [0, 1] e 0 < ref_token_keep_min <= ref_token_keep_max <= 1')
+        if (self.ref_noise_prob > 0 or self.ref_token_drop_prob > 0) and self.independent_condition:
+            raise ValueError('ref_noise/ref_token_drop não suportam independent_condition')
+        if self.ref_noise_prob > 0 and self.reference_timestep_mode == 'target':
+            raise ValueError("ref_noise exige reference_timestep = 'zero'")
+        if is_main_process():
+            print(f'[{self.name}] ref_noise p={self.ref_noise_prob} t~U[{self.ref_noise_min},{self.ref_noise_max}] '
+                  f'ref_token_drop p={self.ref_token_drop_prob} keep~U[{self.ref_token_keep_min},{self.ref_token_keep_max}]')
         if is_main_process():
             print(f'[{self.name}] max_refs={self.max_refs} slot_axis={self.slot_axis} '
                   f'position_mode={self.position_mode} reference_dropout={self.reference_dropout} '
@@ -424,14 +487,28 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
                 raise RuntimeError('pair_weights_path exige control_file no batch')
             labels = apply_pair_weights(labels, pair_weights_for(control_files, self.pair_weights))
         keep = inputs.get('reference_keep', None)
-        if keep is None:
+        noise_p = getattr(self, 'ref_noise_prob', 0.0)
+        drop_p = getattr(self, 'ref_token_drop_prob', 0.0)
+        corrupt = training and (noise_p > 0 or drop_p > 0)
+        if keep is None and not corrupt:
             return model_inputs, labels
-        # Referência descartada: zera também o latente (cosmético — as keys já
-        # são mascaradas na camada inicial) e passa o keep como 6º input.
         reference = model_inputs[-1]
-        keep = keep.to(device=reference.device, dtype=reference.dtype)
-        reference = reference * keep.view(-1, *([1] * (reference.ndim - 1)))
-        return (*model_inputs[:-1], reference, keep), labels
+        if corrupt:
+            reference, reference_t, token_keep = sample_reference_corruption(
+                reference, self.diffusion_model.patch, self.ref_noise_prob, self.ref_noise_min,
+                self.ref_noise_max, self.ref_token_drop_prob, self.ref_token_keep_min,
+                self.ref_token_keep_max)
+        if keep is not None:
+            # Referência descartada: zera também o latente (cosmético — as keys já
+            # são mascaradas na camada inicial) e passa o keep como 6º input.
+            keep = keep.to(device=reference.device, dtype=reference.dtype)
+            reference = reference * keep.view(-1, *([1] * (reference.ndim - 1)))
+        if not corrupt:
+            return (*model_inputs[:-1], reference, keep), labels
+        if keep is not None:
+            token_keep = token_keep * keep.to(token_keep)[:, None]
+            reference_t = reference_t * keep.to(reference_t)   # ref ausente: t irrelevante, 0
+        return (*model_inputs[:-1], reference, token_keep, reference_t), labels
 
     def encode_text_live(self, batch):
         """Encoding ao vivo do Qwen3-VL (mesmo fn do cache) + reference_dropout.
@@ -521,6 +598,10 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         metadata['live_text_encoding'] = str(self.live_text_encoding).lower()
         if self.pair_weights is not None:
             metadata['pair_weights'] = str(len(self.pair_weights))
+        if self.ref_noise_prob > 0:
+            metadata['ref_noise'] = f'p={self.ref_noise_prob} t=U[{self.ref_noise_min},{self.ref_noise_max}] timestep=t_ref'
+        if self.ref_token_drop_prob > 0:
+            metadata['ref_token_drop'] = f'p={self.ref_token_drop_prob} keep=U[{self.ref_token_keep_min},{self.ref_token_keep_max}]'
         if self.ref_aug_prob > 0:
             metadata['ref_aug'] = f'zoom_crop p={self.ref_aug_prob} max={self.ref_aug_max_zoom}'
         return metadata

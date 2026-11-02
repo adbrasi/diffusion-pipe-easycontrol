@@ -70,6 +70,17 @@ txtfusion_rank = 128
 pair_weights_path = '/workspace/dpe-beta1r/data/beta1r2/pair_weights.json'
 ref_aug_prob = 0.5
 ref_aug_max_zoom = 1.25
+# BETA1-R2 (mecanismo, só numa fração das amostras; o resto = referência limpa e inteira,
+# exatamente o contrato do node de inferência):
+#  d. referência com ruído (Captain Cinema / Long Context Tuning): 30% das amostras,
+#     t_ref ~ U[0.05, 0.35] na ref e no timestep embedding dos tokens dela
+#  e. descarte de tokens da referência (DreamO): 20% das amostras mantêm só 5–50% dos tokens
+ref_noise_prob = 0.3
+ref_noise_min = 0.05
+ref_noise_max = 0.35
+ref_token_drop_prob = 0.2
+ref_token_keep_min = 0.05
+ref_token_keep_max = 0.5
 
 [adapter]
 type = 'lora'

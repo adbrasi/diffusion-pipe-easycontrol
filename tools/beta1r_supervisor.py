@@ -215,7 +215,9 @@ def run_samples(config, step, ckpt_dir, cases):
     cmd = [str(VENV / 'python'), '-u', 'tools/beta1r_sample.py', '--config', config, '--adapter', str(ckpt_dir),
            '--cases', str(cases), '--out', str(out), '--turbo-lora', TURBO_LORA]
     if COPY_SEEDS:
-        cmd += ['--copy-seeds', *map(str, COPY_SEEDS)]
+        # 250/500 sempre limpos no BETA1-R: 2 seeds extras bastam; 8 seeds a partir do 750
+        seeds = COPY_SEEDS if step >= 750 else COPY_SEEDS[:2]
+        cmd += ['--copy-seeds', *map(str, seeds)]
     t0 = time.time()
     sample_log = LOG_DIR / f'{NAME}_sample_step{step}.log'
     with open(sample_log, 'w') as lf:
