@@ -49,6 +49,7 @@ Está implementado aqui como `slot_axis = 'frame'` para A/B, mas o default é
 `width` porque é o que o único treino bem-sucedido de Krea 2 do projeto usou.
 """
 
+import math
 import random
 
 import torch
@@ -69,9 +70,13 @@ from utils.common import AUTOCAST_DTYPE, is_main_process
 class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
     """Igual ao pai, mas com N spans de referência e offset por slot."""
 
-    def __init__(self, *args, slot_axis='width', **kwargs):
+    def __init__(self, *args, slot_axis='width', ref_bias=1.0, **kwargs):
         super().__init__(*args, **kwargs)
         self.slot_axis = slot_axis
+        # Só inferência (anti-cópia): viés aditivo log(b) nos logits
+        # alvo→referência, contrato do CtxRushKrea2MultiRefControlledApply
+        # (ctxrush-edit nodes_multiref.py). 1.0 = desligado, máscara intacta.
+        self.ref_bias = float(ref_bias)
 
     @torch.autocast('cuda', dtype=AUTOCAST_DTYPE)
     def forward(self, inputs):
@@ -188,8 +193,16 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
             attention_mask = torch.zeros_like(attention_mask, dtype=combined.dtype).masked_fill_(
                 ~attention_mask, -torch.finfo(combined.dtype).max
             )
-        else:
+        elif math.isclose(self.ref_bias, 1.0, rel_tol=0.0, abs_tol=1e-9):
             attention_mask = valid_keys[:, None, None, :]
+        else:
+            seq_len = combined.shape[1]
+            attention_mask = torch.zeros(batch, 1, seq_len, seq_len,
+                                         device=combined.device, dtype=combined.dtype)
+            attention_mask[:, :, text_length:text_length + target_length,
+                           text_length + target_length:] = math.log(max(self.ref_bias, 1e-4))
+            attention_mask.masked_fill_(~valid_keys[:, None, None, :].to(combined.device),
+                                        torch.finfo(combined.dtype).min)
 
         sizes = torch.tensor(
             [text_length, target_length, target_grid_h, target_grid_w, target_h_orig, target_w_orig],
