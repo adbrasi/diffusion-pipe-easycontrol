@@ -966,6 +966,16 @@ if __name__ == '__main__':
         if is_main_process():
             print(f'Cosine LR: T_max={t_max} (total {total} steps, warmup {config.get("warmup_steps", 0)})', flush=True)
         lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=t_max, eta_min=1e-6)
+    elif scheduler_type == 'hold_linear':
+        # BETA1-R2: lr constante até lr_decay_start, linear até lr * lr_end_factor em
+        # lr_decay_end e fica lá. Steps absolutos (contando o warmup).
+        from utils.lr_schedule import hold_linear_lambda
+        lr_lambda = hold_linear_lambda(config['lr_decay_start'], config['lr_decay_end'],
+                                       config['lr_end_factor'], config.get('warmup_steps', 0))
+        lr_scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
+        if is_main_process():
+            print(f'hold_linear LR: constante até {config["lr_decay_start"]}, x{config["lr_end_factor"]} '
+                  f'em {config["lr_decay_end"]}', flush=True)
     else:
         raise NotImplementedError(f'Unknown lr_scheduler: {scheduler_type}')
     if config['warmup_steps'] > 0:

@@ -68,6 +68,9 @@ def main():
     ap.add_argument('--turbo-lora', type=Path, required=True)
     ap.add_argument('--seed', type=int, default=76)
     ap.add_argument('--blocks-to-swap', type=int, default=0)
+    ap.add_argument('--copy-seeds', type=int, nargs='*', default=[],
+                    help='seeds EXTRAS só para a métrica de cópia (todos os casos); BETA1-R2: 1..7 '
+                         '(+ a seed principal = 8 seeds, protocolo do tools/beta1r_copytest.py)')
     args = ap.parse_args()
 
     cases = json.loads(args.cases.read_text())
@@ -116,6 +119,17 @@ def main():
                           sargs.text_guidance, 1.0, None, c['width'], c['height'], sargs.mu,
                           256, 1280, 0.5, 1.15, 'cuda')
         latents.append(lat.cpu())
+    extra = {}
+    for seed in args.copy_seeds:
+        for c, (conds, ref) in zip(cases, enc):
+            hw = (c['height'] // pipeline.spatial_compression, c['width'] // pipeline.spatial_compression)
+            shape = (1, pipeline.channels, 1, *hw) if pipeline.is_video_vae else (1, pipeline.channels, *hw)
+            reference = pipeline.prepare_reference_latents(ref, torch.zeros(shape, dtype=ref.dtype),
+                                                           timestep_quantile=0.5)
+            pipeline.conds = conds
+            extra[(seed, c['name'])] = ira.denoise(
+                pipeline, sequential, reference, shape, sargs.steps, seed, sargs.text_guidance, 1.0, None,
+                c['width'], c['height'], sargs.mu, 256, 1280, 0.5, 1.15, 'cuda').cpu()
     ira.offload_diffusion(pipeline, sequential)
     rows, per = [], []
     for c, lat in zip(cases, latents):
@@ -133,6 +147,32 @@ def main():
                'copy_rate': (sum(p['copy'] for p in ev) / len(ev)) if ev else None,
                'mean_dhash_gen_ref': (sum(p['dhash_gen_ref'] for p in ev) / len(ev)) if ev else None,
                'n_copy_eval': len(ev), 'cases': per}
+    if args.copy_seeds:
+        # cópia multi-seed: seed principal + extras, separado em held-out (copy_eval) e exemplos do beta1
+        seed_dir = args.out / 'seeds'
+        seed_dir.mkdir(exist_ok=True)
+        by_name = {c['name']: c for c in cases}
+        multi = [{'seed': args.seed, 'name': p['name'], 'dhash_gen_ref': p['dhash_gen_ref'],
+                  'copy': p['copy'], 'copy_eval': p['copy_eval']} for p in per]
+        for (seed, name), lat in extra.items():
+            out = seed_dir / f'{name}_s{seed}.jpg'
+            ira.decode_and_save(pipeline, lat.to('cuda'), out)
+            d_ref = hamming(out, by_name[name]['reference'])
+            multi.append({'seed': seed, 'name': name, 'dhash_gen_ref': d_ref, 'copy': d_ref <= COPY_THR,
+                          'copy_eval': bool(by_name[name].get('copy_eval', False))})
+
+        def group(rows):
+            return {'n': len(rows), 'copies': sum(r['copy'] for r in rows),
+                    'copied': sorted({f"{r['name']}@{r['seed']}" for r in rows if r['copy']})}
+        metrics['multi_seed'] = {
+            'seeds': [args.seed, *args.copy_seeds],
+            'heldout': group([r for r in multi if r['copy_eval']]),
+            'beta1_examples': group([r for r in multi if not r['copy_eval']]),
+            'all': group(multi), 'rows': multi}
+        ms = metrics['multi_seed']
+        print(f"MULTI_COPY heldout {ms['heldout']['copies']}/{ms['heldout']['n']} "
+              f"beta1 {ms['beta1_examples']['copies']}/{ms['beta1_examples']['n']} "
+              f"all {ms['all']['copies']}/{ms['all']['n']}")
     (args.out / 'metrics.json').write_text(json.dumps(metrics, indent=2))
     make_grid(rows, args.out / 'grid.jpg')
     print(f"COPY_RATE {metrics['copy_rate']} mean_dhash_gen_ref {metrics['mean_dhash_gen_ref']}")

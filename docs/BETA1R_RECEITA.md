@@ -14,6 +14,8 @@ Pesos e samples: HF `AdwolfCzar/krea2-beta1r` (`checkpoints/stepN/`, `samples/st
 | 500 | 0 / 8 | 30,5 |
 | 750 | 0 / 8 | 30,25 |
 
+**Cópia no step 1000** (ver "Teste de cópia multi-seed" abaixo): o step 750 é o checkpoint recomendado.
+
 No step 750 a composição segue o prompt em todos os casos, e personagens, estilo e paleta vêm da referência. A leitura
 da referência melhora com os steps (personagens da referência que faltavam em 250/500 aparecem em 750). O cenário da
 referência às vezes some. Avaliado pelo usuário: "muito bom, realmente muito bom".
@@ -21,7 +23,9 @@ referência às vezes some. Avaliado pelo usuário: "muito bom, realmente muito 
 ## O método (idêntico ao beta1)
 
 - `type = 'krea2_multiref_grounded'`, `max_refs = 1`.
-- Sequência `[texto | alvo com ruído | referência limpa]`. Referência com `reference_timestep = 'zero'` e atenção isolada.
+- Sequência `[texto | alvo com ruído | referência limpa]`. Referência com `reference_timestep = 'zero'`.
+- Atenção **conjunta** (`independent_condition` = False, o padrão): texto, alvo e referência se enxergam. Só a LoRA é
+  routed (delta aplicado nas linhas da referência); o alvo lê K/V da referência alterados pela LoRA.
 - RoPE `width_shift` (`reference_position_offset = 1.0`): a referência fica ao lado do alvo no eixo da largura, no
   mesmo grid do alvo (recorte central + resize).
 - Grounding: o Qwen3-VL também vê a referência ("image 1:"), `vl_image_max_pixels = 147456` (384²).
@@ -79,14 +83,36 @@ Samples: `tools/beta1r_sample.py` (Turbo fundida, 8 steps, seed 76; 8 pares do d
 beta1, nos mesmos tamanhos, para comparar com `samples/stepN` do beta1). `copy_rate` = fração com dHash(saída, referência)
 ≤ 10/64.
 
+## Teste de cópia multi-seed (594 gerações)
+
+`tools/beta1r_copytest.py`: 11 casos (8 pares held-out do ds2 + 3 exemplos fixos do beta1) × 6 seeds (76, 1–5),
+Turbo 8 steps, CFG 1. Cópia = dHash(saída, referência) ≤ 10/64. Resultados no HF `AdwolfCzar/krea2-beta1r/copytest/`.
+
+| checkpoint | held-out (8 × 6) | exemplos beta1 (3 × 6) |
+|---|---|---|
+| step500 | 0/48 | 1/18 |
+| **step750** | **0/48** | **0/18** |
+| step1000 | 4/48 | 10/18 |
+| step1000, ref_bias 0.99 / 0.97 / 0.95 | 4/48 | 9/18 |
+| step1000, ref_bias 0.9 | 3/48 | 9/18 |
+| step1000, ref_bias 0.8 | 2/48 | 8/18 |
+| step1000, ref_bias 0.7 | 1/48 | 6/18 |
+
+- **Recomendado: step750** (`checkpoints/step750/`), zero cópias em 66 gerações.
+- A cópia depende do caso (no step 1000: DxD 4 personagens 4/6 seeds, beta1 ex. 0 e 1 5/6 cada; os outros 8 casos nunca).
+- A cópia é decidida no 1º passo da amostragem (ruído máximo): dHash(x0 previsto no passo 1, ref) ≲ 22 prevê a cópia.
+- Causa provável: 783 pares do dataset com referência idêntica ao alvo + 607 quase iguais (ensinam "copie e edite um
+  atributo"), com LR constante aumentando o ganho do laço até virar poço por volta do step 1000. Correção: BETA1-R2
+  (`docs/BETA1R2.md`).
+
 ## Inferência e paliativo
 
-Nodes `adbrasi/ctxrush-edit` (CtxRush multiref). Se aparecer cópia, `ref_bias` 0.95–0.99 no
-`CtxRushKrea2MultiRefControlledApply` tira a cópia do beta1 por completo, com pequena perda de consistência (observação do
-usuário: a cópia é um limiar, 1 % menos atenção na referência já sai do "poço").
+Nodes `adbrasi/ctxrush-edit` (CtxRush multiref). **O `ref_bias` NÃO conserta o BETA1-R**: no beta1 original, 0.95–0.99 no
+`CtxRushKrea2MultiRefControlledApply` tirava a cópia (observação do usuário), mas aqui 0.95–0.99 não muda nada e 0.7 só
+reduz parcialmente (tabela acima). Use o step750.
 
 ## Próximos passos
 
 1. Seguir até 3000 steps a 512px, olhando samples e `copy_rate` a cada 250.
 2. Escolher o melhor checkpoint e fazer um refino curto a 1024px, como o beta1.
-3. Se a cópia aparecer mais tarde: usar o checkpoint anterior, ou testar rank 32 numa rodada curta.
+3. A cópia apareceu no step 1000: treino parado em 1115; checkpoint bom = step750; próxima rodada = BETA1-R2.

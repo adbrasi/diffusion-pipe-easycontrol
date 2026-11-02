@@ -1,0 +1,49 @@
+# BETA1-R2: BETA1-R + anti-cópia
+
+O BETA1-R (`docs/BETA1R_RECEITA.md`) ficou bom até o step 750 e passou a devolver a referência a partir do step 1000
+(4/48 held-out, 10/18 exemplos do beta1; `ref_bias` não resolve). O R2 mantém **tudo** igual (método, arquitetura,
+tokens, RoPE, routing, dataset no disco, node do ComfyUI, inferência) e muda só o treino:
+
+| | BETA1-R | BETA1-R2 | por quê |
+|---|---|---|---|
+| peso da loss por par | 1 | idêntico 0 (783), quase igual 0.3 (607), parecido 0.7 (1685), resto 1 | nos pares idênticos copiar a referência é o ótimo exato em todo sigma; são eles que ensinam "copie e edite um atributo" |
+| referência | latente intacto | zoom-crop aleatório em 50 % das amostras (zoom 1–1.25×, posição uniforme, volta ao mesmo grid por bilinear; sem flip/cor) | copiar pixel a pixel deixa de baixar a loss; o modelo precisa transferir quem/estilo/paleta |
+| LR | 1e-4 constante | 1e-4 até o step 500, linear até 2e-5 no step 2000, constante depois | para de aumentar o ganho do laço depois que o modelo já aprendeu |
+| eval de cópia | seed 76 | 11 casos × 8 seeds (76, 1–7) a cada 250 steps | cópia depende de caso e seed |
+
+## Implementação
+
+- Pesos: `data/beta1r2/pair_weights.json` (só pesos < 1; chave = nome do arquivo de referência). Gerado de
+  `data/beta1r2/pairsim.json` (dHash 8×8 + MSE 64px de todos os 20.112 pares, `tools/beta1r2_pairsim.py`) por
+  `tools/build_beta1r2_pair_weights.py`. Faixas: T0 mse<5e-4 ou dHash≤2; T1 dHash 3–5 ou mse<2e-3; T2 dHash 6–10.
+  Peso médio 0.915 (sem renormalizar).
+- `models/krea2_multiref.py::prepare_inputs`: o peso vira a máscara da loss `(B,1,1,1,1)` (`base.loss_fn` faz
+  `loss *= mask`), segue o `split_batch` por amostra. O zoom-crop é feito no latente cacheado (o cache do VAE não muda).
+  Nenhum dos dois roda no eval (`timestep_quantile` definido). Config: `[krea2_multiref_grounded] pair_weights_path`,
+  `ref_aug_prob`, `ref_aug_max_zoom`.
+- O Qwen3-VL continua vendo a referência inteira (semântica, não copia pixel).
+- LR: `lr_scheduler = 'hold_linear'` (`utils/lr_schedule.py`, `lr_decay_start/lr_decay_end/lr_end_factor`).
+- Testes CPU: `test/test_beta1r2_anticopy.py` (peso 0 → gradiente exatamente zero depois do split_batch; sem pesos =
+  BETA1-R; eval não pondera nem aumenta; recorte preserva shape/dtype e não espelha; LR 1e-4 → 7.33e-5 no step 1000 →
+  2e-5 no 2000).
+
+## Como rodar
+
+```bash
+cd /workspace/dpe-beta1r && setsid nohup /workspace/dpe-venv/bin/python -u tools/beta1r_supervisor.py \
+  --config examples/beta1r2/train.toml --cases /workspace/runs/beta1r_samples_inputs/cases.json \
+  --name beta1r2 --hf-repo AdwolfCzar/krea2-beta1r2 --copy-seeds 1 2 3 4 5 6 7 \
+  > /workspace/runs/logs/beta1r2_supervisor.out 2>&1 &
+# parar limpo
+touch /workspace/runs/beta1r2_supervisor.stop
+```
+
+Saída em `/workspace/runs/beta1r2`, samples em `/workspace/runs/beta1r2_samples/stepN` (`metrics.json` → `multi_seed`),
+HF público `AdwolfCzar/krea2-beta1r2` sem README. Retomar: mesmo comando com `--resume`.
+
+## Critério de sucesso
+
+- 0/88 cópias nos steps 1000 e 1250; ≤ 1/88 no 1500.
+- Consistência (personagens, estilo, paleta) no nível do BETA1-R step 750 — avaliação visual do usuário.
+- Se ainda copiar em 1250: segunda rodada com estados de ruído alto montados a partir da referência ("ref-start", ver a
+  proposta anti-cópia). Se a consistência cair: zoom máx. 1.15 ou p 0.3, mantendo os pesos.

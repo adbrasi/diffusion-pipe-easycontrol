@@ -49,10 +49,13 @@ Está implementado aqui como `slot_axis = 'frame'` para A/B, mas o default é
 `width` porque é o que o único treino bem-sucedido de Krea 2 do projeto usou.
 """
 
+import json
 import math
+import os
 import random
 
 import torch
+import torch.nn.functional as F
 from torch import nn
 from einops import rearrange
 
@@ -65,6 +68,68 @@ from models.krea2_omini_grounded import Krea2OminiGroundedPipeline
 from models.krea2_ominicontrol import Krea2OminiTransformerLayer
 from models.krea2_reference import Krea2ReferenceFinalLayer, Krea2ReferenceInitialLayer
 from utils.common import AUTOCAST_DTYPE, is_main_process
+
+
+# ---------------------------------------------------------------------------
+# BETA1-R2 anti-cópia (docs/BETA1R2.md). Os dois são no-op com a config padrão.
+# ---------------------------------------------------------------------------
+
+def load_pair_weights(path):
+    """{nome do arquivo de referência: peso}; ausente = 1.0."""
+    with open(path) as f:
+        weights = {str(k): float(v) for k, v in json.load(f).items()}
+    if any(not 0.0 <= w <= 1.0 for w in weights.values()):
+        raise ValueError(f'pesos de par fora de [0, 1] em {path}')
+    return weights
+
+
+def pair_weights_for(control_files, weights):
+    """Peso por amostra a partir do control_file do batch (str ou lista de str;
+    casa pelo nome do arquivo, imune a /workspace vs /dev/shm)."""
+    out = []
+    for control_file in control_files:
+        if isinstance(control_file, (list, tuple)):
+            control_file = control_file[0] if control_file else None
+        out.append(weights.get(os.path.basename(control_file), 1.0) if control_file else 1.0)
+    return torch.tensor(out, dtype=torch.float32)
+
+
+def apply_pair_weights(labels, pair_weight):
+    """Multiplica a máscara de loss por amostra. `base.loss_fn` faz loss *= mask;
+    máscara vazia/None = sem máscara. (B,1,1,1,1) segue o split_batch no dim 0."""
+    target, mask = labels
+    w = pair_weight.to(target.device, torch.float32).view(-1, *([1] * (target.ndim - 1)))
+    if mask is None or mask.numel() == 0:
+        mask = w
+    else:
+        mask = mask.to(torch.float32) * w
+    return (target, mask)
+
+
+def zoom_crop_reference(reference, prob, max_zoom, rng=random):
+    """Zoom-crop aleatório no latente da referência (B, C, N, h, w): com prob.
+    `prob` por amostra, recorta uma janela de lado h/s x w/s (s ~ U[1, max_zoom],
+    posição uniforme) e volta ao MESMO grid por bilinear. Sem flip, sem cor.
+    Cada referência da amostra recebe o seu próprio recorte."""
+    if prob <= 0 or max_zoom <= 1.0:
+        return reference
+    B, C, N, h, w = reference.shape
+    out = None
+    for b in range(B):
+        if rng.random() >= prob:
+            continue
+        if out is None:
+            out = reference.clone()
+        for n in range(N):
+            s = rng.uniform(1.0, max_zoom)
+            ch, cw = max(2, round(h / s)), max(2, round(w / s))
+            if ch == h and cw == w:
+                continue
+            y0, x0 = rng.randint(0, h - ch), rng.randint(0, w - cw)
+            crop = reference[b, :, n, y0:y0 + ch, x0:x0 + cw].unsqueeze(0).float()
+            out[b, :, n] = F.interpolate(crop, size=(h, w), mode='bilinear',
+                                         align_corners=False)[0].to(reference.dtype)
+    return reference if out is None else out
 
 
 class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
@@ -243,10 +308,21 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
             raise ValueError('reference_dropout > 0 exige [model] live_text_encoding = true')
         if self.reference_dropout > 0 and self.independent_condition:
             raise ValueError('reference_dropout não suporta independent_condition')
+        # BETA1-R2: peso de loss por par (similaridade A-B) e zoom-crop da referência.
+        pair_weights_path = section.get('pair_weights_path')
+        self.pair_weights = load_pair_weights(pair_weights_path) if pair_weights_path else None
+        self.ref_aug_prob = float(section.get('ref_aug_prob', 0.0))
+        self.ref_aug_max_zoom = float(section.get('ref_aug_max_zoom', 1.0))
+        if not 0.0 <= self.ref_aug_prob <= 1.0 or not 1.0 <= self.ref_aug_max_zoom <= 2.0:
+            raise ValueError('ref_aug_prob em [0, 1] e ref_aug_max_zoom em [1, 2]')
         if is_main_process():
             print(f'[{self.name}] max_refs={self.max_refs} slot_axis={self.slot_axis} '
                   f'position_mode={self.position_mode} reference_dropout={self.reference_dropout} '
                   f'live_text_encoding={self.live_text_encoding}')
+            if self.pair_weights is not None or self.ref_aug_prob > 0:
+                print(f'[{self.name}] pair_weights={pair_weights_path} '
+                      f'({0 if self.pair_weights is None else len(self.pair_weights)} pares com peso < 1) '
+                      f'ref_aug_prob={self.ref_aug_prob} ref_aug_max_zoom={self.ref_aug_max_zoom}')
 
     def model_specific_dataset_config_validation(self, dataset_config):
         # o loader multi-ref usa manifest_path, não control_path
@@ -336,7 +412,17 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
                 padded.append(c)
             inputs = dict(inputs)
             inputs['control_latents'] = torch.stack(padded)
+        training = timestep_quantile is None   # eval (quantis fixos) nunca aumenta nem pondera
+        if training and self.ref_aug_prob > 0:
+            inputs = dict(inputs)
+            inputs['control_latents'] = zoom_crop_reference(
+                inputs['control_latents'], self.ref_aug_prob, self.ref_aug_max_zoom)
         model_inputs, labels = super().prepare_inputs(inputs, timestep_quantile=timestep_quantile)
+        if training and self.pair_weights is not None:
+            control_files = inputs.get('control_file')
+            if control_files is None:
+                raise RuntimeError('pair_weights_path exige control_file no batch')
+            labels = apply_pair_weights(labels, pair_weights_for(control_files, self.pair_weights))
         keep = inputs.get('reference_keep', None)
         if keep is None:
             return model_inputs, labels
@@ -433,4 +519,8 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         metadata['reference_dropout'] = str(self.reference_dropout)
         metadata['reference_dropout_mode'] = 'full_vae_keys_masked_and_no_vl_image'
         metadata['live_text_encoding'] = str(self.live_text_encoding).lower()
+        if self.pair_weights is not None:
+            metadata['pair_weights'] = str(len(self.pair_weights))
+        if self.ref_aug_prob > 0:
+            metadata['ref_aug'] = f'zoom_crop p={self.ref_aug_prob} max={self.ref_aug_max_zoom}'
         return metadata

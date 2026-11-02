@@ -15,6 +15,9 @@ Uso:
   python tools/beta1r_supervisor.py --config examples/beta1r/train.toml \
       --cases /workspace/runs/beta1r_samples_inputs/cases.json [--resume]
 Parar: touch /workspace/runs/beta1r_supervisor.stop (para o treino com save_quit e sai).
+
+BETA1-R2: --name beta1r2 --hf-repo AdwolfCzar/krea2-beta1r2 --copy-seeds 1 2 3 4 5 6 7
+(logs beta1r2_*, samples /workspace/runs/beta1r2_samples, stop /workspace/runs/beta1r2_supervisor.stop).
 """
 import argparse
 import os
@@ -31,9 +34,12 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 VENV = Path('/workspace/dpe-venv/bin')
 TURBO_LORA = '/dev/shm/models/krea2/loras/krea2_turbo_lora_rank_64_bf16.safetensors'
 LOG_DIR = Path('/workspace/runs/logs')
+# definidos em main() a partir de --name / --hf-repo (padrão = BETA1-R, comportamento antigo)
+NAME = 'beta1r'
 SAMPLES_OUT = Path(os.environ.get('BETA1R_SAMPLES_OUT', '/workspace/runs/beta1r_samples'))
 STOP_FILE = Path('/workspace/runs/beta1r_supervisor.stop')
 HF_REPO = 'AdwolfCzar/krea2-beta1r'
+COPY_SEEDS = []
 
 
 def now():
@@ -43,7 +49,7 @@ def now():
 def log(msg):
     line = f'{now()} {msg}'
     print(line, flush=True)
-    with open(LOG_DIR / 'beta1r_supervisor.log', 'a') as f:
+    with open(LOG_DIR / f'{NAME}_supervisor.log', 'a') as f:
         f.write(line + '\n')
 
 
@@ -93,6 +99,8 @@ class Uploader:
         self.done = set()
         self.lock = threading.Lock()
         self.threads = []
+        # repo público SEM README (pedido do usuário); a cota privada está cheia
+        self.api.create_repo(HF_REPO, repo_type='model', private=False, exist_ok=True)
         self.upload_file(config, 'configs/train.toml')
         self.upload_file(read_toml_value(config, 'dataset'), 'configs/dataset.toml')
 
@@ -174,13 +182,13 @@ class Trainer:
         if resume:
             cmd.append('--resume_from_checkpoint')
         stamp = datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')
-        self.log_path = LOG_DIR / f'beta1r_train_{stamp}.log'
+        self.log_path = LOG_DIR / f'{NAME}_train_{stamp}.log'
         env = dict(os.environ, PYTORCH_CUDA_ALLOC_CONF='expandable_segments:True',
                    NCCL_P2P_DISABLE='1', NCCL_IB_DISABLE='1', PATH=f"{VENV}:{os.environ['PATH']}")
         self.proc = subprocess.Popen(cmd, cwd=REPO_ROOT, stdout=open(self.log_path, 'ab'),
                                      stderr=subprocess.STDOUT, start_new_session=True, env=env)
-        (LOG_DIR / 'beta1r_train_latest.log').unlink(missing_ok=True)
-        (LOG_DIR / 'beta1r_train_latest.log').symlink_to(self.log_path)
+        (LOG_DIR / f'{NAME}_train_latest.log').unlink(missing_ok=True)
+        (LOG_DIR / f'{NAME}_train_latest.log').symlink_to(self.log_path)
         log(f'treino lançado pid={self.proc.pid} resume={resume} log={self.log_path}')
 
     def alive(self):
@@ -206,13 +214,18 @@ def run_samples(config, step, ckpt_dir, cases):
     out = SAMPLES_OUT / f'step{step}'
     cmd = [str(VENV / 'python'), '-u', 'tools/beta1r_sample.py', '--config', config, '--adapter', str(ckpt_dir),
            '--cases', str(cases), '--out', str(out), '--turbo-lora', TURBO_LORA]
+    if COPY_SEEDS:
+        cmd += ['--copy-seeds', *map(str, COPY_SEEDS)]
     t0 = time.time()
-    with open(LOG_DIR / f'beta1r_sample_step{step}.log', 'w') as lf:
+    sample_log = LOG_DIR / f'{NAME}_sample_step{step}.log'
+    with open(sample_log, 'w') as lf:
         r = subprocess.run(cmd, cwd=REPO_ROOT, stdout=lf, stderr=subprocess.STDOUT, timeout=3600)
-    tail = (LOG_DIR / f'beta1r_sample_step{step}.log').read_text()[-400:]
+    tail = sample_log.read_text()[-800:]
     m = re.search(r'COPY_RATE (\S+) mean_dhash_gen_ref (\S+)', tail)
+    mm = re.search(r'MULTI_COPY (.+)', tail)
     log(f'samples step{step}: rc={r.returncode} {time.time() - t0:.0f}s '
-        f'copy_rate={m.group(1) if m else "?"} mean_dhash_gen_ref={m.group(2) if m else "?"} -> {out}')
+        f'copy_rate={m.group(1) if m else "?"} mean_dhash_gen_ref={m.group(2) if m else "?"} '
+        f'{"multi_seed: " + mm.group(1) if mm else ""} -> {out}')
     return out
 
 
@@ -224,12 +237,22 @@ def main():
     ap.add_argument('--min-free-gb', type=float, default=3.0)
     ap.add_argument('--resume', action='store_true')
     ap.add_argument('--no-upload', action='store_true', help='smoke: não sobe nada ao HF')
+    ap.add_argument('--name', default='beta1r', help='prefixo de logs/samples/stop file')
+    ap.add_argument('--hf-repo', default='AdwolfCzar/krea2-beta1r')
+    ap.add_argument('--copy-seeds', type=int, nargs='*', default=[],
+                    help='seeds extras da métrica de cópia (tools/beta1r_sample.py --copy-seeds)')
     args = ap.parse_args()
+    global NAME, SAMPLES_OUT, STOP_FILE, HF_REPO, COPY_SEEDS
+    NAME, HF_REPO, COPY_SEEDS = args.name, args.hf_repo, args.copy_seeds
+    if args.name != 'beta1r':
+        SAMPLES_OUT = Path(f'/workspace/runs/{args.name}_samples')
+        STOP_FILE = Path(f'/workspace/runs/{args.name}_supervisor.stop')
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     SAMPLES_OUT.mkdir(parents=True, exist_ok=True)
     output_base = Path(read_toml_value(args.config, 'output_dir'))
     max_steps = read_toml_value(args.config, 'max_steps', int)
-    log(f'supervisor start config={args.config} max_steps={max_steps} sample_every={args.sample_every}')
+    log(f'supervisor start name={NAME} config={args.config} max_steps={max_steps} '
+        f'sample_every={args.sample_every} hf={HF_REPO} copy_seeds={COPY_SEEDS} stop={STOP_FILE}')
     uploader = NoUploader() if args.no_upload else Uploader(args.config)
     trainer = Trainer(args.config)
     if args.resume:
