@@ -805,10 +805,22 @@ def denoise(
         )
         pairs = zip(schedule[:-1], schedule[1:])
         _elo_dumped = False
-        for current, next_value in tqdm(
+        # REF_SKIP_FIRST=k (env, diagnóstico anti-cópia): nos k primeiros passos os tokens VAE da
+        # referência ficam mascarados (caminho do reference_dropout); o Qwen3-VL continua vendo a imagem.
+        _skip_first = int(_elo_os.environ.get('REF_SKIP_FIRST', '0') or 0)
+        # REF_SKIP_SIGMA=s: idem enquanto σ > s (contrato do BETA1-R3, ref_vae_mask_above_t)
+        _skip_sigma = float(_elo_os.environ.get('REF_SKIP_SIGMA', '1.0') or 1.0)
+        if _skip_first or _skip_sigma < 1.0:
+            print(f'[REF_SKIP] referência VAE desligada: {_skip_first} primeiros passos / σ > {_skip_sigma}', flush=True)
+        for _step_index, (current, next_value) in enumerate(tqdm(
             pairs, total=steps, desc='Reference sampling (Krea 2)'
-        ):
+        )):
             timestep = latent.new_full((latent.shape[0],), current)
+            if _step_index < _skip_first or float(current) > _skip_sigma:
+                _keep0 = torch.zeros(latent.shape[0], device=latent.device)
+                velocity = model((latent, timestep, *conds, reference, _keep0)).float()
+                latent = latent + (next_value - current) * velocity
+                continue
             if _elo_dump and not _elo_dumped:
                 import numpy as _elo_np
                 _elo_np.save(_elo_dump + '.x.npy', latent.detach().float().cpu().numpy())

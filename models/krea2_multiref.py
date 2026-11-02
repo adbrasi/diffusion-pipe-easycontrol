@@ -371,6 +371,15 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
             raise ValueError('ref_noise_prob em [0, 1] e 0 <= ref_noise_min <= ref_noise_max <= 1')
         if not (0.0 <= self.ref_token_drop_prob <= 1.0 and 0.0 < self.ref_token_keep_min <= self.ref_token_keep_max <= 1.0):
             raise ValueError('ref_token_drop_prob em [0, 1] e 0 < ref_token_keep_min <= ref_token_keep_max <= 1')
+        # BETA1-R3: tokens VAE da referência mascarados quando t > limiar (só ruído alto; o Qwen3-VL
+        # continua vendo a imagem). A cópia nasce no 1º passo de amostragem (σ≈1): o layout passa a vir
+        # do texto + semântica, a identidade fina dos tokens VAE nos passos seguintes. Inferência
+        # consistente: pular os tokens VAE enquanto σ > o mesmo limiar (REF_SKIP_SIGMA / node ref_skip_sigma).
+        self.ref_vae_mask_above_t = float(section.get('ref_vae_mask_above_t', 1.0))
+        if not 0.0 < self.ref_vae_mask_above_t <= 1.0:
+            raise ValueError('ref_vae_mask_above_t em (0, 1]; 1.0 = desligado')
+        if self.ref_vae_mask_above_t < 1.0 and self.independent_condition:
+            raise ValueError('ref_vae_mask_above_t não suporta independent_condition')
         if (self.ref_noise_prob > 0 or self.ref_token_drop_prob > 0) and self.independent_condition:
             raise ValueError('ref_noise/ref_token_drop não suportam independent_condition')
         if self.ref_noise_prob > 0 and self.reference_timestep_mode == 'target':
@@ -487,6 +496,12 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
                 raise RuntimeError('pair_weights_path exige control_file no batch')
             labels = apply_pair_weights(labels, pair_weights_for(control_files, self.pair_weights))
         keep = inputs.get('reference_keep', None)
+        mask_t = getattr(self, 'ref_vae_mask_above_t', 1.0)
+        if training and mask_t < 1.0:
+            high = model_inputs[1].detach().float().cpu() > mask_t
+            if bool(high.any()):
+                base = torch.ones(high.shape[0]) if keep is None else keep.float().cpu()
+                keep = base * (~high).float()
         noise_p = getattr(self, 'ref_noise_prob', 0.0)
         drop_p = getattr(self, 'ref_token_drop_prob', 0.0)
         corrupt = training and (noise_p > 0 or drop_p > 0)
@@ -598,6 +613,9 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         metadata['live_text_encoding'] = str(self.live_text_encoding).lower()
         if self.pair_weights is not None:
             metadata['pair_weights'] = str(len(self.pair_weights))
+        if self.ref_vae_mask_above_t < 1.0:
+            metadata['ref_vae_mask_above_t'] = str(self.ref_vae_mask_above_t)
+            metadata['inference_ref_skip_sigma'] = str(self.ref_vae_mask_above_t)
         if self.ref_noise_prob > 0:
             metadata['ref_noise'] = f'p={self.ref_noise_prob} t=U[{self.ref_noise_min},{self.ref_noise_max}] timestep=t_ref'
         if self.ref_token_drop_prob > 0:
