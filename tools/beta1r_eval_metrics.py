@@ -23,6 +23,7 @@ from PIL import Image
 
 DHASH_THR = 10
 DINO_THR = 0.95
+ALIGN_THR = 0.5
 DINO_MODEL = 'facebook/dinov2-small'
 _DINO = {}
 
@@ -74,6 +75,26 @@ def pick_device(device):
     except Exception:
         pass
     return 'cpu'
+
+
+def aligned_area(a, b):
+    """Fração da imagem em que b é cópia alinhada de a: b recortado no centro + redimensionado para o aspecto de a,
+    ambos a 64 px no lado maior, média RGB de |a-b| < 0.08 (o critério da medição dos dados de treino)."""
+    W, H = a.size
+    s = 64 / max(W, H)
+    w2, h2 = max(8, int(W * s)), max(8, int(H * s))
+
+    def fit(im):
+        iw, ih = im.size
+        ar = w2 / h2
+        if iw / ih > ar:
+            nw = int(ih * ar)
+            im = im.crop(((iw - nw) // 2, 0, (iw - nw) // 2 + nw, ih))
+        else:
+            nh = int(iw / ar)
+            im = im.crop((0, (ih - nh) // 2, iw, (ih - nh) // 2 + nh))
+        return np.asarray(im.resize((w2, h2), Image.BILINEAR), dtype=np.float32) / 255
+    return float((np.abs(fit(a) - fit(b)).mean(-1) < 0.08).mean())
 
 
 def bootstrap(values, n=2000, seed=0):
@@ -137,17 +158,23 @@ def evaluate(samples, cases_path, device='auto', all_cases=False, write=True):
             row['dino_tgt'] = float(e @ e_tgt[n])
         row['copy_dhash'] = row['dhash_ref'] <= DHASH_THR
         row['copy_dino'] = row['dino_ref'] >= DINO_THR
+        # cópia por área alinhada (pega "cópia com edição", que o dHash ≤ 10 deixa passar): a saída é cópia
+        # alinhada da referência em > 50% da área E mais alinhada à ref do que o alvo real está
+        row['align_ref'] = aligned_area(img, refs[n])
+        row['align_gt'] = aligned_area(tgts[n], refs[n]) if n in tgts else 0.0
+        row['copy_align'] = row['align_ref'] > ALIGN_THR and row['align_ref'] > row['align_gt']
+        # copy_align é só informativo: no BETA1-R 750 marcou 10/64 casos (confunde 'mesmo cenário' com cópia)
         row['copy'] = row['copy_dhash'] or row['copy_dino']
         rows.append(row)
     per_case = []
     for n in names:
         rs = [r for r in rows if r['name'] == n]
         pc = {'name': n, 'stratum': rs[0]['stratum'], 'n_seeds': len(rs)}
-        for k in ('dhash_ref', 'dino_ref', 'palette_ref', 'dhash_tgt', 'dino_tgt'):
+        for k in ('dhash_ref', 'dino_ref', 'palette_ref', 'dhash_tgt', 'dino_tgt', 'align_ref', 'align_gt'):
             vals = [r[k] for r in rs if k in r]
             if vals:
                 pc[k] = float(np.mean(vals))
-        for k in ('copy_dhash', 'copy_dino', 'copy'):
+        for k in ('copy_dhash', 'copy_dino', 'copy_align', 'copy'):
             frac = float(np.mean([r[k] for r in rs]))
             pc[f'{k}_frac'] = frac
             pc[f'{k}_majority'] = frac > 0.5
@@ -167,7 +194,7 @@ def evaluate(samples, cases_path, device='auto', all_cases=False, write=True):
 
     strata = sorted({p['stratum'] for p in per_case})
     result = {'samples': str(samples), 'cases': str(cases_path), 'device': device,
-              'thresholds': {'dhash_ref<=': DHASH_THR, 'dino_ref>=': DINO_THR},
+              'thresholds': {'dhash_ref<=': DHASH_THR, 'dino_ref>=': DINO_THR, 'align_ref>': ALIGN_THR},
               'n_generations': len(rows), 'all': summarize(per_case),
               'by_stratum': {s: summarize([p for p in per_case if p['stratum'] == s]) for s in strata},
               'per_case': per_case, 'rows': rows}

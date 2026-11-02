@@ -1,0 +1,15 @@
+# DELTA1000: os 1000 pares do v11 com legendas delta (branch claude/nextscene-moss-krea2-2026-10-27,
+# captions/cap1000.jsonl), imagens de AdwolfCzar/ofificial_next_scene_v11 (dataset-2-natural), normalizadas como o BETA1-R.
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/data/delta1000/target'
+control_path = '/workspace/data/delta1000/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1

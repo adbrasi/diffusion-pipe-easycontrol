@@ -1,0 +1,112 @@
+[
+ {
+  "name": "beta1_example0",
+  "reference": "/workspace/runs/beta1r_samples_inputs/sampling_inputs/example0_ref.jpg",
+  "prompt": "Next scene of Picture 1. A close-up from a side angle. The same girl holds the same man's erect penis in her hand and presses its tip to her lips with her mouth open, gazing sideways with a flushed expression. Same place.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/sampling_inputs/example0_target_groundtruth.jpg",
+  "copy_eval": false,
+  "prompt_long": "Change the background to an outdoor scene with blurry autumn leaves. The blonde girl with red eyes is now completely nude, wearing a black pendant choker. She is performing fellatio, with her tongue out and licking the head of a large, veiny penis. A hand is holding the penis. She has red nail polish on her fingers. The shot is a close-up focusing on her mouth and the penis, with natural lighting."
+ },
+ {
+  "name": "beta1_example1",
+  "reference": "/workspace/runs/beta1r_samples_inputs/sampling_inputs/example1_ref.jpg",
+  "prompt": "Next scene of Picture 1. A medium frontal shot followed by an extreme close-up from below. The same girl straddles the same creature, bouncing her hips with mouth open while he thrusts up into her, shown censored in the lower close-up. She says \"AHN~ YOUR DICK IS SOOO HUGE, CHIEF TECCHIN~\". Same place.",
+  "width": 432,
+  "height": 608,
+  "target": "/workspace/runs/beta1r_samples_inputs/sampling_inputs/example1_target_groundtruth.jpg",
+  "copy_eval": false,
+  "prompt_long": "a manga page of two panels, in the first the same braided woman straddles the same small creature, looking down at him with a grin while riding his cock, same background, in the second panel a close-up shows the same braided woman's pussy impaled by the creature's cock with sweat and moisture visible, dynamic movement lines surrounding the junction, same background"
+ },
+ {
+  "name": "beta1_example2",
+  "reference": "/workspace/runs/beta1r_samples_inputs/sampling_inputs/example2_ref.jpg",
+  "prompt": "Next scene of Picture 1. A close-up from the front. A new girl with long red hair and purple eyes looks forward with a serious neutral expression. She is inside a building with pale columns and arches behind her.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/sampling_inputs/example2_target_groundtruth.jpg",
+  "copy_eval": false,
+  "prompt_long": "close-up, eye-level frontal view, new girl with long magenta hair, looking directly at the camera with wide, purple eyes and a neutral expression, wearing a white shirt, new background, a bright hallway with light-colored architectural columns"
+ },
+ {
+  "name": "heldout_ds2_001626",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001626_reference.jpg",
+  "prompt": "Next scene of Picture 1. A medium close-up at eye level. The same skeleton hangs centered as a new pale hand reaches in from the right to touch its shoulder. Lantern text reads \"\u5927\u5224\". Same place.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001626_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "medium shot at eye-level, a small light-green glowing skeleton figure hangs by a chain in the center of the frame, featuring square-shaped yellow gem eyes and a simple skeletal anatomy, a fair-skinned human hand enters from the right side of the frame with fingers outstretched to lightly brush the shoulder of the glowing skeleton, the background is composed of various hanging items including a yellow lantern with black Japanese characters, a spherical black lantern, and vertical rectangular blocks suspended by silver chains, all set against a flat deep purple wall, bright lighting originating from the glowing skeleton"
+ },
+ {
+  "name": "heldout_ds2_000769",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000769_reference.jpg",
+  "prompt": "Next scene of Picture 1. A full-body shot from the side. The same man appears left of center, mid-stride running left with head bowed and arms bent. On-screen text reads \"RAFA\u0141 JAKI\" across the bottom. Same place.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000769_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "wide shot with a side-on view centered on a fragmented figure walking right, constructed from sharp, geometric shards of dark blue and teal that suggest a person in motion, the figure is partially disintegrated with limbs detached and floating, set against a solid magenta block which is framed by a bold, flat yellow background, at the bottom of the frame the name 'RAFA\u0141 JAKI' is written in a simple, bold, black-outlined font, the composition utilizes intense high-contrast colors and stylized graphic shapes to emphasize a glitch-art effect across the entire flat surface"
+ },
+ {
+  "name": "heldout_ds2_001969",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001969_reference.jpg",
+  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl stands in left profile holding hands and gazing shyly at a new boy with short dark hair in green uniform, who faces her blushing. Same place.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001969_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "medium shot at eye-level, a side profile view of a young man and a young woman standing facing each other, both blushing, holding hands between them, the woman has long straight pink hair with a small cowlick and wears a light green blazer with a white shirt collar and a black choker, the man has short dark brown hair and wears a matching light green blazer over a white shirt with a red necktie, they look into each other's eyes, set against an abstract soft background of warm orange and pink light with translucent floating circular bokeh orbs"
+ },
+ {
+  "name": "heldout_ds2_004421",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_004421_reference.jpg",
+  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl is bent down at the lower left with only her back visible, the same man stands at the right beside the booth holding a phone and looking toward her, with a new older man in a cap walking away in the background. Same place.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_004421_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "medium shot at eye-level on a hazy city street, a man with dark hair and a beard wearing a light grey blazer over a blue collared shirt stands on the right edge of the frame, holding a thin blue object, looking toward the left with a neutral expression, in the middle ground a person wearing a light grey shirt and cap stands with their back to the viewer, in the foreground a bright magenta hooded garment occupies the bottom left, soft daylight illuminates the blurry background of urban architecture and traffic with a dark green structure framing the right side"
+ },
+ {
+  "name": "heldout_ds2_000263",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000263_reference.jpg",
+  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl stands in the left foreground looking forward with a neutral expression, beside a new dark-haired girl with orange ribbons, a new short blond boy laughing with hand to mouth, and a new partial white-haired girl. Same place.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000263_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "medium shot at eye level, four characters standing side-by-side against dark wooden wall paneling, a woman on the left with long vibrant red hair and blue eyes wears a white shirt with a black ribbon, a woman in the center has dark purple hair with orange ribbons and dark eyes in a matching white shirt, a blonde young man to the right looks down with a closed-eye smile while his fingers touch his chin, and a small girl with white hair and yellow eyes stands on the far right edge, all dressed in similar white collared shirts with black ties"
+ },
+ {
+  "name": "heldout_ds2_000362",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000362_reference.jpg",
+  "prompt": "Next scene of Picture 1. A close-up from a side angle. The same girl is kneeling and bowing deeply with her head to the ground amid dust. A nighttime rooftop with city buildings behind.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000362_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "medium shot, eye-level side profile view, a figure kneeling on a rooftop at night with their head deeply bowed toward the ground, face completely obscured by a black brimmed cap with a gold band, wearing a dark black jacket, body hunched forward in a submissive posture, thick billowing purple-grey clouds swirling around their legs and the floor, a soft glowing city skyline at night stretching across the distant horizon under a dark blue star-filled sky, no limbs visible as they are tucked within the voluminous coat and the surrounding shadows"
+ },
+ {
+  "name": "heldout_ds2_005429",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_005429_reference.jpg",
+  "prompt": "Next scene of Picture 1. A medium close-up from a low ground angle. A new man with messy dark hair and mustache in a light tracksuit jacket crouches in the right foreground, staring forward with a strained expression, while a light convertible car sits parked behind him to the left. Same place.",
+  "width": 784,
+  "height": 336,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_005429_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "medium shot at a slightly elevated angle, a man with short dark wet hair and a thick mustache crouching low on the ground, wearing a cream-colored track jacket with maroon stripes over a white undershirt, his torso hunched forward and head tilted down with an intense expression, light snow falling through the dark night air, a blurred silver hatchback car parked on the pavement in the background, cool blue-toned ambient lighting illuminating his sweat-slicked skin and the surrounding dark asphalt, the man positioned in the lower right foreground with a somber and gritty atmosphere"
+ },
+ {
+  "name": "heldout_ds2_002890",
+  "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_002890_reference.jpg",
+  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl stands on the right seen from behind, facing and holding hands with a new boy with short brown hair in a white long-sleeve shirt, both with serious expressions, with the open doorway to night trees behind them. Same place.",
+  "width": 688,
+  "height": 384,
+  "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_002890_target.jpg",
+  "copy_eval": true,
+  "prompt_long": "medium shot from an eye-level frontal view, a young man with short brown hair and dark eyes stands on the left wearing a white long-sleeved shirt with a square graphic of purple and yellow bars on his chest, he looks towards the left with a neutral expression, next to him on the right stands a girl with short pink hair and small white horn-like ornaments on her head, she is viewed from behind wearing a plain dark purple t-shirt, both figures stand in front of a wide window showing a dark night sky and silhouettes of trees against the twilight"
+ }
+]
