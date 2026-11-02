@@ -66,6 +66,9 @@ def main():
     ap.add_argument('--cases', type=Path, required=True)
     ap.add_argument('--out', type=Path, required=True)
     ap.add_argument('--turbo-lora', type=Path, required=True)
+    ap.add_argument('--raw', action='store_true',
+                    help='diagnóstico: Raw sem a turbo (28 passos, CFG --raw-cfg, mu por resolução)')
+    ap.add_argument('--raw-cfg', type=float, default=4.0)
     ap.add_argument('--seed', type=int, default=76)
     ap.add_argument('--blocks-to-swap', type=int, default=0)
     ap.add_argument('--copy-seeds', type=int, nargs='*', default=[],
@@ -76,8 +79,9 @@ def main():
     cases = json.loads(args.cases.read_text())
     args.out.mkdir(parents=True, exist_ok=True)
     config = ira.load_raw_config(args.config)
-    sargs = argparse.Namespace(turbo_lora=args.turbo_lora, krea_variant='auto', steps=None,
-                               text_guidance=None, mu=None)
+    sargs = argparse.Namespace(turbo_lora=None if args.raw else args.turbo_lora,
+                               krea_variant='raw' if args.raw else 'auto', steps=28 if args.raw else None,
+                               text_guidance=args.raw_cfg if args.raw else None, mu=None)
     ira.resolve_sampling_args(config, sargs)
     adapter_file = ira.find_adapter_file(args.adapter)
     ira.validate_contract(config, ira.read_metadata(adapter_file), allow_mismatch=False)
@@ -85,11 +89,14 @@ def main():
     pipeline = ira.create_pipeline(config)
 
     # Fase A: textos (TE) + refs (VAE)
-    enc = []
+    enc, enc_unconds = [], []
     for c in cases:
-        pipeline.prepare_sample_test(c['prompt'], negative_prompt='', cfg=1,
+        pipeline.prepare_sample_test(c['prompt'], negative_prompt='', cfg=sargs.text_guidance,
                                      control_files=[str(c['reference'])])
         conds = tuple(v.cpu() for v in pipeline.conds)
+        if sargs.text_guidance != 1.0:
+            # CFG: o uncond vai junto (lista paralela, mesma ordem dos casos)
+            enc_unconds.append(tuple(v.cpu() for v in pipeline.unconds))
         ref = ira.encode_reference(pipeline, Path(c['reference']), c['width'], c['height'], 'crop')
         enc.append((conds, ref))
     from comfy import model_management
@@ -101,7 +108,8 @@ def main():
     # também aplica LoRAs no device).
     pipeline.load_diffusion_model()
     pipeline.diffusion_model.to('cuda')
-    print(f'LoRA turbo fundida (GPU) em {ira.apply_turbo_lora(pipeline, args.turbo_lora)} modulos', flush=True)
+    if not args.raw:
+        print(f'LoRA turbo fundida (GPU) em {ira.apply_turbo_lora(pipeline, args.turbo_lora)} modulos', flush=True)
     pipeline.configure_adapter(config['adapter'])
     pipeline.load_adapter_weights(adapter_file)
     pipeline.diffusion_model.eval()
@@ -115,6 +123,8 @@ def main():
         reference = pipeline.prepare_reference_latents(ref, torch.zeros(shape, dtype=ref.dtype),
                                                        timestep_quantile=0.5)
         pipeline.conds = conds
+        if enc_unconds:
+            pipeline.unconds = enc_unconds[[x['name'] for x in cases].index(c['name'])]
         lat = ira.denoise(pipeline, sequential, reference, shape, sargs.steps, args.seed,
                           sargs.text_guidance, 1.0, None, c['width'], c['height'], sargs.mu,
                           256, 1280, 0.5, 1.15, 'cuda')
@@ -127,6 +137,8 @@ def main():
             reference = pipeline.prepare_reference_latents(ref, torch.zeros(shape, dtype=ref.dtype),
                                                            timestep_quantile=0.5)
             pipeline.conds = conds
+            if enc_unconds:
+                pipeline.unconds = enc_unconds[[x['name'] for x in cases].index(c['name'])]
             extra[(seed, c['name'])] = ira.denoise(
                 pipeline, sequential, reference, shape, sargs.steps, seed, sargs.text_guidance, 1.0, None,
                 c['width'], c['height'], sargs.mu, 256, 1280, 0.5, 1.15, 'cuda').cpu()

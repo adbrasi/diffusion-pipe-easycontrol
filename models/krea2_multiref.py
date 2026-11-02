@@ -132,6 +132,24 @@ def zoom_crop_reference(reference, prob, max_zoom, rng=random):
     return reference if out is None else out
 
 
+def copy_region_mask(latents, reference, threshold, weight):
+    """BETA1-R4 (revisão independente): máscara espacial de loss contra a cópia alinhada.
+
+    Posição latente do alvo é "cópia alinhada" da referência quando média_c |z_alvo - z_ref| < threshold
+    (latentes normalizados do cache; a ref está no mesmo grid do alvo). Calibrado contra o mapa de pixels
+    (|A-B|<0.08 em blocos 8x8): tools/beta1r4_calibrate_mask.py, F1 0.81, correlação por par 0.95.
+    Essas posições recebem peso `weight` na loss (o resto 1): o modelo continua aprendendo a cena, mas
+    deixa de ser recompensado por colar os pixels da referência.
+
+    latents (B, C, 1, h, w), reference (B, C, N, h, w) -> (B, 1, 1, h, w) float32.
+    """
+    ref = reference[:, :, :1].float()
+    if ref.shape[-2:] != latents.shape[-2:]:
+        return torch.ones(latents.shape[0], 1, 1, *latents.shape[-2:], device=latents.device)
+    d = (latents.float() - ref).abs().mean(dim=1, keepdim=True)
+    return torch.where(d < threshold, torch.full_like(d, weight), torch.ones_like(d))
+
+
 def sample_reference_corruption(reference, patch, noise_prob, noise_min, noise_max,
                                 token_drop_prob, keep_min, keep_max):
     """Anti-cópia no mecanismo (BETA1-R2), só em treino e só numa fração das amostras;
@@ -375,6 +393,11 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         # continua vendo a imagem). A cópia nasce no 1º passo de amostragem (σ≈1): o layout passa a vir
         # do texto + semântica, a identidade fina dos tokens VAE nos passos seguintes. Inferência
         # consistente: pular os tokens VAE enquanto σ > o mesmo limiar (REF_SKIP_SIGMA / node ref_skip_sigma).
+        # BETA1-R4: máscara espacial de loss nas posições do alvo que são cópia alinhada da referência
+        self.copy_mask_threshold = float(section.get('copy_mask_threshold', 0.0))
+        self.copy_mask_weight = float(section.get('copy_mask_weight', 1.0))
+        if self.copy_mask_threshold < 0 or not 0.0 <= self.copy_mask_weight <= 1.0:
+            raise ValueError('copy_mask_threshold >= 0 e copy_mask_weight em [0, 1]')
         self.ref_vae_mask_above_t = float(section.get('ref_vae_mask_above_t', 1.0))
         if not 0.0 < self.ref_vae_mask_above_t <= 1.0:
             raise ValueError('ref_vae_mask_above_t em (0, 1]; 1.0 = desligado')
@@ -485,6 +508,10 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
             inputs = dict(inputs)
             inputs['control_latents'] = torch.stack(padded)
         training = timestep_quantile is None   # eval (quantis fixos) nunca aumenta nem pondera
+        copy_mask = None
+        if training and getattr(self, 'copy_mask_threshold', 0.0) > 0 and self.copy_mask_weight < 1.0:
+            copy_mask = copy_region_mask(inputs['latents'], inputs['control_latents'],
+                                         self.copy_mask_threshold, self.copy_mask_weight)
         if training and self.ref_aug_prob > 0:
             inputs = dict(inputs)
             inputs['control_latents'] = zoom_crop_reference(
@@ -496,6 +523,14 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
                 raise RuntimeError('pair_weights_path exige control_file no batch')
             labels = apply_pair_weights(labels, pair_weights_for(control_files, self.pair_weights))
         keep = inputs.get('reference_keep', None)
+        if copy_mask is not None:
+            if keep is not None:
+                # referência descartada: o modelo não a vê, então não há cópia a desencorajar
+                dropped = (keep.to(copy_mask.device) == 0).view(-1, 1, 1, 1, 1)
+                copy_mask = torch.where(dropped, torch.ones_like(copy_mask), copy_mask)
+            target, mask = labels
+            mask = copy_mask if mask is None or mask.numel() == 0 else mask.to(torch.float32) * copy_mask.to(mask.device)
+            labels = (target, mask)
         mask_t = getattr(self, 'ref_vae_mask_above_t', 1.0)
         if training and mask_t < 1.0:
             high = model_inputs[1].detach().float().cpu() > mask_t
@@ -613,6 +648,8 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         metadata['live_text_encoding'] = str(self.live_text_encoding).lower()
         if self.pair_weights is not None:
             metadata['pair_weights'] = str(len(self.pair_weights))
+        if self.copy_mask_threshold > 0 and self.copy_mask_weight < 1.0:
+            metadata['copy_mask'] = f'latent_absdiff<{self.copy_mask_threshold} weight={self.copy_mask_weight}'
         if self.ref_vae_mask_above_t < 1.0:
             metadata['ref_vae_mask_above_t'] = str(self.ref_vae_mask_above_t)
             metadata['inference_ref_skip_sigma'] = str(self.ref_vae_mask_above_t)
