@@ -583,8 +583,20 @@ class ComfyPipeline(CommonPipeline):
                 paths = [paths]
             clip_type = getattr(comfy.sd.CLIPType, te_config['type'].upper(), comfy.sd.CLIPType.STABLE_DIFFUSION)
 
-            def load_fn():
-                return comfy.sd.load_clip(ckpt_paths=paths, clip_type=clip_type, disable_dynamic=True)
+            def load_fn(paths=paths, clip_type=clip_type):
+                # Aceita também o Qwen3-VL no layout diffusers/transformers
+                # (chaves 'language_model.*'/'visual.*', sem o prefixo 'model.'
+                # do arquivo ComfyUI). Mesmos tensores; só o nome muda. Fora
+                # isso, idêntico a comfy.sd.load_clip.
+                clip_data = []
+                for p in paths:
+                    sd, metadata = comfy.utils.load_torch_file(p, safe_load=True, return_metadata=True)
+                    if 'visual.merger.linear_fc2.weight' in sd and 'model.visual.merger.linear_fc2.weight' not in sd:
+                        sd = {('model.' + k if k.startswith(('language_model.', 'visual.')) else k): v
+                              for k, v in sd.items()}
+                    sd, metadata = comfy.utils.convert_old_quants(sd, model_prefix='', metadata=metadata)
+                    clip_data.append(sd)
+                return comfy.sd.load_text_encoder_state_dicts(clip_data, clip_type=clip_type, disable_dynamic=True)
 
             self.text_encoders.append(ModelWrapper(load_fn))
 

@@ -30,8 +30,10 @@ seed = 42
 type = 'krea2_multiref_grounded'
 diffusion_model = '/workspace/k2m/diffusion_models/krea2_raw_fp8_scaled.safetensors'
 vae = '/dev/shm/models/krea2/vae/qwen_image_vae.safetensors'
+# TE: Qwen3-VL-4B do diretório turbo (layout transformers) — tensores byte-idênticos ao
+# Comfy-Org text_encoders/qwen3vl_4b_bf16.safetensors (verificado: 713/713); models/base.py remapeia o prefixo.
 text_encoders = [
-    {path = '/dev/shm/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+    {path = '/dev/shm/models/turbo/text_encoder/model.safetensors', type = 'krea2'},
 ]
 dtype = 'bfloat16'
 base_quant = 'fp8_scaled'
