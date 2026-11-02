@@ -49,7 +49,10 @@ Está implementado aqui como `slot_axis = 'frame'` para A/B, mas o default é
 `width` porque é o que o único treino bem-sucedido de Krea 2 do projeto usou.
 """
 
+import random
+
 import torch
+from torch import nn
 from einops import rearrange
 
 import comfy.ldm.common_dit
@@ -72,7 +75,13 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
 
     @torch.autocast('cuda', dtype=AUTOCAST_DTYPE)
     def forward(self, inputs):
-        target, timesteps, context, text_attention_mask, reference = inputs
+        # 6th input (optional): reference_keep (B,) — 0 where reference_dropout
+        # removed the reference from this sample (see encode_text_live).
+        if len(inputs) == 6:
+            target, timesteps, context, text_attention_mask, reference, reference_keep = inputs
+        else:
+            target, timesteps, context, text_attention_mask, reference = inputs
+            reference_keep = None
         if target.shape[2] != 1:
             raise ValueError('Krea2 multi-ref suporta exatamente um frame de target')
         target = target[:, :, 0]
@@ -121,7 +130,14 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
         reference_tokens = torch.cat(ref_token_list, dim=1)
         reference_pos = torch.cat(ref_pos_list, dim=1)
 
-        context = self.txtfusion(context, mask=None)
+        # Com micro batch > 1 o texto chega com padding até o max do batch. O
+        # stock ComfyUI roda batch 1 (mask=None, sem padding); para o batch>1
+        # ser equivalente a N execuções batch-1, os refiners do txtfusion não
+        # podem atender ao padding (port do fix da branch elegant-ptolemy).
+        # Com batch 1 / sem padding a máscara é toda True = idêntico ao stock.
+        fusion_mask = text_attention_mask.to(device=context.device, dtype=torch.bool)
+        fusion_mask = None if bool(fusion_mask.all()) else fusion_mask[:, None, None, :]
+        context = self.txtfusion(context, mask=fusion_mask)
         context = self.txtmlp(context)
         text_length = context.shape[1]
         target_length = target_tokens.shape[1]
@@ -151,6 +167,16 @@ class Krea2MultiRefInitialLayer(Krea2ReferenceInitialLayer):
             batch, target_length + reference_length,
             dtype=torch.bool, device=text_attention_mask.device,
         )
+        if reference_keep is not None:
+            # reference_dropout: as keys da referência ficam inválidas para TODAS
+            # as queries da amostra descartada. As linhas de texto+target então
+            # computam exatamente o text-to-image de B (a ref não entra em
+            # nenhuma soma de atenção; o LoRA routado só toca as linhas da ref,
+            # que não alimentam nada e ficam fora da loss).
+            if self.independent_condition:
+                raise NotImplementedError('reference_dropout com independent_condition não suportado')
+            image_mask[:, target_length:] = reference_keep.to(
+                device=image_mask.device).bool()[:, None]
         valid_keys = torch.cat([text_attention_mask.bool(), image_mask], dim=1)
         if self.independent_condition:
             attention_mask = valid_keys[:, None, None, :].expand(
@@ -191,9 +217,23 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         if self.slot_axis not in ('width', 'frame'):
             raise ValueError("slot_axis must be 'width' or 'frame'")
         self.txtfusion_rank = int(section.get('txtfusion_rank', 0))
+        # reference_dropout: fração de amostras em que a referência é REMOVIDA
+        # por inteiro e de forma coerente — tokens VAE (keys mascaradas) E a
+        # imagem do grounding Qwen3-VL (prompt sem bloco "image 1:"). A legenda
+        # fica. A amostra vira text-to-image puro de B. Exige encoding de texto
+        # ao vivo (o prompt muda por step).
+        self.reference_dropout = float(section.get('reference_dropout', 0.0))
+        if not 0.0 <= self.reference_dropout <= 0.5:
+            raise ValueError('reference_dropout must be between 0.0 and 0.5')
+        self.live_text_encoding = bool(config['model'].get('live_text_encoding', False))
+        if self.reference_dropout > 0 and not self.live_text_encoding:
+            raise ValueError('reference_dropout > 0 exige [model] live_text_encoding = true')
+        if self.reference_dropout > 0 and self.independent_condition:
+            raise ValueError('reference_dropout não suporta independent_condition')
         if is_main_process():
             print(f'[{self.name}] max_refs={self.max_refs} slot_axis={self.slot_axis} '
-                  f'position_mode={self.position_mode}')
+                  f'position_mode={self.position_mode} reference_dropout={self.reference_dropout} '
+                  f'live_text_encoding={self.live_text_encoding}')
 
     def model_specific_dataset_config_validation(self, dataset_config):
         # o loader multi-ref usa manifest_path, não control_path
@@ -283,7 +323,57 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
                 padded.append(c)
             inputs = dict(inputs)
             inputs['control_latents'] = torch.stack(padded)
-        return super().prepare_inputs(inputs, timestep_quantile=timestep_quantile)
+        model_inputs, labels = super().prepare_inputs(inputs, timestep_quantile=timestep_quantile)
+        keep = inputs.get('reference_keep', None)
+        if keep is None:
+            return model_inputs, labels
+        # Referência descartada: zera também o latente (cosmético — as keys já
+        # são mascaradas na camada inicial) e passa o keep como 6º input.
+        reference = model_inputs[-1]
+        keep = keep.to(device=reference.device, dtype=reference.dtype)
+        reference = reference * keep.view(-1, *([1] * (reference.ndim - 1)))
+        return (*model_inputs[:-1], reference, keep), labels
+
+    def encode_text_live(self, batch):
+        """Encoding ao vivo do Qwen3-VL (mesmo fn do cache) + reference_dropout.
+
+        Por amostra: com prob. reference_dropout o arquivo de referência some
+        do prompt (sem bloco de visão; a legenda fica) e reference_keep=0
+        manda a camada inicial mascarar as keys da ref. Senão, com prob.
+        caption_dropout, legenda vazia mantendo a ref (uncond grounded).
+        """
+        captions = batch.get('caption', None)
+        if captions is None:
+            raise RuntimeError('live_text_encoding needs raw captions in the batch')
+        if isinstance(captions, str):
+            captions = [captions]
+        control_files = batch.get('control_file', None)
+        if control_files is None:
+            raise RuntimeError('live_text_encoding needs control_file in the batch')
+        n = len(captions)
+        keep, caps, files = [], [], []
+        for caption, control_file in zip(captions, control_files):
+            if random.random() < self.reference_dropout:
+                keep.append(0.0)
+                caps.append(caption)
+                files.append(None)
+            else:
+                keep.append(1.0)
+                caps.append('' if random.random() < self.caption_dropout else caption)
+                files.append(control_file)
+        text_encoder = self.text_encoders[0]
+        if isinstance(text_encoder, nn.Module):
+            text_encoder = text_encoder.to('cuda')
+        else:
+            text_encoder.load_model_if_needed()
+        outputs = self.get_call_text_encoder_fn(text_encoder)(caps, [False] * n, files)
+        # get_call_text_encoder_fn é inference_mode: clonar FORA dele para os
+        # tensores poderem entrar no grafo (LoRA do txtfusion).
+        for key, value in outputs.items():
+            batch[key] = [tensor.clone() for tensor in value]
+        if self.reference_dropout > 0:
+            batch['reference_keep'] = torch.tensor(keep, dtype=torch.float32)
+        return batch
 
     def prepare_reference_latents(self, reference, noisy_target, timestep_quantile=None):
         """Aceita (B, C, N, h, w). Só o eixo de frame pode diferir do target."""
@@ -327,4 +417,7 @@ class Krea2MultiRefGroundedPipeline(Krea2OminiGroundedPipeline):
         metadata['control_family'] = 'krea2_multiref_grounded'
         metadata['max_refs'] = str(self.max_refs)
         metadata['slot_axis'] = self.slot_axis
+        metadata['reference_dropout'] = str(self.reference_dropout)
+        metadata['reference_dropout_mode'] = 'full_vae_keys_masked_and_no_vl_image'
+        metadata['live_text_encoding'] = str(self.live_text_encoding).lower()
         return metadata
