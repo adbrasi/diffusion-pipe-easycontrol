@@ -31,7 +31,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 VENV = Path('/workspace/dpe-venv/bin')
 TURBO_LORA = '/dev/shm/models/krea2/loras/krea2_turbo_lora_rank_64_bf16.safetensors'
 LOG_DIR = Path('/workspace/runs/logs')
-SAMPLES_OUT = Path('/workspace/runs/beta1r_samples')
+SAMPLES_OUT = Path(os.environ.get('BETA1R_SAMPLES_OUT', '/workspace/runs/beta1r_samples'))
 STOP_FILE = Path('/workspace/runs/beta1r_supervisor.stop')
 HF_REPO = 'AdwolfCzar/krea2-beta1r'
 
@@ -136,6 +136,17 @@ class Uploader:
             t.join()
 
 
+class NoUploader:
+    def __init__(self):
+        self.done, self.lock = set(), threading.Lock()
+
+    def submit(self, step, ckpt_dir, sample_dir):
+        log(f'(no-upload) step{step}')
+
+    def wait(self):
+        pass
+
+
 def prune(run_dir, uploader, keep_states=1, keep_adapters=2):
     if run_dir is None:
         return
@@ -193,7 +204,7 @@ class Trainer:
 
 def run_samples(config, step, ckpt_dir, cases):
     out = SAMPLES_OUT / f'step{step}'
-    cmd = [str(VENV / 'python'), 'tools/beta1r_sample.py', '--config', config, '--adapter', str(ckpt_dir),
+    cmd = [str(VENV / 'python'), '-u', 'tools/beta1r_sample.py', '--config', config, '--adapter', str(ckpt_dir),
            '--cases', str(cases), '--out', str(out), '--turbo-lora', TURBO_LORA]
     t0 = time.time()
     with open(LOG_DIR / f'beta1r_sample_step{step}.log', 'w') as lf:
@@ -212,13 +223,14 @@ def main():
     ap.add_argument('--sample-every', type=int, default=250)
     ap.add_argument('--min-free-gb', type=float, default=3.0)
     ap.add_argument('--resume', action='store_true')
+    ap.add_argument('--no-upload', action='store_true', help='smoke: não sobe nada ao HF')
     args = ap.parse_args()
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     SAMPLES_OUT.mkdir(parents=True, exist_ok=True)
     output_base = Path(read_toml_value(args.config, 'output_dir'))
     max_steps = read_toml_value(args.config, 'max_steps', int)
     log(f'supervisor start config={args.config} max_steps={max_steps} sample_every={args.sample_every}')
-    uploader = Uploader(args.config)
+    uploader = NoUploader() if args.no_upload else Uploader(args.config)
     trainer = Trainer(args.config)
     if args.resume:
         rd = newest_run_dir(output_base)

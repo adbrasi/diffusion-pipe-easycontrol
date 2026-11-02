@@ -17,7 +17,9 @@ import io
 import json
 import os
 import random
+import shutil
 import sys
+import time
 import threading
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
@@ -69,48 +71,80 @@ def run(name, dst, jobs, fn, workers=16):
         (dst / 'rejects.log').write_text(''.join(f'{s}\t{e}\n' for s, e in rejects))
 
 
+def _norm_job(args):
+    data, dst = args
+    img = load_rgb(io.BytesIO(data))
+    if img is None:
+        return dst, 'imagem ilegível'
+    save_norm(img, Path(dst))
+    return dst, None
+
+
 def remote_zip_source(name, dst, repo_files, n):
-    from huggingface_hub import HfFileSystem
+    """UM GET em streaming por zip (range reads estouram o rate limit do HF).
+
+    Passo 1: normaliza TODO par completo do zip em <dst>/_staging (mesma regra
+    de find_pairs_ab: <stem>_B.<img> + <stem>_B.txt + <stem>_A.<img>; stems
+    repetidos entre zips: o último vence). Passo 2: mesma amostragem seed 42
+    sobre os pares ordenados; os escolhidos vão para target/refs, o resto sai.
+    """
+    import requests
+    from concurrent.futures import ProcessPoolExecutor
+    from stream_unzip import stream_unzip
     token = os.environ['HF_TOKEN']
-    local = threading.local()
-
-    def zf(path):
-        cache = getattr(local, 'z', None)
-        if cache is None:
-            cache = local.z = {}
-        if path not in cache:
-            fs = HfFileSystem(token=token)
-            cache[path] = zipfile.ZipFile(fs.open(path, 'rb', block_size=1 << 20))
-        return cache[path]
-
-    # find_pairs_ab: <stem>_B.<img> + <stem>_B.txt + <stem>_A.<img>; dedup por stem
-    imgs, txts = {}, {}
-    for path in repo_files:
-        for member in zf(path).namelist():
-            p = Path(member)
-            if p.suffix.lower() in IMG_EXTS:
-                imgs[p.stem] = (path, member)
-            elif p.suffix.lower() == '.txt':
-                txts[p.stem] = (path, member)
-    pairs = []
-    for stem_b, b in imgs.items():
-        if not stem_b.endswith('_B'):
-            continue
-        base = stem_b[:-2]
-        if base + '_A' in imgs and stem_b in txts:
-            pairs.append((base, b, imgs[base + '_A'], txts[stem_b]))
+    stage = dst / '_staging'
+    (stage / 'img').mkdir(parents=True, exist_ok=True)
+    (stage / 'txt').mkdir(parents=True, exist_ok=True)
+    pending = []
+    with ProcessPoolExecutor(48) as ex:
+        for path in repo_files:
+            repo = '/'.join(path.split('/')[1:3]); fname = path.split('/', 3)[3]
+            url = f'https://huggingface.co/datasets/{repo}/resolve/main/{fname}'
+            for attempt in range(20):
+                r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, stream=True, timeout=120)
+                if r.status_code == 429:
+                    print(f'{name}: 429, aguardando 60s', flush=True); time.sleep(60); continue
+                r.raise_for_status(); break
+            count = 0
+            for member, _size, chunks in stream_unzip(r.iter_content(1 << 20)):
+                member = member.decode('utf-8', errors='replace')
+                data = b''.join(chunks)
+                p = Path(member)
+                if p.suffix.lower() in IMG_EXTS and p.stem[-2:] in ('_A', '_B'):
+                    out = stage / 'img' / f'{p.stem}.jpg'
+                    pending.append(ex.submit(_norm_job, (data, str(out))))
+                elif p.suffix.lower() == '.txt' and p.stem.endswith('_B'):
+                    (stage / 'txt' / f'{p.stem}.txt').write_bytes(data)
+                count += 1
+                if count % 2000 == 0:
+                    print(f'  {name}: {fname} {count} membros', flush=True)
+                if len(pending) > 2000:
+                    pending = [f for f in pending if not f.done()]
+            print(f'{name}: {fname} lido ({count} membros)', flush=True)
+        bad = set()
+        for f in pending:
+            d, err = f.result()
+            if err:
+                bad.add(Path(d).stem)
+    imgs = {p.stem for p in (stage / 'img').iterdir()} - bad
+    txts = {p.stem for p in (stage / 'txt').iterdir()}
+    pairs = [(s[:-2],) for s in imgs if s.endswith('_B') and s[:-2] + '_A' in imgs and s in txts]
     print(f'{name}: {len(pairs)} pares completos', flush=True)
     chosen = sample(pairs, n, name)
-
-    def fn(job):
-        base, b, a, t = job
-        try:
-            rd = lambda pm: zf(pm[0]).read(pm[1])
-            cap = rd(t).decode('utf-8', errors='replace')
-            return base, write_pair(dst, f'{name}_{base}', rd(b), rd(a), cap)
-        except Exception as e:
-            return base, f'erro: {e!r}'
-    run(name, dst, chosen, fn)
+    (dst / 'target').mkdir(parents=True, exist_ok=True)
+    (dst / 'refs').mkdir(parents=True, exist_ok=True)
+    rejects = 0
+    for (base,) in chosen:
+        cap = (stage / 'txt' / f'{base}_B.txt').read_text(encoding='utf-8', errors='replace').strip()
+        if not cap:
+            rejects += 1
+            continue
+        stem = f'{name}_{base}'
+        os.replace(stage / 'img' / f'{base}_B.jpg', dst / 'target' / f'{stem}.jpg')
+        os.replace(stage / 'img' / f'{base}_A.jpg', dst / 'refs' / f'{stem}_1.jpg')
+        (dst / 'target' / f'{stem}.txt').write_text(cap, encoding='utf-8')
+    shutil.rmtree(stage)
+    print(f'{name}: {len(chosen) - rejects} ok, {rejects} rejeitados (caption vazia)', flush=True)
 
 
 def ab_dirs_source(name, dst, src, n):

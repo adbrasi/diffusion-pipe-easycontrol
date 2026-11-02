@@ -1,0 +1,67 @@
+# BETA1-R: réplica do k2-context-rush-ofc-beta1 (krea2_multiref_grounded, branch ic-lora) mudando SÓ:
+#  1. base_quant='fp8_scaled' (fp8 + escala, models/base.py::ScaledFP8Linear) — beta1 usava
+#     diffusion_model_dtype='float8' (re-quantização sem escala, zerou 6-27% dos pesos)
+#  2. caption_dropout = 0.0 (beta1: 0.1 — legenda vazia + ref limpa ensina cópia)
+#  3. reference_dropout = 0.1 (NOVO): em 10% das amostras a referência sai inteira e coerente
+#     (keys VAE da ref mascaradas + prompt do Qwen3-VL sem bloco "image 1:"; legenda fica)
+#     -> exige live_text_encoding (o prompt muda por step; cache de texto do beta1 = 729 GB)
+#  4. checkpoint + samples a cada 250 steps
+# Forçado: micro batch 4 real (beta1: 1 x accum 4; mesmo batch efetivo) + máscara de padding no
+# txtfusion (torna batch 4 equivalente a 4x batch 1); warmup 50 (beta1 fase 1: 100).
+# Dataset: beta1 sem pico-banana (opção A), ver examples/beta1r/dataset.toml.
+output_dir = '/workspace/runs/beta1r_smoke'
+dataset = '/workspace/dpe-beta1r/examples/beta1r/smoke_dataset.toml'
+epochs = 1000
+max_steps = 12
+micro_batch_size_per_gpu = 1
+gradient_accumulation_steps = 4
+pipeline_stages = 1
+gradient_clipping = 1.0
+warmup_steps = 50
+save_every_n_steps = 10
+checkpoint_every_n_minutes = 120
+activation_checkpointing = true
+save_dtype = 'bfloat16'
+caching_batch_size = 1       # OBRIGATÓRIO com multi_ref
+blocks_to_swap = 0
+seed = 42
+
+[model]
+type = 'krea2_multiref_grounded'
+diffusion_model = '/workspace/k2m/diffusion_models/krea2_raw_fp8_scaled.safetensors'
+vae = '/dev/shm/models/krea2/vae/qwen_image_vae.safetensors'
+text_encoders = [
+    {path = '/dev/shm/models/krea2/text_encoders/qwen3vl_4b_bf16.safetensors', type = 'krea2'},
+]
+dtype = 'bfloat16'
+base_quant = 'fp8_scaled'
+live_text_encoding = true
+timestep_sample_method = 'logit_normal'
+flux_shift = true
+
+[krea2_multiref_grounded]
+max_refs = 1
+slot_axis = 'width'
+position_mode = 'width_shift'
+reference_position_offset = 1.0
+reference_timestep = 'zero'
+condition_dropout = 0.0
+condition_only_lora = true
+vl_prompt_style = 'picture_n'
+vl_image_label = 'image'
+vl_image_max_pixels = 147456 # 384²
+caption_dropout = 0.0
+reference_dropout = 0.1
+txtfusion_rank = 128
+
+[adapter]
+type = 'lora'
+rank = 64
+dtype = 'bfloat16'
+
+[optimizer]
+type = 'AdamW8bitKahan'
+lr = 1e-4
+betas = [0.9, 0.99]
+weight_decay = 0.01
+stabilize = false

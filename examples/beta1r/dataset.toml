@@ -1,0 +1,53 @@
+# BETA1-R dataset = beta1 SEM pico-banana (opção A aprovada 2026-11-02), mesmas contagens por fonte:
+# recortados 6937 / parents 4815 / inscene 473: originais do beta1 (legendas originais).
+# poxima_v2 4129 / comikontext 2900 (beta1: 4950) / mega4 865: os originais do MEGA não têm chave;
+# substitutos = mesmas fontes em AdwolfCzar/proxima_cena_grounded_original_dataset (re-legendados).
+# Montado por tools/build_beta1r_data.py (seed 42, normalização = prepare_krea2_edit.py).
+resolutions = [512]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/data/beta1r/recortados/target'
+control_path = '/workspace/data/beta1r/recortados/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/data/beta1r/poxima_v2/target'
+control_path = '/workspace/data/beta1r/poxima_v2/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/data/beta1r/comikontext/target'
+control_path = '/workspace/data/beta1r/comikontext/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/data/beta1r/mega4/target'
+control_path = '/workspace/data/beta1r/mega4/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/data/beta1r/parents/target'
+control_path = '/workspace/data/beta1r/parents/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
+
+[[directory]]
+path = '/workspace/data/beta1r/inscene/target'
+control_path = '/workspace/data/beta1r/inscene/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1

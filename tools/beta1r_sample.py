@@ -93,8 +93,18 @@ def main():
     model_management.unload_all_models()
 
     # Fase B: DiT + turbo + adapter
-    sequential, _ = ira.setup_diffusion_pipeline(pipeline, adapter_file, config, args.blocks_to_swap,
-                                                 turbo_lora=args.turbo_lora)
+    # = ira.setup_diffusion_pipeline, mas a fusão da turbo roda na GPU (na CPU
+    # a requantização fp8 com stochastic rounding leva ~7 min; o ComfyUI
+    # também aplica LoRAs no device).
+    pipeline.load_diffusion_model()
+    pipeline.diffusion_model.to('cuda')
+    print(f'LoRA turbo fundida (GPU) em {ira.apply_turbo_lora(pipeline, args.turbo_lora)} modulos', flush=True)
+    pipeline.configure_adapter(config['adapter'])
+    pipeline.load_adapter_weights(adapter_file)
+    pipeline.diffusion_model.eval()
+    pipeline.diffusion_model.to('cuda')
+    sequential = torch.nn.Sequential(*pipeline.to_layers())
+    sequential.eval()
     latents = []
     for c, (conds, ref) in zip(cases, enc):
         hw = (c['height'] // pipeline.spatial_compression, c['width'] // pipeline.spatial_compression)
