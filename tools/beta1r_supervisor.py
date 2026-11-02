@@ -37,6 +37,7 @@ LOG_DIR = Path('/workspace/runs/logs')
 # definidos em main() a partir de --name / --hf-repo (padrão = BETA1-R, comportamento antigo)
 NAME = 'beta1r'
 SAMPLES_OUT = Path(os.environ.get('BETA1R_SAMPLES_OUT', '/workspace/runs/beta1r_samples'))
+EVAL_CASES = None
 STOP_FILE = Path('/workspace/runs/beta1r_supervisor.stop')
 HF_REPO = 'AdwolfCzar/krea2-beta1r'
 COPY_SEEDS = []
@@ -228,7 +229,29 @@ def run_samples(config, step, ckpt_dir, cases):
     log(f'samples step{step}: rc={r.returncode} {time.time() - t0:.0f}s '
         f'copy_rate={m.group(1) if m else "?"} mean_dhash_gen_ref={m.group(2) if m else "?"} '
         f'{"multi_seed: " + mm.group(1) if mm else ""} -> {out}')
+    if EVAL_CASES:
+        run_eval(config, step, ckpt_dir, out / 'eval64')
     return out
+
+
+def run_eval(config, step, ckpt_dir, out):
+    """Avaliação ampliada (--eval-cases, ex. cases_eval64.json): 2 seeds (76 + 1) por caso e
+    tools/beta1r_eval_metrics.py (cópia por CASO com IC bootstrap, DINOv2, paleta). Fica em
+    <samples>/stepN/eval64/ e sobe ao HF junto com os samples."""
+    t0 = time.time()
+    eval_log = LOG_DIR / f'{NAME}_eval_step{step}.log'
+    cmd = [str(VENV / 'python'), '-u', 'tools/beta1r_sample.py', '--config', config, '--adapter', str(ckpt_dir),
+           '--cases', str(EVAL_CASES), '--out', str(out), '--turbo-lora', TURBO_LORA, '--copy-seeds', '1']
+    with open(eval_log, 'w') as lf:
+        r = subprocess.run(cmd, cwd=REPO_ROOT, stdout=lf, stderr=subprocess.STDOUT, timeout=5400)
+        if r.returncode != 0:
+            log(f'eval step{step}: sampling rc={r.returncode} (ver {eval_log})')
+            return
+        r = subprocess.run([str(VENV / 'python'), '-u', 'tools/beta1r_eval_metrics.py', '--samples', str(out),
+                            '--cases', str(EVAL_CASES), '--device', 'auto'],
+                           cwd=REPO_ROOT, stdout=subprocess.PIPE, stderr=lf, text=True, timeout=1800)
+    summary = r.stdout.strip().splitlines()[-1] if r.stdout.strip() else f'rc={r.returncode}'
+    log(f'eval step{step}: {time.time() - t0:.0f}s {summary}')
 
 
 def main():
@@ -243,9 +266,11 @@ def main():
     ap.add_argument('--hf-repo', default='AdwolfCzar/krea2-beta1r')
     ap.add_argument('--copy-seeds', type=int, nargs='*', default=[],
                     help='seeds extras da métrica de cópia (tools/beta1r_sample.py --copy-seeds)')
+    ap.add_argument('--eval-cases', default=None,
+                    help='avaliação ampliada depois dos samples (ex. cases_eval64.json): 2 seeds + beta1r_eval_metrics')
     args = ap.parse_args()
-    global NAME, SAMPLES_OUT, STOP_FILE, HF_REPO, COPY_SEEDS
-    NAME, HF_REPO, COPY_SEEDS = args.name, args.hf_repo, args.copy_seeds
+    global NAME, SAMPLES_OUT, STOP_FILE, HF_REPO, COPY_SEEDS, EVAL_CASES
+    NAME, HF_REPO, COPY_SEEDS, EVAL_CASES = args.name, args.hf_repo, args.copy_seeds, args.eval_cases
     if args.name != 'beta1r':
         SAMPLES_OUT = Path(f'/workspace/runs/{args.name}_samples')
         STOP_FILE = Path(f'/workspace/runs/{args.name}_supervisor.stop')
@@ -254,7 +279,7 @@ def main():
     output_base = Path(read_toml_value(args.config, 'output_dir'))
     max_steps = read_toml_value(args.config, 'max_steps', int)
     log(f'supervisor start name={NAME} config={args.config} max_steps={max_steps} '
-        f'sample_every={args.sample_every} hf={HF_REPO} copy_seeds={COPY_SEEDS} stop={STOP_FILE}')
+        f'sample_every={args.sample_every} hf={HF_REPO} copy_seeds={COPY_SEEDS} eval={EVAL_CASES} stop={STOP_FILE}')
     uploader = NoUploader() if args.no_upload else Uploader(args.config)
     trainer = Trainer(args.config)
     if args.resume:
