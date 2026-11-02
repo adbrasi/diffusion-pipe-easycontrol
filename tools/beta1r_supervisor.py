@@ -38,6 +38,7 @@ LOG_DIR = Path('/workspace/runs/logs')
 NAME = 'beta1r'
 SAMPLES_OUT = Path(os.environ.get('BETA1R_SAMPLES_OUT', '/workspace/runs/beta1r_samples'))
 EVAL_CASES = None
+EVAL_EVERY = 500   # eval64 custa ~13 min/checkpoint; a avaliação rápida segue a cada sample_every
 STOP_FILE = Path('/workspace/runs/beta1r_supervisor.stop')
 HF_REPO = 'AdwolfCzar/krea2-beta1r'
 COPY_SEEDS = []
@@ -229,7 +230,7 @@ def run_samples(config, step, ckpt_dir, cases):
     log(f'samples step{step}: rc={r.returncode} {time.time() - t0:.0f}s '
         f'copy_rate={m.group(1) if m else "?"} mean_dhash_gen_ref={m.group(2) if m else "?"} '
         f'{"multi_seed: " + mm.group(1) if mm else ""} -> {out}')
-    if EVAL_CASES:
+    if EVAL_CASES and step % EVAL_EVERY == 0:
         run_eval(config, step, ckpt_dir, out / 'eval64')
     return out
 
@@ -268,9 +269,11 @@ def main():
                     help='seeds extras da métrica de cópia (tools/beta1r_sample.py --copy-seeds)')
     ap.add_argument('--eval-cases', default=None,
                     help='avaliação ampliada depois dos samples (ex. cases_eval64.json): 2 seeds + beta1r_eval_metrics')
+    ap.add_argument('--eval-every', type=int, default=500, help='eval64 só nos steps múltiplos disto')
     args = ap.parse_args()
-    global NAME, SAMPLES_OUT, STOP_FILE, HF_REPO, COPY_SEEDS, EVAL_CASES
+    global NAME, SAMPLES_OUT, STOP_FILE, HF_REPO, COPY_SEEDS, EVAL_CASES, EVAL_EVERY
     NAME, HF_REPO, COPY_SEEDS, EVAL_CASES = args.name, args.hf_repo, args.copy_seeds, args.eval_cases
+    EVAL_EVERY = args.eval_every
     if args.name != 'beta1r':
         SAMPLES_OUT = Path(f'/workspace/runs/{args.name}_samples')
         STOP_FILE = Path(f'/workspace/runs/{args.name}_supervisor.stop')
