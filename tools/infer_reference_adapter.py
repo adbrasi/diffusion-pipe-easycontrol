@@ -684,7 +684,20 @@ def setup_diffusion_pipeline(pipeline, adapter_path: Path, config: dict, blocks_
 
 
 def call_model(model, latent, timestep, conds, reference):
+    t_ref = _REF_INFER_NOISE['t']
+    if t_ref > 0:
+        # diagnóstico BETA1-R2: referência com ruído também na inferência (7 inputs, t_ref no embedding)
+        batch = latent.shape[0]
+        patch = _REF_INFER_NOISE['patch']
+        tokens = reference.shape[2] * (-(-reference.shape[-2] // patch)) * (-(-reference.shape[-1] // patch))
+        keep = torch.ones(batch, tokens, device=latent.device)
+        rt = torch.full((batch,), t_ref, device=latent.device)
+        return model((latent, timestep, *conds, reference, keep, rt)).float()
     return model((latent, timestep, *conds, reference)).float()
+
+
+# REF_INFER_NOISE=t (env): ref = (1-t)·ref + t·ε (ε com seed fixa) e t_ref=t nos tokens da referência.
+_REF_INFER_NOISE = {'t': 0.0, 'patch': 2}
 
 
 @torch.no_grad()
@@ -734,6 +747,13 @@ def denoise(
         print(f'[ELO] reference substituida por {_elo_ref_override} '
               f'(relL2 vs original={float((_r-reference).norm()/reference.norm()):.5f})', flush=True)
         reference = _r
+    _REF_INFER_NOISE['t'] = float(_elo_os.environ.get('REF_INFER_NOISE', '0') or 0)
+    if _REF_INFER_NOISE['t'] > 0:
+        _REF_INFER_NOISE['patch'] = int(pipeline.diffusion_model.patch)
+        _g = torch.Generator(device='cuda').manual_seed(seed + 100003)
+        _eps = torch.randn(reference.shape, generator=_g, device='cuda').to(reference.dtype)
+        reference = (1 - _REF_INFER_NOISE['t']) * reference + _REF_INFER_NOISE['t'] * _eps
+        print(f"[REF_INFER_NOISE] t_ref={_REF_INFER_NOISE['t']}", flush=True)
     zero_reference = torch.zeros_like(reference)
     conds = tuple(value.to('cuda') for value in pipeline.conds)
     unconds = tuple(value.to('cuda') for value in getattr(pipeline, 'unconds', ()))

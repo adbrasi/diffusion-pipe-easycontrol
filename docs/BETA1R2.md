@@ -64,3 +64,22 @@ todos os tokens descartados, é idêntico ao reference_dropout. O sorteio é fei
 porque o activation checkpointing recomputa a camada.
 
 Avaliação: 2 seeds extras nos steps 250 e 500, e 8 seeds (11 casos × 8) a partir do 750.
+
+## Resultado: o zoom-crop ACELERA a cópia (ablação, 02/11/2026)
+
+Cópia (dHash(saída, referência) ≤ 10) no step 250, seeds 76/1/2, 8 casos fora do treino + 3 exemplos do beta1:
+
+| run | mudanças sobre o BETA1-R | fora do treino | exemplos beta1 |
+|---|---|---|---|
+| BETA1-R | — | 0/24 | 0/9 |
+| R2 | pesos + zoom-crop + LR + ruído na ref + descarte de tokens | 1/24 | 6/9 |
+| R2a | pesos + zoom-crop + LR | 2/24 | 5/9 |
+| R2b | só pesos | **0/24** | **0/9** |
+
+- Culpado: o **zoom-crop da referência** (p=0.5, até 1.25×, no latente). Com ele, o R2 copia no step 250 como o BETA1-R
+  copiava no step 1000 (saída a 4–10 da referência e 23–30 do alvo). Hipótese: desalinhar a referência ensina a
+  transportar o conteúdo dela por semelhança, independente de posição, e é essa habilidade que, forte, vira cópia.
+- O ruído na referência e o descarte de tokens não pioram (R2 ≈ R2a); o efeito deles contra a cópia ainda não foi medido
+  isolado.
+- Referência com ruído também na inferência (t 0.2/0.3, `REF_INFER_NOISE`) não salva o R2 no step 250 (5–6/9).
+- R2b segue até 1500 para o teste "só dados": se ficar limpo em 1000/1250, os pares idênticos explicam a cópia do BETA1-R.
