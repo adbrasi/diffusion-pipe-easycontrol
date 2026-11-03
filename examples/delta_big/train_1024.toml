@@ -1,4 +1,5 @@
-# DELTA_BIG fase 2: 1024 px do step 1000 ao 2000 (retomar do checkpoint/estado da fase 512 em /workspace/runs/delta_big). Config do BETA1-R inalterada fora output_dir/dataset/max_steps.
+# DELTA_BIG fase 2: 1024 px, run novo inicializado com o adapter do step 1000 da fase 512 ([adapter] init_from_existing,
+# preenchido pelo encadeamento); 1500 passos = equivalente aos steps 1000 -> 2500. Config do BETA1-R inalterada fora output_dir/dataset/max_steps.
 # BETA1-R: réplica do k2-context-rush-ofc-beta1 (krea2_multiref_grounded, branch ic-lora) mudando SÓ:
 #  1. base_quant='fp8_scaled' (fp8 + escala, models/base.py::ScaledFP8Linear) — beta1 usava
 #     diffusion_model_dtype='float8' (re-quantização sem escala, zerou 6-27% dos pesos)
@@ -10,10 +11,10 @@
 # Batch: micro 1 x accum 4 = IGUAL ao beta1 (micro 4 e 2 dão OOM com o Qwen3-VL residente na GPU,
 # exigido pelo encoding ao vivo). Warmup 50 (beta1 fase 1: 100; pedido do usuário ~50).
 # Dataset: beta1 sem pico-banana (opção A), ver examples/beta1r/dataset.toml.
-output_dir = '/workspace/runs/delta_big'
+output_dir = '/workspace/runs/delta_big_1024'
 dataset = '/workspace/dpe-beta1r/examples/delta_big/dataset_1024.toml'
 epochs = 1000
-max_steps = 2000
+max_steps = 1500
 micro_batch_size_per_gpu = 1
 gradient_accumulation_steps = 4
 pipeline_stages = 1
@@ -58,6 +59,7 @@ reference_dropout = 0.1
 txtfusion_rank = 128
 
 [adapter]
+init_from_existing = 'INIT_FROM_512'
 type = 'lora'
 rank = 64
 dtype = 'bfloat16'
