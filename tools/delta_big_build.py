@@ -2,7 +2,8 @@
 """Próxima cena, dataset grande delta — etapa final: monta /workspace/data/delta_big/{target,refs} no formato do BETA1-R.
 
 Junta selected.json (pares que passaram no filtro de cópia: área alinhada <= 0.30 e dHash alvo×ref > 4) com as legendas
-(caption/reused.jsonl = delta do cap1000 reaproveitadas, caption/new.jsonl = Muse Spark 1.3 com prompt_final.txt).
+(caption/reused.jsonl = delta do cap1000 reaproveitadas, caption/new.jsonl = Muse Spark 1.3 com prompt_final.txt);
+o prefixo "Next scene of Picture 1." é removido de todas.
 Normaliza como o BETA1-R: lado maior <= 1024, JPEG q95. Pares sem legenda válida ficam de fora.
 """
 import json
@@ -12,6 +13,12 @@ from multiprocessing import Pool
 from PIL import Image
 
 D = '/workspace/data/delta_big'
+PREFIX = 'Next scene of Picture 1.'  # decisão do usuário: legendas finais sem o prefixo
+
+
+def strip_prefix(c):
+    c = c.strip()
+    return c[len(PREFIX):].strip() if c.startswith(PREFIX) else c
 
 
 def norm(src, dst):
@@ -43,7 +50,7 @@ if __name__ == '__main__':
         for l in open(f'{D}/{f}'):
             r = json.loads(l)
             if r.get('ok'):
-                caps[r['key']] = r['caption']
+                caps[r['key']] = strip_prefix(r['caption'])
     sel = [s for s in json.load(open(f'{D}/selected.json')) if s['key'] in caps]
     with Pool(24) as p:
         srcs = p.map(work, [(s, caps[s['key']]) for s in sel], chunksize=16)

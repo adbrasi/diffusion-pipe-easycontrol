@@ -2,7 +2,7 @@
  {
   "name": "heldout_ds2_001626",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001626_reference.jpg",
-  "prompt": "Next scene of Picture 1. A medium close-up at eye level. The same skeleton hangs centered as a new pale hand reaches in from the right to touch its shoulder. Lantern text reads \"\u5927\u5224\". Same place.",
+  "prompt": "A medium close-up at eye level. The same skeleton hangs centered as a new pale hand reaches in from the right to touch its shoulder. Lantern text reads \"\u5927\u5224\". Same place.",
   "width": 688,
   "height": 384,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001626_target.jpg",
@@ -12,7 +12,7 @@
  {
   "name": "heldout_ds2_000769",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000769_reference.jpg",
-  "prompt": "Next scene of Picture 1. A full-body shot from the side. The same man appears left of center, mid-stride running left with head bowed and arms bent. On-screen text reads \"RAFA\u0141 JAKI\" across the bottom. Same place.",
+  "prompt": "A full-body shot from the side. The same man appears left of center, mid-stride running left with head bowed and arms bent. On-screen text reads \"RAFA\u0141 JAKI\" across the bottom. Same place.",
   "width": 688,
   "height": 384,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000769_target.jpg",
@@ -22,7 +22,7 @@
  {
   "name": "heldout_ds2_001969",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001969_reference.jpg",
-  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl stands in left profile holding hands and gazing shyly at a new boy with short dark hair in green uniform, who faces her blushing. Same place.",
+  "prompt": "A medium shot at eye level. The same girl stands in left profile holding hands and gazing shyly at a new boy with short dark hair in green uniform, who faces her blushing. Same place.",
   "width": 688,
   "height": 384,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_001969_target.jpg",
@@ -32,7 +32,7 @@
  {
   "name": "heldout_ds2_004421",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_004421_reference.jpg",
-  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl is bent down at the lower left with only her back visible, the same man stands at the right beside the booth holding a phone and looking toward her, with a new older man in a cap walking away in the background. Same place.",
+  "prompt": "A medium shot at eye level. The same girl is bent down at the lower left with only her back visible, the same man stands at the right beside the booth holding a phone and looking toward her, with a new older man in a cap walking away in the background. Same place.",
   "width": 688,
   "height": 384,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_004421_target.jpg",
@@ -42,7 +42,7 @@
  {
   "name": "heldout_ds2_000263",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000263_reference.jpg",
-  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl stands in the left foreground looking forward with a neutral expression, beside a new dark-haired girl with orange ribbons, a new short blond boy laughing with hand to mouth, and a new partial white-haired girl. Same place.",
+  "prompt": "A medium shot at eye level. The same girl stands in the left foreground looking forward with a neutral expression, beside a new dark-haired girl with orange ribbons, a new short blond boy laughing with hand to mouth, and a new partial white-haired girl. Same place.",
   "width": 688,
   "height": 384,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000263_target.jpg",
@@ -52,7 +52,7 @@
  {
   "name": "heldout_ds2_000362",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000362_reference.jpg",
-  "prompt": "Next scene of Picture 1. A close-up from a side angle. The same girl is kneeling and bowing deeply with her head to the ground amid dust. A nighttime rooftop with city buildings behind.",
+  "prompt": "A close-up from a side angle. The same girl is kneeling and bowing deeply with her head to the ground amid dust. A nighttime rooftop with city buildings behind.",
   "width": 688,
   "height": 384,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_000362_target.jpg",
@@ -62,7 +62,7 @@
  {
   "name": "heldout_ds2_005429",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_005429_reference.jpg",
-  "prompt": "Next scene of Picture 1. A medium close-up from a low ground angle. A new man with messy dark hair and mustache in a light tracksuit jacket crouches in the right foreground, staring forward with a strained expression, while a light convertible car sits parked behind him to the left. Same place.",
+  "prompt": "A medium close-up from a low ground angle. A new man with messy dark hair and mustache in a light tracksuit jacket crouches in the right foreground, staring forward with a strained expression, while a light convertible car sits parked behind him to the left. Same place.",
   "width": 784,
   "height": 336,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_005429_target.jpg",
@@ -72,7 +72,7 @@
  {
   "name": "heldout_ds2_002890",
   "reference": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_002890_reference.jpg",
-  "prompt": "Next scene of Picture 1. A medium shot at eye level. The same girl stands on the right seen from behind, facing and holding hands with a new boy with short brown hair in a white long-sleeve shirt, both with serious expressions, with the open doorway to night trees behind them. Same place.",
+  "prompt": "A medium shot at eye level. The same girl stands on the right seen from behind, facing and holding hands with a new boy with short brown hair in a white long-sleeve shirt, both with serious expressions, with the open doorway to night trees behind them. Same place.",
   "width": 688,
   "height": 384,
   "target": "/workspace/runs/beta1r_samples_inputs/heldout/heldout_ds2_002890_target.jpg",

@@ -32,7 +32,8 @@ def b64(path, maxpx=768 * 768):
 
 
 def valid(t):
-    return t.startswith('Next scene of Picture 1.') and 15 <= len(t.split()) <= 160 and 'Picture 2' not in t
+    # o prompt_final atual não pede mais o prefixo "Next scene of Picture 1." (as legendas antigas o tinham)
+    return 15 <= len(t.split()) <= 160 and 'Picture 2' not in t
 
 
 def caption(system, job):
