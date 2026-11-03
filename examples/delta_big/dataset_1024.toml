@@ -1,0 +1,15 @@
+# DELTA_BIG: dataset do BETA1-R + v11 filtrado (área alinhada <= 0.30, dHash alvo×ref > 4), legendas delta
+# (cap1000 reaproveitadas + Muse Spark 1.3 com examples/delta_big/prompt_final.txt). tools/delta_big_*.py
+resolutions = [1024]
+enable_ar_bucket = true
+min_ar = 0.5
+max_ar = 2.0
+num_ar_buckets = 7
+frame_buckets = [1]
+
+[[directory]]
+path = '/workspace/data/delta_big/target'
+control_path = '/workspace/data/delta_big/refs'
+multi_ref = true
+max_refs = 1
+num_repeats = 1
