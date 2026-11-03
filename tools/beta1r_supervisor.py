@@ -103,6 +103,10 @@ class Uploader:
         self.threads = []
         # repo público SEM README (pedido do usuário); a cota privada está cheia
         self.api.create_repo(HF_REPO, repo_type='model', private=False, exist_ok=True)
+        try:  # regra do dono: todo repo HF fica gated (manual), público mas com aprovação
+            self.api.update_repo_settings(HF_REPO, gated='manual', repo_type='model')
+        except Exception as e:  # noqa
+            log(f'aviso: não consegui deixar {HF_REPO} gated: {e}')
         self.upload_file(config, 'configs/train.toml')
         self.upload_file(read_toml_value(config, 'dataset'), 'configs/dataset.toml')
 
